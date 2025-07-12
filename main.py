@@ -310,8 +310,67 @@ def funcionalidades():
 def planos():
     return render_template('planos.html')
 
-@app.route('/contato')
+@app.route('/contato', methods=['GET', 'POST'])
 def contato():
+    if request.method == 'POST':
+        # Pega os dados do formulário
+        nome = request.form.get('nome')
+        email_remetente = request.form.get('email')
+        escola = request.form.get('escola')
+        mensagem = request.form.get('mensagem')
+
+        # Validação simples
+        if not nome or not email_remetente or not mensagem:
+            flash('Por favor, preencha todos os campos obrigatórios.', 'danger')
+            return render_template('contato.html')
+
+        # Pega a chave da API das variáveis de ambiente do Render
+        resend_api_key = os.environ.get('RESEND_API_KEY')
+
+        # Verifica se a chave foi configurada no Render
+        if not resend_api_key:
+            flash('Ocorreu um erro de configuração no servidor. Por favor, tente novamente mais tarde.', 'danger')
+            print("ERRO CRÍTICO: A variável de ambiente RESEND_API_KEY não foi encontrada.")
+            return render_template('contato.html')
+
+        try:
+            # Configura e envia o e-mail usando o Resend
+            resend.api_key = resend_api_key
+
+            params = {
+                # O Resend permite usar este e-mail para testes no plano gratuito
+                "from": "Online Tests <onboarding@resend.dev>", 
+                # O e-mail de destino
+                "to": ["manoelbd2012@gmail.com"],
+                # Assunto do e-mail
+                "subject": f"Nova Mensagem de Contato de {nome}",
+                # Corpo do e-mail em HTML
+                "html": f"""
+                    <h3>Nova Mensagem Recebida do Site</h3>
+                    <p><strong>Nome:</strong> {nome}</p>
+                    <p><strong>Email para contato:</strong> {email_remetente}</p>
+                    <p><strong>Instituição:</strong> {escola or 'Não informada'}</p>
+                    <hr>
+                    <p><strong>Mensagem:</strong></p>
+                    <p>{mensagem.replace(os.linesep, '<br>')}</p>
+                """,
+                # Permite que você clique em "Responder" e responda diretamente para quem enviou
+                "reply_to": email_remetente
+            }
+
+            email_enviado = resend.Emails.send(params)
+            
+            # Se chegou aqui, o e-mail foi enviado com sucesso
+            flash('Sua mensagem foi enviada com sucesso! Entraremos em contato em breve.', 'success')
+            return redirect(url_for('contato'))
+
+        except Exception as e:
+            # Em caso de erro na API do Resend
+            flash('Ocorreu um erro inesperado ao enviar sua mensagem. Por favor, tente novamente.', 'danger')
+            print(f"ERRO AO ENVIAR EMAIL COM RESEND: {e}")
+            return render_template('contato.html')
+        
+    # Se o método for GET, apenas mostra a página normalmente
     return render_template('contato.html')
 
 @app.route('/superadmin/painel')
