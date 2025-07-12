@@ -2,6 +2,7 @@
 # SEÇÃO 1: IMPORTS
 # ===================================================================
 import os
+import resend
 from PIL import Image
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, abort, make_response
 from flask_sqlalchemy import SQLAlchemy
