@@ -313,65 +313,75 @@ def planos():
 
 @app.route('/contato', methods=['GET', 'POST'])
 def contato():
+    # --- PONTO DE VERIFICAÇÃO 1 ---
+    # Este print aparecerá nos logs toda vez que a página /contato for acessada.
+    print("--- Rota /contato foi acessada ---")
+    
     if request.method == 'POST':
-        # Pega os dados do formulário
+        # --- PONTO DE VERIFICAÇÃO 2 ---
+        # Este print só aparecerá se o formulário for enviado com o método POST.
+        print("--- Método POST detectado. Tentando processar o formulário. ---")
+
         nome = request.form.get('nome')
         email_remetente = request.form.get('email')
-        escola = request.form.get('escola')
         mensagem = request.form.get('mensagem')
+        
+        # --- PONTO DE VERIFICAÇÃO 3 ---
+        # Vamos ver os dados que chegaram.
+        print(f"Dados recebidos: Nome='{nome}', Email='{email_remetente}', Mensagem='{mensagem}'")
 
-        # Validação simples
         if not nome or not email_remetente or not mensagem:
             flash('Por favor, preencha todos os campos obrigatórios.', 'danger')
             return render_template('contato.html')
 
-        # Pega a chave da API das variáveis de ambiente do Render
         resend_api_key = os.environ.get('RESEND_API_KEY')
 
-        # Verifica se a chave foi configurada no Render
+        # --- PONTO DE VERIFICAÇÃO 4 ---
+        # Vamos verificar se a chave da API foi encontrada.
         if not resend_api_key:
+            print("--- ERRO CRÍTICO: Chave da API do Resend (RESEND_API_KEY) não encontrada nas variáveis de ambiente! ---")
             flash('Ocorreu um erro de configuração no servidor. Por favor, tente novamente mais tarde.', 'danger')
-            print("ERRO CRÍTICO: A variável de ambiente RESEND_API_KEY não foi encontrada.")
             return render_template('contato.html')
+        else:
+            print("--- Chave da API do Resend encontrada com sucesso. ---")
 
         try:
-            # Configura e envia o e-mail usando o Resend
+            # --- PONTO DE VERIFICAÇÃO 5 ---
+            # O código está prestes a tentar enviar o e-mail.
+            print("--- Tentando enviar o e-mail com Resend... ---")
+            
             resend.api_key = resend_api_key
-
             params = {
-                # O Resend permite usar este e-mail para testes no plano gratuito
-                "from": "Online Tests <onboarding@resend.dev>", 
-                # O e-mail de destino
+                "from": "Online Tests <onboarding@resend.dev>",
                 "to": ["manoelbd2012@gmail.com"],
-                # Assunto do e-mail
                 "subject": f"Nova Mensagem de Contato de {nome}",
-                # Corpo do e-mail em HTML
                 "html": f"""
                     <h3>Nova Mensagem Recebida do Site</h3>
                     <p><strong>Nome:</strong> {nome}</p>
                     <p><strong>Email para contato:</strong> {email_remetente}</p>
-                    <p><strong>Instituição:</strong> {escola or 'Não informada'}</p>
+                    <p><strong>Instituição:</strong> {request.form.get('escola') or 'Não informada'}</p>
                     <hr>
                     <p><strong>Mensagem:</strong></p>
                     <p>{mensagem.replace(os.linesep, '<br>')}</p>
                 """,
-                # Permite que você clique em "Responder" e responda diretamente para quem enviou
                 "reply_to": email_remetente
             }
-
             email_enviado = resend.Emails.send(params)
             
-            # Se chegou aqui, o e-mail foi enviado com sucesso
+            # --- PONTO DE VERIFICAÇÃO 6 ---
+            # Se você vir este print, o Resend aceitou o pedido.
+            print(f"--- E-mail enviado para Resend. Resposta da API: {email_enviado} ---")
+            
             flash('Sua mensagem foi enviada com sucesso! Entraremos em contato em breve.', 'success')
             return redirect(url_for('contato'))
 
         except Exception as e:
-            # Em caso de erro na API do Resend
+            # --- PONTO DE VERIFICAÇÃO 7 (ERRO) ---
+            # Se algo der errado com a API do Resend, este print aparecerá.
+            print(f"--- ERRO AO ENVIAR EMAIL COM RESEND: {e} ---")
             flash('Ocorreu um erro inesperado ao enviar sua mensagem. Por favor, tente novamente.', 'danger')
-            print(f"ERRO AO ENVIAR EMAIL COM RESEND: {e}")
             return render_template('contato.html')
         
-    # Se o método for GET, apenas mostra a página normalmente
     return render_template('contato.html')
 
 @app.route('/superadmin/painel')
