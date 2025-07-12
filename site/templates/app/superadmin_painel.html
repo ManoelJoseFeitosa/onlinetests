@@ -1,0 +1,70 @@
+{% extends 'app/base.html' %}
+
+{% block title %}Painel do Super Administrador{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">Painel do Super Administrador</h2>
+        <a href="{{ url_for('superadmin_nova_escola') }}" class="btn btn-primary">
+            <i class="bi bi-plus-circle-fill me-2"></i>Nova Escola
+        </a>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-header">
+            <h5 class="mb-0">Escolas Cadastradas</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>Nome da Escola</th>
+                            <th>CNPJ</th>
+                            <th class="text-center">Nº de Alunos</th>
+                            <th class="text-center">Status</th>
+                            <th class="text-center">Ações</th> <!-- NOVA COLUNA -->
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for escola, contagem_alunos in escolas_com_contagem %}
+                        <tr>
+                            <td>{{ escola.nome }}</td>
+                            <td>{{ escola.cnpj or 'Não informado' }}</td>
+                            <td class="text-center">{{ contagem_alunos }}</td>
+                            <td class="text-center">
+                                <span class="badge {{ 'bg-success' if escola.status == 'ativo' else 'bg-danger' }}">
+                                    {{ escola.status|capitalize }}
+                                </span>
+                            </td>
+                            <!-- CÉLULA COM OS BOTÕES DE AÇÃO -->
+                            <td class="text-center">
+                                <!-- BOTÃO EDITAR -->
+                                <a href="{{ url_for('editar_escola', escola_id=escola.id) }}" class="btn btn-sm btn-outline-primary me-2" title="Editar Escola">
+                                    <i class="bi bi-pencil-fill"></i> Editar
+                                </a>
+                                <!-- BOTÃO ALTERAR STATUS -->
+                                <form action="{{ url_for('toggle_escola_status', escola_id=escola.id) }}" method="POST" class="d-inline">
+                                    <button type="submit" class="btn btn-sm {{ 'btn-outline-warning' if escola.status == 'ativo' else 'btn-outline-success' }}" title="{{ 'Bloquear' if escola.status == 'ativo' else 'Ativar' }}">
+                                        {% if escola.status == 'ativo' %}
+                                            <i class="bi bi-lock-fill"></i> Bloquear
+                                        {% else %}
+                                            <i class="bi bi-unlock-fill"></i> Ativar
+                                        {% endif %}
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center text-muted py-4">Nenhuma escola cadastrada.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

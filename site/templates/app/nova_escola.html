@@ -1,0 +1,55 @@
+{% extends 'app/base.html' %}
+
+{% block title %}Cadastrar Nova Escola{% endblock %}
+
+{% block content %}
+<h1 class="h2 mb-4">Cadastrar Nova Escola e Coordenador 🏫</h1>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <form method="POST">
+            <fieldset class="mb-4">
+                <legend class="fs-5 border-bottom pb-2 mb-3">Dados da Escola</legend>
+                <div class="row">
+                    <div class="col-md-8 mb-3">
+                        <label for="nome_escola" class="form-label">Nome da Nova Escola</label>
+                        <input type="text" class="form-control" id="nome_escola" name="nome_escola" required>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="cnpj_escola" class="form-label">CNPJ (Opcional)</label>
+                        <input type="text" class="form-control" id="cnpj_escola" name="cnpj_escola" placeholder="XX.XXX.XXX/XXXX-XX">
+                    </div>
+                    </div>
+            </fieldset>
+
+            <fieldset>
+                <legend class="fs-5 border-bottom pb-2 mb-3">Dados do Coordenador Principal</legend>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="nome_coordenador" class="form-label">Nome do Coordenador</label>
+                        <input type="text" class="form-control" id="nome_coordenador" name="nome_coordenador" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="email_coordenador" class="form-label">E-mail do Coordenador</label>
+                        <input type="email" class="form-control" id="email_coordenador" name="email_coordenador" required>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="senha_coordenador" class="form-label">Senha Provisória</label>
+                    <input type="password" class="form-control" id="senha_coordenador" name="senha_coordenador" required>
+                    <div class="form-text">O coordenador será solicitado a trocar esta senha no primeiro login.</div>
+                </div>
+            </fieldset>
+
+            <hr class="my-4">
+
+            <div class="d-flex justify-content-end">
+                <a href="{{ url_for('superadmin_painel') }}" class="btn btn-secondary me-2">Cancelar</a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-check-lg me-1"></i> Salvar Escola e Coordenador
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

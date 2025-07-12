@@ -1,0 +1,24 @@
+{% extends 'app/base.html' %}
+{% block title %}Correção de: {{ avaliacao.nome }}{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <h1>Correções Pendentes</h1>
+    <h2>Avaliação: {{ avaliacao.nome }}</h2>
+    <p>Selecione um aluno para corrigir as respostas discursivas.</p>
+    {% if resultados %}
+        <div class="list-group">
+            {% for resultado in resultados %}
+            <a href="{{ url_for('corrigir_respostas', resultado_id=resultado.id) }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                {{ resultado.aluno.nome }}
+                <span class="badge badge-warning badge-pill p-2">Correção Pendente</span>
+            </a>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="alert alert-success" role="alert">
+            Nenhum aluno com correção pendente para esta avaliação.
+        </div>
+    {% endif %}
+    <a href="{{ url_for('listar_avaliacoes') }}" class="btn btn-secondary mt-4">&larr; Voltar</a>
+</div>
+{% endblock %}

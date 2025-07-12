@@ -1,0 +1,101 @@
+{% extends 'app/base.html' %}
+
+{% block title %}Registrar Novo Usuário{% endblock %}
+
+{% block content %}
+    <style>
+        .form-container {
+            max-width: 500px;
+            margin: 20px auto;
+            padding: 30px;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            text-align: left;
+        }
+        .form-container h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 25px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .form-group .submit-btn {
+            width: 100%;
+            padding: 12px;
+            font-size: 1.1em;
+            font-weight: bold;
+            color: white;
+            background-color: #007bff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .alert {
+            padding: 15px; margin-bottom: 20px; border: 1px solid transparent; border-radius: 4px;
+        }
+        .alert-warning {
+            color: #856404; background-color: #fff3cd; border-color: #ffeeba;
+        }
+        .alert-danger {
+             color: #721c24; background-color: #f8d7da; border-color: #f5c6cb;
+        }
+    </style>
+
+    <div class="form-container">
+        <h1>Registrar</h1>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'message' else category }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="{{ url_for('register') }}">
+            <div class="form-group">
+                <label for="nome">Nome Completo:</label>
+                <input type="text" id="nome" name="nome" required>
+            </div>
+            <div class="form-group">
+                <label for="email">Endereço de Email:</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+            <div class="form-group">
+                <label for="senha">Senha:</label>
+                <input type="password" id="senha" name="senha" required>
+            </div>
+            <div class="form-group">
+                <label for="role">Tipo de Usuário:</label>
+                <select name="role" id="role" required>
+                    <option value="aluno">Aluno</option>
+                    <option value="professor">Professor</option>
+                    <option value="coordenador">Coordenador</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <button type="submit" class="submit-btn">Criar Conta</button>
+            </div>
+        </form>
+         <p style="text-align: center; margin-top: 20px;">
+            Já tem uma conta? <a href="{{ url_for('login') }}">Faça login.</a>
+        </p>
+    </div>
+{% endblock %}

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Relatório de Avaliações Respondidas</title>
+    <style>
+        body { font-family: sans-serif; page-break-inside: avoid; }
+        h1 { text-align: center; }
+        h2 { background-color: #f2f2f2; padding: 10px; border-top: 2px solid #ccc; margin-top: 30px; }
+        h3 { margin-top: 25px; border-bottom: 1px solid #ddd; padding-bottom: 5px;}
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #e8e8e8; }
+    </style>
+</head>
+<body>
+    <h1>Relatório de Avaliações Respondidas</h1>
+    <p>Data de Geração: {{ data_geracao.strftime('%d/%m/%Y %H:%M') }}</p>
+    <hr>
+    
+    {% if resultados %}
+        {% for serie, resultados_por_serie in resultados|groupby('aluno.serie.nome') %}
+            <h2>Série: {{ serie }}</h2>
+            
+            {% for aluno, resultados_do_aluno in resultados_por_serie|groupby('aluno.nome') %}
+                <h3>Aluno: {{ aluno }}</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Avaliação</th>
+                            <th>Disciplina</th>
+                            <th>Data da Resposta</th>
+                            <th>Nota</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for resultado in resultados_do_aluno %}
+                        <tr>
+                            <td>{{ resultado.avaliacao.nome }}</td>
+                            <td>{{ resultado.avaliacao.disciplina.nome }}</td>
+                            <td>{{ resultado.data_realizacao.strftime('%d/%m/%Y') }}</td>
+                            <td>{{ "%.2f"|format(resultado.nota) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% endfor %}
+
+        {% endfor %}
+
+    {% else %}
+        <p>Nenhuma avaliação foi respondida por alunos das séries selecionadas.</p>
+    {% endif %}
+</body>
+</html>

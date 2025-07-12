@@ -1,0 +1,229 @@
+{% extends 'app/base.html' %}
+
+{% block title %}Central de Relatórios{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">Central de Relatórios</h2>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">&larr; Voltar ao Painel</a>
+    </div>
+    <p class="text-muted">Gere relatórios em PDF para análise e acompanhamento acadêmico.</p>
+    <hr>
+
+    <div class="row g-4">
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header"><h5 class="mb-0"><i class="bi bi-people-fill me-2"></i>Alunos por Série</h5></div>
+                <div class="card-body d-flex flex-column">
+                    <form action="{{ url_for('relatorio_alunos_por_serie') }}" method="POST" target="_blank" class="d-flex flex-column flex-grow-1">
+                        <div class="mb-3">
+                            <label for="ano_letivo_alunos" class="form-label">Ano Letivo</label>
+                            <select class="form-select" name="ano_letivo_id" id="ano_letivo_alunos" required>
+                                {% for ano in anos_letivos %}<option value="{{ ano.id }}">{{ ano.ano }}</option>{% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="series_ids_alunos" class="form-label">Séries</label>
+                            <select class="form-select" name="series_ids" id="series_ids_alunos" multiple required size="5">
+                                {% for serie in series %}<option value="{{ serie.id }}">{{ serie.nome }}</option>{% endfor %}
+                            </select>
+                            <div class="form-text">Segure Ctrl (ou Cmd) para selecionar várias.</div>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 mt-auto">Gerar PDF</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header"><h5 class="mb-0"><i class="bi bi-file-earmark-text-fill me-2"></i>Boletim por Turma</h5></div>
+                <div class="card-body d-flex flex-column">
+                    <form action="{{ url_for('relatorio_boletim_aluno') }}" method="POST" target="_blank" class="d-flex flex-column flex-grow-1">
+                        <div class="mb-3">
+                            <label for="ano_letivo_boletim" class="form-label">Ano Letivo</label>
+                            <select class="form-select" name="ano_letivo_id" id="ano_letivo_boletim" required>
+                                {% for ano in anos_letivos %}<option value="{{ ano.id }}">{{ ano.ano }}</option>{% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="serie_id_boletim" class="form-label">Série</label>
+                            <select class="form-select" name="serie_id" id="serie_id_boletim" required>
+                                {% for serie in series %}<option value="{{ serie.id }}">{{ serie.nome }}</option>{% endfor %}
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 mt-auto">Gerar PDF</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header"><h5 class="mb-0"><i class="bi bi-bar-chart-line-fill me-2"></i>Desempenho por Assunto</h5></div>
+                <div class="card-body d-flex flex-column">
+                    <form action="{{ url_for('relatorio_desempenho_por_assunto') }}" method="POST" target="_blank" class="d-flex flex-column flex-grow-1">
+                        <div class="mb-3">
+                            <label for="serie_id_assunto" class="form-label">Série</label>
+                            <select name="serie_id" id="serie_id_assunto" class="form-select" required>
+                                <option value="" disabled selected>-- Selecione uma Série --</option>
+                                {% for serie in series %}<option value="{{ serie.id }}">{{ serie.nome }}</option>{% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="disciplina_id_assunto" class="form-label">Disciplina</label>
+                            <select name="disciplina_id" id="disciplina_id_assunto" class="form-select" required>
+                                <option value="" disabled selected>-- Selecione uma Disciplina --</option>
+                                {% for disciplina in disciplinas %}<option value="{{ disciplina.id }}">{{ disciplina.nome }}</option>{% endfor %}
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 mt-auto">Gerar PDF</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header"><h5 class="mb-0"><i class="bi bi-search me-2"></i>Análise de Itens (Questões)</h5></div>
+                <div class="card-body d-flex flex-column">
+                    <p class="small text-muted">Avalie a qualidade de cada questão em uma prova ou simulado.</p>
+                    <form action="{{ url_for('relatorio_analise_de_itens') }}" method="POST" target="_blank" class="mt-auto">
+                        <div class="mb-3">
+                            <label for="avaliacao_id_analise" class="form-label">Avaliação</label>
+                            <select name="avaliacao_id" id="avaliacao_id_analise" class="form-select" required>
+                                <option value="" disabled selected>-- Selecione uma Avaliação --</option>
+                                {% for avaliacao in avaliacoes %}<option value="{{ avaliacao.id }}">{{ avaliacao.nome }} ({{ avaliacao.tipo|capitalize }})</option>{% endfor %}
+                            </select>
+                        </div>
+                        <div class="d-grid"><button type="submit" class="btn btn-primary">Gerar PDF</button></div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header"><h5 class="mb-0"><i class="bi bi-layers-fill me-2"></i>Desempenho por Nível</h5></div>
+                <div class="card-body d-flex flex-column">
+                    <p class="small text-muted">Analise a performance da turma ou de um aluno por dificuldade.</p>
+                    <form action="{{ url_for('relatorio_desempenho_por_nivel') }}" method="POST" target="_blank" class="d-flex flex-column flex-grow-1">
+                        <div class="mb-3">
+                            <label for="serie_id_nivel" class="form-label">Série</label>
+                            <select name="serie_id" id="serie_id_nivel" class="form-select" required>
+                                <option value="" disabled selected>-- Selecione uma Série --</option>
+                                {% for serie in series %}<option value="{{ serie.id }}">{{ serie.nome }}</option>{% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="aluno_id_nivel" class="form-label">Aluno</label>
+                            <select name="aluno_id" id="aluno_id_nivel" class="form-select">
+                                <option value="0">Todos os Alunos da Série</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 mt-auto">Gerar PDF</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header"><h5 class="mb-0"><i class="bi bi-diagram-3-fill me-2"></i>Comparativo entre Turmas</h5></div>
+                <div class="card-body d-flex flex-column">
+                    <p class="small text-muted">Compare o desempenho de diferentes turmas na mesma avaliação.</p>
+                    <form action="{{ url_for('relatorio_comparativo_turmas') }}" method="POST" target="_blank" class="mt-auto">
+                        <div class="mb-3">
+                            <label for="avaliacao_id_comparativo" class="form-label">Avaliação</label>
+                            <select name="avaliacao_id" id="avaliacao_id_comparativo" class="form-select" required>
+                                <option value="" disabled selected>-- Selecione uma Avaliação --</option>
+                                {% for avaliacao in avaliacoes %}
+                                    <option value="{{ avaliacao.id }}">{{ avaliacao.nome }} ({{ avaliacao.tipo|capitalize }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">Gerar PDF</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header"><h5 class="mb-0"><i class="bi bi-clipboard-data-fill me-2"></i>Saúde do Banco de Questões</h5></div>
+                <div class="card-body d-flex flex-column">
+                    <p class="small text-muted">Obtenha uma visão geral de todas as questões cadastradas na escola.</p>
+                    <a href="{{ url_for('relatorio_saude_banco_questoes') }}" target="_blank" class="btn btn-secondary w-100 mt-auto">Gerar Relatório</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header"><h5 class="mb-0"><i class="bi bi-person-video3 me-2"></i>Lista de Professores</h5></div>
+                <div class="card-body d-flex flex-column">
+                    <p>Gera uma lista com todos os professores cadastrados na escola.</p>
+                    <a href="{{ url_for('relatorio_professores') }}" target="_blank" class="btn btn-secondary w-100 mt-auto">Gerar PDF</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header"><h5 class="mb-0"><i class="bi bi-graph-up-arrow me-2"></i>Resultados de Simulado</h5></div>
+                <div class="card-body d-flex flex-column">
+                    <form action="{{ url_for('relatorio_resultado_simulado') }}" method="POST" target="_blank" class="mt-auto">
+                        <div class="mb-3">
+                            <label for="avaliacao_id_simulado" class="form-label">Selecione o Simulado</label>
+                            <select class="form-select" name="avaliacao_id" id="avaliacao_id_simulado" required>
+                                {% for simulado in simulados %}<option value="{{ simulado.id }}">{{ simulado.nome }} ({{ simulado.ano_letivo.ano }})</option>{% else %}<option disabled>Nenhum simulado encontrado</option>{% endfor %}
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Gerar PDF</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const serieSelectNivel = document.getElementById('serie_id_nivel');
+        const alunoSelectNivel = document.getElementById('aluno_id_nivel');
+
+        if (serieSelectNivel) {
+            serieSelectNivel.addEventListener('change', function() {
+                const serieId = this.value;
+                alunoSelectNivel.innerHTML = '<option value="0">Carregando...</option>';
+
+                if (!serieId) {
+                    alunoSelectNivel.innerHTML = '<option value="0">Todos os Alunos da Série</option>';
+                    return;
+                }
+
+                fetch(`/api/alunos_por_serie/${serieId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        alunoSelectNivel.innerHTML = '<option value="0">Todos os Alunos da Série</option>';
+                        if (data.alunos) {
+                            data.alunos.forEach(aluno => {
+                                const option = new Option(aluno.nome, aluno.id);
+                                alunoSelectNivel.add(option);
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erro ao buscar alunos:', error);
+                        alunoSelectNivel.innerHTML = '<option value="0">Erro ao carregar</option>';
+                    });
+            });
+        }
+    });
+</script>
+{% endblock %}

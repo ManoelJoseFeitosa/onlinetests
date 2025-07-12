@@ -1,0 +1,141 @@
+{% extends 'app/base.html' %}
+
+{% block title %}Criar Nova Prova{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Criar Nova Prova</h2>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">&larr; Voltar ao Painel</a>
+    </div>
+
+    <form id="form-criar-avaliacao" method="POST">
+        <div class="card">
+            <div class="card-header">
+                <h5>1. Informações Gerais da Prova</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-8 mb-3">
+                        <label for="nome_avaliacao" class="form-label">Nome da Prova</label>
+                        <input type="text" name="nome_avaliacao" id="nome_avaliacao" class="form-control" required placeholder="Ex: Prova Mensal de Biologia - 1º Ano">
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="tempo_limite" class="form-label">Tempo Limite (minutos)</label>
+                        <input type="number" name="tempo_limite" id="tempo_limite" class="form-control" placeholder="Opcional">
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="disciplina_id" class="form-label">Disciplina</label>
+                        <select id="disciplina_id" name="disciplina_id" class="form-select" required>
+                            <option value="" selected disabled>-- Selecione uma Disciplina --</option>
+                            {% for disciplina in disciplinas %}
+                            <option value="{{ disciplina.id }}">{{ disciplina.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="serie_id" class="form-label">Série</label>
+                        <select id="serie_id" name="serie_id" class="form-select" required>
+                            <option value="" selected disabled>-- Selecione uma Série --</option>
+                            {% for serie in series %}
+                            <option value="{{ serie.id }}">{{ serie.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5>2. Seleção de Conteúdo e Dificuldade</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label for="assuntos" class="form-label">Selecione os Assuntos (segure Ctrl ou Cmd para selecionar vários)</label>
+                    <select name="assuntos" id="assuntos" class="form-select" multiple required size="5">
+                        <option disabled>Selecione uma disciplina e série primeiro</option>
+                    </select>
+                </div>
+
+                <fieldset class="border p-3 rounded mt-3">
+                    <legend class="fs-6 fw-bold px-2">Definir Quantidade de Questões por Nível</legend>
+                    <div class="row">
+                        <div class="col-md-4 mb-2">
+                            <label for="qtd_facil" class="form-label text-success">Questões Fáceis</label>
+                            <input type="number" name="qtd_facil" id="qtd_facil" class="form-control" min="0" value="0" required>
+                        </div>
+                        <div class="col-md-4 mb-2">
+                            <label for="qtd_media" class="form-label text-primary">Questões Médias</label>
+                            <input type="number" name="qtd_media" id="qtd_media" class="form-control" min="0" value="0" required>
+                        </div>
+                        <div class="col-md-4 mb-2">
+                            <label for="qtd_dificil" class="form-label text-danger">Questões Difíceis</label>
+                            <input type="number" name="qtd_dificil" id="qtd_dificil" class="form-control" min="0" value="0" required>
+                        </div>
+                    </div>
+                    <small class="form-text text-muted">A soma das questões deve ser maior que zero para criar a prova.</small>
+                </fieldset>
+                </div>
+        </div>
+
+        <div class="text-center mt-4">
+            <button type="submit" class="btn btn-primary btn-lg">
+                <i class="bi bi-check2-circle me-2"></i>Criar Prova Balanceada
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const disciplinaSelect = document.getElementById('disciplina_id');
+    const serieSelect = document.getElementById('serie_id');
+    const assuntosSelect = document.getElementById('assuntos');
+
+    function fetchAssuntos() {
+        const disciplinaId = disciplinaSelect.value;
+        const serieId = serieSelect.value;
+
+        if (disciplinaId && serieId) {
+            assuntosSelect.innerHTML = '<option disabled>Carregando...</option>';
+            assuntosSelect.disabled = true;
+            
+            fetch(`/api/assuntos?disciplina_id=${disciplinaId}&serie_id=${serieId}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Falha na resposta do servidor.');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    assuntosSelect.innerHTML = ''; // Limpa o "Carregando..."
+                    assuntosSelect.disabled = false;
+
+                    if (data.assuntos && data.assuntos.length > 0) {
+                        data.assuntos.forEach(assunto => {
+                            const option = new Option(assunto, assunto);
+                            assuntosSelect.add(option);
+                        });
+                    } else {
+                        assuntosSelect.innerHTML = '<option disabled>Nenhum assunto encontrado para estes filtros</option>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro ao buscar assuntos:', error);
+                    assuntosSelect.disabled = false;
+                    assuntosSelect.innerHTML = '<option disabled>Erro ao carregar assuntos</option>';
+                });
+        } else {
+            assuntosSelect.innerHTML = '<option disabled>Selecione uma disciplina e série primeiro</option>';
+        }
+    }
+
+    disciplinaSelect.addEventListener('change', fetchAssuntos);
+    serieSelect.addEventListener('change', fetchAssuntos);
+});
+</script>
+{% endblock %}

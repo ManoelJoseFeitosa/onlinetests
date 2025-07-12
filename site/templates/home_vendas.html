@@ -1,0 +1,97 @@
+{% extends 'public_base.html' %}
+
+{% block title %}Bem-vindo ao Online Tests{% endblock %}
+
+{% block content %}
+<style>
+    .profile-card-image-container {
+        height: 250px; /* Altura fixa para todos os 'moldes' */
+        padding: 1rem; /* Um preenchimento interno para a imagem respirar */
+        background-color: #f8f9fa; /* Um fundo cinza claro */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .profile-card-image-container img {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain; /* Garante que a imagem inteira caiba no espaço, sem cortes */
+    }
+</style>
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="display-4 fw-bold">Online Tests</h1>
+                    <p class="lead text-muted mb-0">A solução completa para avaliações na sua instituição.</p>
+                </div>
+                <img src="{{ url_for('static', filename='images/onlinetests.jpg') }}" alt="Logo Online Tests" style="width: 180px; height: auto;" class="d-none d-md-block rounded">
+            </div>
+
+            <hr>
+
+            <div class="text-center my-5">
+                <img src="{{ url_for('static', filename='images/provaonline.jpg') }}" class="img-fluid rounded shadow-lg" alt="Alunos realizando prova online">
+            </div>
+
+            <p class="mt-5" style="text-align: justify; font-size: 1.15rem; line-height: 1.7;">
+                O Online Tests é uma solução web moderna e robusta, projetada para transformar a maneira como instituições de ensino criam, gerenciam e aplicam avaliações. Com uma arquitetura segura e uma interface intuitiva, a plataforma centraliza todo o ciclo avaliativo, oferecendo ferramentas específicas e poderosas para cada perfil de usuário: Coordenadores, Professores e Alunos.
+            </p>
+            <p class="mt-4" style="text-align: justify; font-size: 1.15rem; line-height: 1.7;">
+                Para o corpo docente, a plataforma representa uma revolução na rotina diária. Ao automatizar a correção de provas e simulados, ela <strong>agiliza drasticamente o tempo do professor</strong>, permitindo que ele se dedique mais ao planejamento pedagógico e menos às tarefas repetitivas. Além disso, a digitalização <strong>evita que o professor precise carregar grandes volumes de papel</strong>, mantendo todas as avaliações organizadas e acessíveis em um único lugar.
+            </p>
+            <p class="mt-4" style="text-align: justify; font-size: 1.15rem; line-height: 1.7;">
+                O sistema foi construído sobre três pilares fundamentais: eficiência administrativa, autonomia pedagógica e desempenho do aluno. Como um benefício adicional, a plataforma é uma grande aliada do <strong>meio ambiente, pois por não necessitar de impressão, reduz significativamente o uso de papel</strong>, garantindo uma experiência integrada, otimizada e sustentável para todos.
+            </p>
+            <hr class="my-5">
+
+            <div class="text-center">
+                <h3 class="fw-bold">Funcionalidades por Perfil de Usuário</h3>
+                <p class="mt-3 text-muted" style="font-size: 1.1rem;">
+                    O acesso à plataforma é segmentado por perfis, garantindo que cada usuário tenha um painel de controle (dashboard) personalizado com as ferramentas essenciais para suas tarefas diárias.
+                </p>
+            </div>
+
+            <div class="row mt-5 g-4">
+                <div class="col-lg-4 d-flex align-items-stretch">
+                    <div class="card shadow-sm text-center w-100">
+                        <div class="profile-card-image-container">
+                             <img src="{{ url_for('static', filename='images/perfilcoordenador.jpg') }}" alt="Painel do Coordenador">
+                        </div>
+                        <div class="card-body">
+                            <h5 class="card-title">Painel do Coordenador</h5>
+                            <p class="card-text">Gestão total do sistema, usuários e relatórios estratégicos.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4 d-flex align-items-stretch">
+                    <div class="card shadow-sm text-center w-100">
+                        <div class="profile-card-image-container">
+                            <img src="{{ url_for('static', filename='images/perfildoprofessor.jpg') }}" alt="Painel do Professor">
+                        </div>
+                        <div class="card-body">
+                            <h5 class="card-title">Painel do Professor</h5>
+                            <p class="card-text">Criação de questões, provas, simulados e acompanhamento de turmas.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4 d-flex align-items-stretch">
+                     <div class="card shadow-sm text-center w-100">
+                        <div class="profile-card-image-container">
+                             <img src="{{ url_for('static', filename='images/perfildoaluno.jpg') }}" alt="Painel do Aluno">
+                        </div>
+                        <div class="card-body">
+                            <h5 class="card-title">Painel do Aluno</h5>
+                            <p class="card-text">Foco em responder avaliações e acompanhar o próprio desempenho.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            </div>
+    </div>
+</div>
+{% endblock %}

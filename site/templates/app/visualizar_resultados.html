@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Resultados da Avaliação</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <h2>Resultados da Avaliação {{ avaliacao_id }}</h2>
+    <p>Sua Pontuação: {{ score }} de {{ total_questions }}</p>
+    <ul>
+        {% for resultado in resultados %}
+            <li>
+                <strong>Pergunta:</strong> {{ resultado[0] }}<br>
+                <strong>Sua Resposta:</strong> {{ resultado[1] }}<br>
+                {% if resultado[2] %}
+                    <strong>Resposta Correta:</strong> {{ resultado[2] }}<br>
+                    <strong>Correto?</strong> {% if resultado[3] %}Sim{% else %}Não{% endif %}
+                {% endif %}
+            </li>
+            <hr>
+        {% endfor %}
+    </ul>
+    <p><a href="{{ url_for('listar_avaliacoes', curso_id=avaliacao_id|get_curso_id) }}">Voltar para Avaliações</a></p>
+</body>
+</html>

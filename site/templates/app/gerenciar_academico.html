@@ -1,0 +1,125 @@
+{% extends 'app/base.html' %}
+
+{% block title %}Gerenciamento Acadêmico{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h2">Gerenciamento Acadêmico</h1>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">&larr; Voltar ao Painel</a>
+    </div>
+
+    <div class="row">
+        <div class="col-md-4 mb-4">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header">
+                    <h5>1. Cadastrar Nova Série</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('gerenciar_academico') }}">
+                        <input type="hidden" name="submit_serie" value="1">
+                        <div class="form-group">
+                            <label for="nome_serie" class="form-label">Nome da Série</label>
+                            <input type="text" class="form-control" name="nome_serie" id="nome_serie" placeholder="Ex: 1º Ano - Ensino Médio" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 mt-3">Salvar Série</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h5>2. Cadastrar Nova Disciplina</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('gerenciar_academico') }}">
+                        <input type="hidden" name="submit_disciplina" value="1">
+                        <div class="form-group">
+                            <label for="nome_disciplina" class="form-label">Nome da Disciplina</label>
+                            <input type="text" class="form-control" name="nome_disciplina" id="nome_disciplina" placeholder="Ex: Matemática, Biologia" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 mt-3">Salvar Disciplina</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header">
+                    <h5>3. Associar Disciplinas às Séries</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">Selecione uma série para definir quais disciplinas são oferecidas nela.</p>
+                    <form method="POST" action="{{ url_for('gerenciar_academico') }}" id="form-associacao">
+                        <input type="hidden" name="submit_associacao" value="1">
+                        
+                        <div class="form-group mb-4">
+                            <label for="serie_id_assoc" class="form-label fw-bold">Selecione a Série:</label>
+                            <select name="serie_id_assoc" id="serie_id_assoc" class="form-select">
+                                <option value="">-- Escolha uma série para gerenciar --</option>
+                                {% for serie in series %}
+                                    <option value="{{ serie.id }}">{{ serie.nome }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div id="disciplinas-checkboxes" style="display: none;">
+                            <label class="form-label fw-bold">Disciplinas oferecidas nesta série:</label>
+                            <div class="p-3 border rounded" style="max-height: 250px; overflow-y: auto;">
+                                {% for disciplina in disciplinas %}
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="disciplinas_assoc" value="{{ disciplina.id }}" id="disciplina-check-{{ disciplina.id }}">
+                                    <label class="form-check-label" for="disciplina-check-{{ disciplina.id }}">
+                                        {{ disciplina.nome }}
+                                    </label>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-success w-100 mt-3" id="btn-salvar-associacao" style="display: none;">Salvar Associação</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const serieSelect = document.getElementById('serie_id_assoc');
+    const disciplinasContainer = document.getElementById('disciplinas-checkboxes');
+    const btnSalvar = document.getElementById('btn-salvar-associacao');
+
+    // Mapeia as disciplinas associadas a cada série
+    const seriesComDisciplinas = {
+        {% for serie in series %}
+            "{{ serie.id }}": [ {% for disc in serie.disciplinas %}{{ disc.id }},{% endfor %} ],
+        {% endfor %}
+    };
+
+    serieSelect.addEventListener('change', function() {
+        // Esconde o container e o botão se nenhuma série for selecionada
+        if (!this.value) {
+            disciplinasContainer.style.display = 'none';
+            btnSalvar.style.display = 'none';
+            return;
+        }
+
+        // Mostra o container e o botão
+        disciplinasContainer.style.display = 'block';
+        btnSalvar.style.display = 'block';
+
+        const serieId = this.value;
+        const disciplinasDaSerie = seriesComDisciplinas[serieId] || [];
+        
+        // Marca/desmarca os checkboxes
+        const todosCheckboxes = document.querySelectorAll('input[name="disciplinas_assoc"]');
+        todosCheckboxes.forEach(checkbox => {
+            checkbox.checked = disciplinasDaSerie.includes(parseInt(checkbox.value));
+        });
+    });
+});
+</script>
+{% endblock %}

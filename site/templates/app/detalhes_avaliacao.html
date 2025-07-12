@@ -1,0 +1,119 @@
+{% extends 'app/base.html' %}
+
+{% block title %}Detalhes da Avaliação{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">Detalhes da Avaliação</h2>
+        <!-- CORREÇÃO: O botão agora aponta para a rota correta que lista as avaliações geradas -->
+        <a href="{{ url_for('listar_modelos_avaliacao') }}" class="btn btn-outline-secondary">&larr; Voltar para a Lista</a>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-primary text-white">
+            <h4 class="my-0">{{ avaliacao.nome }}</h4>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Tipo:</strong> 
+                        {% if avaliacao.tipo == 'prova' %}
+                            <span class="badge bg-primary">Prova</span>
+                        {% elif avaliacao.tipo == 'simulado' %}
+                            <span class="badge bg-success">Simulado</span>
+                        {% else %}
+                            <span class="badge bg-secondary">{{ avaliacao.tipo|capitalize }}</span>
+                        {% endif %}
+                    </p>
+                    <p><strong>Série:</strong> {{ avaliacao.serie.nome if avaliacao.serie else 'N/A' }}</p>
+                    <p><strong>Disciplina(s):</strong> 
+                        {% if avaliacao.tipo == 'prova' and avaliacao.disciplina %}
+                            {{ avaliacao.disciplina.nome }}
+                        {% elif avaliacao.tipo == 'simulado' %}
+                            {{ avaliacao.disciplinas_simulado|map(attribute='nome')|join(', ') }}
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Criada por:</strong> {{ avaliacao.criador.nome if avaliacao.criador else 'N/A' }}</p>
+                    <p><strong>Nº de Questões:</strong> {{ avaliacao.questoes|length }}</p>
+                    <p><strong>Tempo Limite:</strong> {% if avaliacao.tempo_limite %}{{ avaliacao.tempo_limite }} minutos{% else %}Livre{% endif %}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-header">
+            <h5 class="my-0">Resultados e Estatísticas</h5>
+        </div>
+        <div class="card-body">
+            <div class="row text-center mb-4">
+                <div class="col-md-6">
+                    <div class="p-3 border rounded">
+                        <h6 class="text-muted mb-1">Participantes</h6>
+                        <p class="fs-2 fw-bold mb-0">{{ num_participantes }}</p>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="p-3 border rounded">
+                        <h6 class="text-muted mb-1">Média da Turma</h6>
+                        <p class="fs-2 fw-bold mb-0">{{ "%.2f"|format(media_turma) }}</p>
+                    </div>
+                </div>
+            </div>
+            
+            <hr>
+
+            <h5 class="mt-4">Notas Individuais</h5>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Aluno(a)</th>
+                            <th>Data de Realização</th>
+                            <th>Status</th>
+                            <th>Nota Final</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for resultado in resultados %}
+                        <tr>
+                            <td>{{ resultado.aluno.nome }}</td>
+                            <td>{{ resultado.data_realizacao.strftime('%d/%m/%Y %H:%M') if resultado.data_realizacao else 'N/A' }}</td>
+                            <td>
+                                {% if resultado.status == 'Finalizado' %}
+                                    <span class="badge bg-success">Finalizado</span>
+                                {% elif resultado.status == 'Pendente' %}
+                                    <span class="badge bg-warning text-dark">Correção Pendente</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ resultado.status }}</span>
+                                {% endif %}
+                            </td>
+                            <td><strong>{{ "%.2f"|format(resultado.nota) if resultado.nota is not none else 'Aguardando' }}</strong></td>
+                            <td>
+                                {% if resultado.status == 'Pendente' %}
+                                    <a href="{{ url_for('corrigir_respostas', resultado_id=resultado.id) }}" class="btn btn-primary btn-sm">
+                                        <i class="bi bi-pencil-fill me-1"></i> Corrigir
+                                    </a>
+                                {% else %}
+                                    <button class="btn btn-secondary btn-sm" disabled>Revisado</button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center text-muted p-4">Nenhum aluno respondeu a esta avaliação ainda.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

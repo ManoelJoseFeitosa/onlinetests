@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Relatório de Análise de Itens</title>
+    <style>
+        @page { size: A4; margin: 1.5cm; }
+        body { font-family: sans-serif; color: #333; }
+        h1 { text-align: center; border-bottom: 2px solid #ccc; padding-bottom: 10px; }
+        .header-info { background-color: #f2f2f2; padding: 15px; border-radius: 5px; margin-bottom: 20px; font-size: 0.9em; }
+        .header-info p { margin: 5px 0; }
+        .questao-card { border: 1px solid #ddd; border-radius: 5px; margin-bottom: 20px; page-break-inside: avoid; }
+        .questao-header { background-color: #e8e8e8; padding: 10px; font-weight: bold; }
+        .questao-body { padding: 15px; }
+        .questao-texto { white-space: pre-wrap; margin-bottom: 15px; }
+        .distrator-tabela { width: 100%; font-size: 0.9em; }
+        .distrator-tabela td { padding: 5px; }
+        .bar-container { background-color: #eee; border-radius: 3px; width: 150px; display: inline-block; vertical-align: middle; }
+        .bar { height: 16px; background-color: #76a1d0; border-radius: 3px; }
+        .bar.correct { background-color: #4cae4c; }
+        .stats { margin-top: 10px; font-weight: bold; }
+        footer { text-align: center; font-size: 0.8em; color: #777; position: fixed; bottom: -20px; left: 0; right: 0; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Relatório de Análise de Itens</h1>
+    </header>
+
+    <div class="header-info">
+        <p><strong>Avaliação:</strong> {{ avaliacao.nome }}</p>
+        <p><strong>Tipo:</strong> {{ avaliacao.tipo|capitalize }}</p>
+        <p><strong>Data de Geração:</strong> {{ data_geracao.strftime('%d/%m/%Y %H:%M') }}</p>
+    </div>
+
+    {% for questao_id, dados in analise_dados.items() %}
+        <div class="questao-card">
+            <div class="questao-header">
+                Questão {{ loop.index }} (ID: {{ questao_id }}) - Nível: {{ dados.questao_obj.nivel|capitalize }}
+            </div>
+            <div class="questao-body">
+                <div class="questao-texto">{{ dados.questao_obj.texto }}</div>
+                
+                {% if dados.total_respostas > 0 %}
+                    <div class="stats">
+                        Índice de Acerto: {{ "%.1f"|format((dados.acertos / dados.total_respostas) * 100) }}%
+                        ({{ dados.acertos }} de {{ dados.total_respostas }} alunos)
+                    </div>
+
+                    {% if dados.questao_obj.tipo == 'multipla_escolha' %}
+                    <h4 style="margin-top: 15px; font-size: 1em; font-weight: bold;">Análise dos Distratores:</h4>
+                    <table class="distrator-tabela">
+                        {% for opcao, contagem in dados.distratores.items() %}
+                            {% if opcao in ['A', 'B', 'C', 'D'] %}
+                                <tr>
+                                    <td style="width: 15%;">
+                                        <strong>Opção {{ opcao }}:</strong> 
+                                        {% if dados.questao_obj.gabarito == opcao %}<span style="color: #4cae4c;">(Gabarito)</span>{% endif %}
+                                    </td>
+                                    <td style="width: 20%;">
+                                        {{ "%.1f"|format((contagem / dados.total_respostas) * 100) }}% ({{ contagem }} resp.)
+                                    </td>
+                                    <td>
+                                        <div class="bar-container">
+                                            <div class="bar {% if dados.questao_obj.gabarito == opcao %}correct{% endif %}" 
+                                                 style="width: {{ (contagem / dados.total_respostas) * 100 }}%;">
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        {% endfor %}
+                    </table>
+                    {% endif %}
+                {% else %}
+                    <p class="text-muted">Nenhuma resposta registrada para esta questão.</p>
+                {% endif %}
+            </div>
+        </div>
+    {% endfor %}
+
+    <footer>
+        <p>OnlineTests - Relatório gerado automaticamente.</p>
+    </footer>
+</body>
+</html>

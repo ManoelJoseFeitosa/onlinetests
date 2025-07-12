@@ -1,0 +1,53 @@
+{% extends 'app/base.html' %}
+
+{% block title %}Lista de Cursos{% endblock %}
+
+{% block content %}
+    <h1>Nossos Cursos Disponíveis</h1>
+
+    <style>
+        /* Estilos específicos para esta página */
+        .course-list {
+            list-style-type: none;
+            padding: 0;
+            text-align: left;
+        }
+        .course-item {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px 20px;
+            margin-bottom: 15px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .course-item:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+        }
+        .course-item h3 {
+            margin: 0 0 5px 0;
+            color: #343a40;
+        }
+        .course-item p {
+            margin: 0;
+            color: #6c757d;
+        }
+        .no-courses {
+            color: #888;
+            font-style: italic;
+        }
+    </style>
+
+    <ul class="course-list">
+        {# Este é um loop do Jinja2. Ele irá iterar sobre a lista 'cursos' que você envia do Python. #}
+        {% for curso in cursos %}
+            <li class="course-item">
+                <h3>{{ curso.nome }}</h3>
+                <p>{{ curso.descricao }}</p>
+            </li>
+        {% else %}
+            {# Esta parte é exibida se a lista 'cursos' estiver vazia. #}
+            <li class="no-courses">Nenhum curso disponível no momento.</li>
+        {% endfor %}
+    </ul>
+{% endblock %}

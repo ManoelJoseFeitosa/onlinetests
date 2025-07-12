@@ -1,0 +1,289 @@
+{% extends 'app/base.html' %}
+
+{% block title %}Responder: {{ avaliacao.nome }}{% endblock %}
+
+{% block content %}
+<style>
+    /* Estilo para o cronômetro fixo no canto da tela */
+    #timer-fixed-container {
+        position: fixed;
+        top: 80px; /* Distância do topo da página */
+        right: 20px; /* Distância da direita */
+        padding: 8px 15px;
+        background-color: rgba(255, 255, 255, 0.9); /* Fundo branco semitransparente */
+        border: 1px solid #dee2e6;
+        border-radius: 0.5rem;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        z-index: 1050; /* Z-index alto para ficar sobre outros elementos */
+        font-size: 1.25rem;
+        font-weight: 500;
+        color: #343a40;
+        transition: color 0.3s, border-color 0.3s;
+    }
+
+    /* Classe para quando o tempo estiver acabando */
+    #timer-fixed-container.timer-alerta {
+        color: #dc3545; /* Vermelho */
+        border-color: #dc3545;
+        font-weight: bold;
+    }
+
+    /* Estilo para a mensagem de flash */
+    #flash-message {
+        position: fixed;
+        top: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: #ffc107; /* Amarelo de alerta */
+        color: #333;
+        padding: 10px 20px;
+        border-radius: 0 0 5px 5px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        z-index: 2000;
+        display: none; /* Começa escondido */
+        font-weight: bold;
+        opacity: 0;
+        transition: opacity 0.5s;
+    }
+
+    #flash-message.show {
+        display: block;
+        opacity: 1;
+    }
+    
+    #flash-message.error {
+        background-color: #dc3545; /* Vermelho para a mensagem final */
+        color: white;
+    }
+</style>
+
+<div id="flash-message"></div>
+
+<div class="container-fluid mt-4">
+
+    <div id="inicio-container" class="text-center p-5 border rounded-3 bg-light mx-auto" style="max-width: 800px;">
+        <h1 class="display-5">{{ avaliacao.nome }}</h1>
+        <p class="fs-5 text-muted">Disciplina: {{ avaliacao.disciplina.nome if avaliacao.disciplina else 'Simulado' }}</p>
+        <hr>
+        <div class="text-start my-4">
+            <h4>Atenção: Regras da Avaliação</h4>
+            <p>Para garantir a lisura do processo, esta avaliação será realizada em <strong>modo de tela cheia</strong>. As seguintes regras se aplicam:</p>
+            <ul>
+                <li>Você não poderá sair do modo de tela cheia durante a prova.</li>
+                <li>Alternar para outras abas ou aplicativos será considerado uma infração.</li>
+                <li>Tentar recarregar a página também será registrado.</li>
+            </ul>
+            <p class="fw-bold text-danger">Após 3 infrações, a prova será bloqueada e você deverá enviá-la imediatamente.</p>
+        </div>
+        <button type="button" class="btn btn-primary btn-lg" id="btn-iniciar-prova">Estou Ciente, Iniciar Prova</button>
+    </div>
+
+    <div id="conteudo-prova" style="display: none;">
+        
+        {% if avaliacao.tempo_limite and avaliacao.tempo_limite > 0 %}
+            <div id="timer-fixed-container">
+                <i class="bi bi-clock-history"></i>
+                <span id="timer-display">--:--</span>
+            </div>
+        {% endif %}
+
+        <div class="card shadow-sm">
+            <div class="card-header bg-light py-3">
+                <h2 class="card-title mb-0">{{ avaliacao.nome }}</h2>
+            </div>
+            <div class="card-body p-4 p-md-5">
+                <form id="form-responder-avaliacao" method="POST">
+                    {% for questao in avaliacao.questoes %}
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <strong>Questão {{ loop.index }}: {{ questao.disciplina.nome }}</strong>
+                            </div>
+                            <div class="card-body">
+
+                                {% if questao.imagem_nome %}
+                                <div class="text-center mb-3">
+                                    <img src="{{ url_for('static', filename='uploads/questoes/' + questao.imagem_nome) }}" 
+                                         alt="{{ questao.imagem_alt or 'Imagem da questão ' ~ loop.index }}" 
+                                         class="img-fluid rounded" 
+                                         style="max-height: 400px; border: 1px solid #dee2e6;">
+                                    </div>
+                                {% endif %}
+                                <p class="card-text fs-5">{{ questao.texto | safe }}</p>
+                                <hr>
+                                {% if questao.tipo == 'multipla_escolha' %}
+                                    <div class="form-check"><input class="form-check-input" type="radio" name="resposta_{{ questao.id }}" id="q{{ questao.id }}a" value="A" required><label class="form-check-label" for="q{{ questao.id }}a">A) {{ questao.opcao_a }}</label></div>
+                                    <div class="form-check"><input class="form-check-input" type="radio" name="resposta_{{ questao.id }}" id="q{{ questao.id }}b" value="B" required><label class="form-check-label" for="q{{ questao.id }}b">B) {{ questao.opcao_b }}</label></div>
+                                    <div class="form-check"><input class="form-check-input" type="radio" name="resposta_{{ questao.id }}" id="q{{ questao.id }}c" value="C" required><label class="form-check-label" for="q{{ questao.id }}c">C) {{ questao.opcao_c }}</label></div>
+                                    <div class="form-check"><input class="form-check-input" type="radio" name="resposta_{{ questao.id }}" id="q{{ questao.id }}d" value="D" required><label class="form-check-label" for="q{{ questao.id }}d">D) {{ questao.opcao_d }}</label></div>
+                                {% elif questao.tipo == 'verdadeiro_falso' %}
+                                    <div class="form-check"><input class="form-check-input" type="radio" name="resposta_{{ questao.id }}" id="q{{ questao.id }}a" value="V" required><label class="form-check-label" for="q{{ questao.id }}a">Verdadeiro</label></div>
+                                    <div class="form-check"><input class="form-check-input" type="radio" name="resposta_{{ questao.id }}" id="q{{ questao.id }}b" value="F" required><label class="form-check-label" for="q{{ questao.id }}b">Falso</label></div>
+                                {% elif questao.tipo == 'discursiva' %}
+                                    <textarea name="resposta_{{ questao.id }}" class="form-control" rows="5" placeholder="Digite sua resposta aqui..." required></textarea>
+                                {% endif %}
+                                </div>
+                        </div>
+                    {% endfor %}
+                    <div class="d-grid gap-2 mt-5">
+                        <button type="submit" id="btn-enviar-avaliacao" class="btn btn-success btn-lg" disabled>
+                            <i class="bi bi-check2-circle me-2"></i>Enviar Avaliação
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const inicioContainer = document.getElementById('inicio-container');
+    const conteudoProva = document.getElementById('conteudo-prova');
+    const formProva = document.getElementById('form-responder-avaliacao');
+    const btnIniciarProva = document.getElementById('btn-iniciar-prova');
+    const btnEnviarAvaliacao = document.getElementById('btn-enviar-avaliacao');
+    const flashMessage = document.getElementById('flash-message');
+    
+    let infractionCount = 0;
+    const MAX_INFRACTIONS = 3;
+    let isProvaIniciada = false;
+    let isSubmitting = false;
+    let isBlocked = false;
+    
+    // NOVO: Flag para evitar registro duplo de infração
+    let infractionFlagTimeout = null;
+
+    function showFlashMessage(message, type = 'warning', duration = 4000) {
+        flashMessage.textContent = message;
+        flashMessage.className = type === 'error' ? 'error' : '';
+        flashMessage.classList.add('show');
+        if (duration > 0) {
+            setTimeout(() => {
+                flashMessage.classList.remove('show');
+            }, duration);
+        }
+    }
+
+    formProva.addEventListener('submit', function() {
+        isSubmitting = true;
+    });
+
+    function registrarInfracao(motivo) {
+        // Se a flag de timeout estiver ativa, não registra uma nova infração.
+        if (infractionFlagTimeout) return;
+
+        if (!isProvaIniciada || isSubmitting || isBlocked) return;
+        
+        infractionCount++;
+        
+        // Ativa a trava para não registrar outra infração nos próximos 500ms
+        infractionFlagTimeout = setTimeout(() => {
+            infractionFlagTimeout = null;
+        }, 500);
+
+        if (infractionCount >= MAX_INFRACTIONS) {
+            isBlocked = true;
+            showFlashMessage(`Limite de infrações atingido! A prova foi bloqueada. Envie suas respostas.`, 'error', 0);
+            const elements = formProva.elements;
+            for (let i = 0; i < elements.length; i++) {
+                if (elements[i].type !== 'submit') elements[i].disabled = true;
+            }
+            btnEnviarAvaliacao.disabled = false;
+        } else {
+            const message = `ATENÇÃO: Infração detectada (${motivo}). Infração ${infractionCount} de ${MAX_INFRACTIONS}.`;
+            showFlashMessage(message);
+        }
+    }
+
+    function ativarMonitoramento() {
+        document.addEventListener('fullscreenchange', () => {
+            if (!document.fullscreenElement && isProvaIniciada && !isBlocked) {
+                registrarInfracao("saída da tela cheia");
+                // Força a volta imediata para a tela cheia
+                document.documentElement.requestFullscreen().catch(err => {
+                    console.error("Não foi possível voltar para tela cheia automaticamente.", err);
+                });
+            }
+        });
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && isProvaIniciada && !isBlocked) {
+                registrarInfracao("troca de aba ou janela");
+            }
+        });
+
+        window.addEventListener('beforeunload', (event) => {
+            if (isProvaIniciada && !isSubmitting) {
+                event.preventDefault();
+                event.returnValue = '';
+            }
+        });
+    }
+
+    function iniciarCronometro(minutos) {
+        let tempoTotalSegundos = minutos * 60;
+        const timerDisplay = document.getElementById('timer-display');
+        const timerContainer = document.getElementById('timer-fixed-container');
+        const countdown = setInterval(function() {
+            if (isSubmitting) {
+                clearInterval(countdown);
+                return;
+            }
+            if (tempoTotalSegundos <= 0) {
+                clearInterval(countdown);
+                isBlocked = true;
+                showFlashMessage('O tempo acabou! A prova foi bloqueada. Envie suas respostas agora.', 'error', 0);
+                isSubmitting = true;
+                const elements = formProva.elements;
+                for (let i = 0; i < elements.length; i++) {
+                    if (elements[i].type !== 'submit') elements[i].disabled = true;
+                }
+                btnEnviarAvaliacao.disabled = false;
+            } else {
+                tempoTotalSegundos--;
+                const mins = Math.floor(tempoTotalSegundos / 60);
+                const secs = tempoTotalSegundos % 60;
+                timerDisplay.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+                if (tempoTotalSegundos < 300) {
+                    timerContainer.classList.add('timer-alerta');
+                }
+            }
+        }, 1000);
+    }
+
+    btnIniciarProva.addEventListener('click', function() {
+        document.documentElement.requestFullscreen()
+            .then(() => {
+                isProvaIniciada = true;
+                inicioContainer.style.display = 'none';
+                conteudoProva.style.display = 'block';
+                ativarMonitoramento();
+                const requiredInputs = formProva.querySelectorAll('[required]');
+                const checkCompletion = () => {
+                    if (isBlocked) return;
+                    let allFilled = true;
+                    requiredInputs.forEach(input => {
+                        if (input.type === 'radio') {
+                            const radioGroup = formProva.querySelectorAll(`input[name="${input.name}"]`);
+                            if (![...radioGroup].some(r => r.checked)) {
+                                allFilled = false;
+                            }
+                        } else if (!input.value.trim()) {
+                            allFilled = false;
+                        }
+                    });
+                    btnEnviarAvaliacao.disabled = !allFilled;
+                };
+                formProva.addEventListener('input', checkCompletion);
+                
+                {% if avaliacao.tempo_limite and avaliacao.tempo_limite > 0 %}
+                    iniciarCronometro({{ avaliacao.tempo_limite }});
+                {% endif %}
+            })
+            .catch(err => {
+                showFlashMessage('Erro: Não foi possível ativar o modo de tela cheia. Verifique as permissões do navegador e tente novamente.', 'error', 5000);
+            });
+    });
+});
+</script>
+{% endblock %}

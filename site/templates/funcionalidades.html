@@ -1,0 +1,71 @@
+{% extends 'public_base.html' %}
+
+{% block title %}Funcionalidades - Online Tests{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    
+    <div class="text-center mb-5">
+        <h1 class="display-4 fw-bold">Uma Plataforma Completa, Pensada para a Educação</h1>
+        <p class="lead text-muted col-lg-8 mx-auto">Do planejamento pedagógico à análise de dados, descubra as ferramentas que fazem do Online Tests a solução definitiva para a gestão de avaliações da sua escola.</p>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- PAINEL DO COORDENADOR -->
+    <!-- =================================================================== -->
+    <div class="row align-items-center mb-5 bg-light p-4 rounded-3 shadow-sm">
+        <div class="col-md-8">
+            <h3><i class="bi bi-building-gear me-2 text-primary"></i>Painel do Coordenador</h3>
+            <p class="text-muted">Visão estratégica e controle total sobre o ecossistema de avaliações da sua instituição.</p>
+            <ul>
+                <li><strong>Gestão Acadêmica Centralizada:</strong> Crie e gerencie anos letivos, séries e disciplinas, montando a grade curricular de forma flexível e intuitiva.</li>
+                <li><strong>Controle Total de Usuários:</strong> Cadastre, edite e gerencie o ciclo de vida de alunos e professores, incluindo a matrícula e alocação em turmas para cada ano.</li>
+                <li><strong>Criação de Modelos de Avaliação:</strong> Padronize a qualidade das avaliações criando modelos de provas e simulados com regras claras de conteúdo e dificuldade.</li>
+                <li><strong>Relatórios de Inteligência Pedagógica:</strong> Gere relatórios em PDF para análises profundas, incluindo desempenho por assunto, comparativo entre turmas e a saúde do banco de questões.</li>
+            </ul>
+        </div>
+        <div class="col-md-4 text-center d-none d-md-block">
+            <i class="bi bi-clipboard2-data-fill display-1 text-primary" style="opacity: 0.8;"></i>
+        </div>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- PAINEL DO PROFESSOR -->
+    <!-- =================================================================== -->
+    <div class="row align-items-center mb-5 p-4">
+        <div class="col-md-4 text-center order-md-2 d-none d-md-block">
+            <i class="bi bi-pencil-ruler display-1 text-success" style="opacity: 0.8;"></i>
+        </div>
+        <div class="col-md-8 order-md-1">
+            <h3><i class="bi bi-person-workspace me-2 text-success"></i>Painel do Professor</h3>
+            <p class="text-muted">Ferramentas poderosas para otimizar o tempo e focar no que realmente importa: o ensino.</p>
+            <ul>
+                <li><strong>Banco de Questões Estratégico:</strong> Crie um acervo ilimitado, classificando cada questão por disciplina, assunto e **nível de dificuldade (Fácil, Médio, Difícil)**.</li>
+                <li><strong>Criação de Avaliações Flexíveis:</strong> Elabore desde **provas dinâmicas**, que geram uma versão única para cada aluno, até **provas de recuperação** designadas para alunos específicos.</li>
+                <li><strong>Acessibilidade Integrada:</strong> Garanta a inclusão adicionando descrições detalhadas (texto alternativo) para imagens em questões, tornando-as acessíveis para alunos com deficiência visual.</li>
+                <li><strong>Correção Automatizada e Feedback:</strong> Economize tempo com a correção automática de questões objetivas e forneça feedbacks detalhados nas discursivas.</li>
+            </ul>
+        </div>
+    </div>
+    
+    <!-- =================================================================== -->
+    <!-- PAINEL DO ALUNO -->
+    <!-- =================================================================== -->
+    <div class="row align-items-center mb-5 bg-light p-4 rounded-3 shadow-sm">
+        <div class="col-md-8">
+            <h3><i class="bi bi-backpack2-fill me-2 text-info"></i>Painel do Aluno</h3>
+            <p class="text-muted">Uma experiência de avaliação justa, focada e projetada para o sucesso do estudante.</p>
+            <ul>
+                <li><strong>Ambiente de Prova Seguro e Focado:</strong> Realize avaliações em modo de tela cheia, com um design limpo e sem distrações para máxima concentração.</li>
+                <li><strong>Avaliações Justas e Individuais:</strong> Responda a provas geradas dinamicamente, garantindo um teste único para cada aluno e promovendo a integridade acadêmica.</li>
+                <li><strong>Acessibilidade por Padrão:</strong> Utilize leitores de tela (como NVDA) para navegar e responder às questões, incluindo a audição das descrições de imagens.</li>
+                <li><strong>Acompanhamento de Desempenho:</strong> Visualize gráficos intuitivos com sua evolução de notas e o desempenho detalhado por disciplina.</li>
+            </ul>
+        </div>
+        <div class="col-md-4 text-center d-none d-md-block">
+            <i class="bi bi-graph-up-arrow display-1 text-info" style="opacity: 0.8;"></i>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

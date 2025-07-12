@@ -1,0 +1,28 @@
+{% extends 'app/base.html' %}
+
+{% block title %}Bem-vindo ao Sistema de Avaliação{% endblock %}
+
+{% block content %}
+<style>
+    .hero-section {
+        padding: 6rem 0;
+        background-color: #f8f9fa;
+        text-align: center;
+    }
+    .hero-section .logo {
+        max-width: 200px;
+        margin-bottom: 2rem;
+    }
+</style>
+
+<div class="hero-section">
+    <div class="container">
+        <img src="{{ url_for('static', filename='images/OnlineTests.png') }}" alt="Logo do Sistema" class="logo">
+        <h1 class="display-4">Sistema de Avaliação Online</h1>
+        <p class="lead">Uma plataforma completa para criar, gerenciar e realizar avaliações de forma eficiente e intuitiva.</p>
+        <hr class="my-4">
+        <p>Acesse o sistema para começar.</p>
+        <a class="btn btn-primary btn-lg" href="{{ url_for('login') }}" role="button">Acessar o Sistema</a>
+    </div>
+</div>
+{% endblock %}

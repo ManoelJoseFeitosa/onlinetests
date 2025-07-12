@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Relatório Comparativo de Desempenho entre Turmas</title>
+    <style>
+        body { font-family: sans-serif; margin: 2cm; }
+        h1, h2, h3 { color: #333; }
+        h1 { text-align: center; border-bottom: 2px solid #ccc; padding-bottom: 10px; }
+        .header-info { background-color: #f2f2f2; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+        .header-info p { margin: 5px 0; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        th { background-color: #e8e8e8; text-align: center;}
+        td { text-align: center; }
+        tbody tr:first-child { font-weight: bold; background-color: #dff0d8; }
+        footer { text-align: center; font-size: 0.8em; color: #777; position: fixed; bottom: 0; left: 0; right: 0; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Relatório Comparativo de Desempenho entre Turmas</h1>
+    </header>
+
+    <div class="header-info">
+        <p><strong>Avaliação Analisada:</strong> {{ avaliacao.nome }}</p>
+        <p><strong>Tipo:</strong> {{ avaliacao.tipo|capitalize }}</p>
+        <p><strong>Data de Geração:</strong> {{ data_geracao.strftime('%d/%m/%Y %H:%M') }}</p>
+    </div>
+
+    <h3>Classificação das Turmas</h3>
+    {% if dados %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Posição</th>
+                    <th>Turma</th>
+                    <th>Nº de Participantes</th>
+                    <th>Nota Média</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for nome_serie, num_participantes, media_turma in dados %}
+                <tr>
+                    <td>{{ loop.index }}º</td>
+                    <td>{{ nome_serie }}</td>
+                    <td>{{ num_participantes }}</td>
+                    <td><strong>{{ "%.2f"|format(media_turma) }}</strong></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>Nenhum dado encontrado para esta comparação.</p>
+    {% endif %}
+
+    <footer>
+        <p>OnlineTests - Relatório gerado automaticamente.</p>
+    </footer>
+</body>
+</html>

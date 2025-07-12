@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Editar Usuário</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <h2>Editar Usuário</h2>
+    <form method="POST">
+        <div>
+            <label for="username">Nome de Usuário:</label>
+            <input type="text" id="username" name="username" value="{{ usuario[1] }}" required>
+        </div>
+        <div>
+            <label for="email">Email:</label>
+            <input type="email" id="email" name="email" value="{{ usuario[2] }}" required>
+        </div>
+        <div>
+            <label for="role">Role:</label>
+            <select id="role" name="role">
+                <option value="student" {% if usuario[3] == 'student' %}selected{% endif %}>Aluno</option>
+                <option value="teacher" {% if usuario[3] == 'teacher' %}selected{% endif %}>Professor</option>
+                <option value="admin" {% if usuario[3] == 'admin' %}selected{% endif %}>Administrador</option>
+            </select>
+        </div>
+        <div>
+            <label for="password">Nova Senha (deixe em branco para manter a atual):</label>
+            <input type="password" id="password" name="password">
+        </div>
+        <button type="submit" class="btn btn-custom-green btn-lg">Salvar Alteração</button>
+    </form>
+    <p><a href="{{ url_for('listar_usuarios_admin') }}">Voltar para Gerenciar Usuários</a></p>
+</body>
+</html>

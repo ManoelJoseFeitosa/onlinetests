@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Boletim de Desempenho - {{ serie_info.nome }}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 1.5cm;
+        }
+        body { font-family: 'Helvetica', 'Arial', sans-serif; font-size: 11pt; line-height: 1.4; color: #333; }
+        .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 25px; }
+        .header h1 { margin: 0; font-size: 18pt; }
+        .header p { margin: 5px 0 0; font-size: 12pt; color: #555; }
+        .boletim-aluno { page-break-inside: avoid; margin-bottom: 25px; }
+        .boletim-aluno:last-child { page-break-after: auto; }
+        .aluno-info { background-color: #f2f2f2; padding: 10px; border-radius: 5px; margin-bottom: 15px; }
+        .aluno-info h3 { margin: 0; font-size: 14pt; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; vertical-align: top; }
+        th { background-color: #e9ecef; font-weight: bold; text-align: center; }
+        .disciplina-row td { background-color: #f8f9fa; font-weight: bold; font-size: 12pt; }
+        .nota-row td { padding-left: 25px; font-size: 10pt; }
+        .media-final { text-align: center; font-weight: bold; }
+        .nota-individual { text-align: center; }
+        .page-break { page-break-after: always; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Boletim de Desempenho</h1>
+        <p><strong>Série:</strong> {{ serie_info.nome }} | <strong>Ano Letivo:</strong> {{ ano_letivo.ano }}</p>
+    </div>
+
+    {% if dados_boletim_turma %}
+        {% for item in dados_boletim_turma %}
+            <div class="boletim-aluno">
+                <div class="aluno-info">
+                    <h3>{{ item.aluno.nome }}</h3>
+                </div>
+                
+                {% if item.notas %}
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 70%;">Disciplina / Avaliação</th>
+                                <th style="width: 30%;">Nota</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for disciplina, dados in item.notas.items()|sort %}
+                                <tr class="disciplina-row">
+                                    <td>{{ disciplina }}</td>
+                                    <td class="media-final">Média: {{ "%.2f"|format(dados.media) }}</td>
+                                </tr>
+                                {% for prova in dados.provas %}
+                                <tr class="nota-row">
+                                    <td>{{ prova.nome }}</td>
+                                    <td class="nota-individual">{{ "%.2f"|format(prova.nota) }}</td>
+                                </tr>
+                                {% endfor %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <p class="no-data">Nenhuma nota finalizada encontrada para este(a) aluno(a).</p>
+                {% endif %}
+            </div>
+            
+            {% if not loop.last %}
+                <div class="page-break"></div>
+            {% endif %}
+        {% endfor %}
+    {% else %}
+        <p class="no-data">Nenhum aluno encontrado nesta turma para o ano letivo selecionado.</p>
+    {% endif %}
+
+</body>
+</html>

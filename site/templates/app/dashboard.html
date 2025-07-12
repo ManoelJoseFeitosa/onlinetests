@@ -1,0 +1,141 @@
+{% extends 'app/base.html' %}
+
+{% block title %}
+    Dashboard - Painel Principal
+{% endblock %}
+
+{% block content %}
+
+<div class="container mt-4">
+    <div class="p-5 mb-4 rounded-3" style="background-color: #f0f8ff;">
+        <div class="container-fluid py-3">
+            <h1 class="display-5 fw-bold">Bem-vindo(a), {{ current_user.nome.split()[0] }}!</h1>
+            <p class="fs-5">Esta é a sua área de trabalho. Selecione uma das opções abaixo para começar.</p>
+            <hr class="my-4">
+            <p>Sua função no sistema é: <strong>{{ current_user.role | capitalize }}</strong></p>
+        </div>
+    </div>
+
+    <!-- CORREÇÃO APLICADA AQUI: Adicionada a classe 'justify-content-center' -->
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 text-center justify-content-center">
+
+        {# ==================== VISÃO DO COORDENADOR ==================== #}
+        {% if current_user.role == 'coordenador' %}
+            <div class="col">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body d-flex flex-column">
+                        <h5 class="card-title"><i class="bi bi-people-fill me-2 text-danger"></i>Gerenciar Usuários</h5>
+                        <p class="card-text">Cadastre, edite e gerencie o ciclo de vida de alunos e professores.</p>
+                        <a href="{{ url_for('gerenciar_usuarios') }}" class="btn btn-danger mt-auto">Acessar</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body d-flex flex-column">
+                        <h5 class="card-title"><i class="bi bi-journal-album me-2 text-warning"></i>Gerenciamento Acadêmico</h5>
+                        <p class="card-text">Crie e visualize séries, disciplinas e o ciclo letivo da sua escola.</p>
+                        <a href="{{ url_for('gerenciar_academico') }}" class="btn btn-warning mt-auto">Organizar</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body d-flex flex-column">
+                        <h5 class="card-title"><i class="bi bi-file-earmark-plus-fill me-2 text-success"></i>Criar Modelo de Avaliação</h5>
+                        <p class="card-text">Defina as regras para gerar provas e simulados dinâmicos.</p>
+                        <a href="{{ url_for('criar_modelo_avaliacao') }}" class="btn btn-success mt-auto">Criar Modelo</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body d-flex flex-column">
+                        <h5 class="card-title"><i class="bi bi-card-list me-2 text-primary"></i>Visualizar Avaliações</h5>
+                        <p class="card-text">Acompanhe todos os modelos e avaliações criadas no sistema.</p>
+                        <a href="{{ url_for('listar_modelos_avaliacao') }}" class="btn btn-primary mt-auto">Ver Lista</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body d-flex flex-column">
+                        <h5 class="card-title"><i class="bi bi-life-preserver me-2 text-info"></i>Criar Recuperação</h5>
+                        <p class="card-text">Crie provas específicas para um grupo selecionado de alunos.</p>
+                        <a href="{{ url_for('criar_recuperacao') }}" class="btn btn-info mt-auto">Criar Recuperação</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body d-flex flex-column">
+                        <h5 class="card-title"><i class="bi bi-file-earmark-bar-graph-fill me-2 text-secondary"></i>Central de Relatórios</h5>
+                        <p class="card-text">Gere relatórios em PDF para análise e acompanhamento acadêmico.</p>
+                        <a href="{{ url_for('painel_relatorios') }}" class="btn btn-secondary mt-auto">Gerar Relatórios</a>
+                    </div>
+                </div>
+            </div>
+
+        {# ==================== VISÃO DO PROFESSOR ==================== #}
+        {% elif current_user.role == 'professor' %}
+            <div class="col">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body d-flex flex-column">
+                        <h5 class="card-title"><i class="bi bi-archive-fill me-2"></i>Meu Banco de Questões</h5>
+                        <p class="card-text">Crie, visualize e edite todas as suas questões em um único lugar.</p>
+                        <a href="{{ url_for('banco_questoes') }}" class="btn btn-dark mt-auto">Acessar Banco</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body d-flex flex-column">
+                        <h5 class="card-title"><i class="bi bi-file-earmark-plus-fill me-2"></i>Criar Modelo de Avaliação</h5>
+                        <p class="card-text">Defina as regras para gerar provas e simulados para suas turmas.</p>
+                        <a href="{{ url_for('criar_modelo_avaliacao') }}" class="btn btn-success mt-auto">Criar Modelo</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body d-flex flex-column">
+                        <h5 class="card-title"><i class="bi bi-life-preserver me-2"></i>Criar Recuperação</h5>
+                        <p class="card-text">Crie provas específicas para um grupo selecionado de alunos.</p>
+                        <a href="{{ url_for('criar_recuperacao') }}" class="btn btn-info mt-auto">Criar Recuperação</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body d-flex flex-column">
+                        <h5 class="card-title"><i class="bi bi-card-list me-2"></i>Ver Minhas Avaliações</h5>
+                        <p class="card-text">Acompanhe o desempenho dos alunos nas avaliações que você criou.</p>
+                        <a href="{{ url_for('listar_modelos_avaliacao') }}" class="btn btn-primary mt-auto">Ver Lista</a>
+                    </div>
+                </div>
+            </div>
+
+        {# ==================== VISÃO DO ALUNO ==================== #}
+        {% elif current_user.role == 'aluno' %}
+            <div class="col-md-6 mb-4">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body d-flex flex-column">
+                        <h5 class="card-title"><i class="bi bi-card-checklist me-2"></i>Avaliações Disponíveis</h5>
+                        <p class="card-text">Veja a lista de provas e simulados que você precisa responder.</p>
+                        <a href="{{ url_for('listar_modelos_avaliacao') }}" class="btn btn-primary mt-auto">Ver Avaliações</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 mb-4">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body d-flex flex-column">
+                        <h5 class="card-title"><i class="bi bi-graph-up-arrow me-2"></i>Meus Resultados</h5>
+                        <p class="card-text">Consulte suas notas e o histórico do seu desempenho no sistema.</p>
+                        <a href="{{ url_for('meus_resultados') }}" class="btn btn-success mt-auto">Ver Notas</a>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

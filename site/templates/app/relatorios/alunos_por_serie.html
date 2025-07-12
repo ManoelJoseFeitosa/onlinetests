@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <title>Relatório de Alunos por Série</title>
+    <style>
+        body { font-family: 'Helvetica', 'Arial', sans-serif; font-size: 12px; color: #333; }
+        h1 { text-align: center; border-bottom: 1px solid #ccc; padding-bottom: 10px; margin-bottom: 15px;}
+        h2 { background-color: #f2f2f2; padding: 10px; font-size: 14px; margin-top: 25px; }
+        .info { margin-bottom: 20px; font-size: 11px; color: #555; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #e8e8e8; font-weight: bold; }
+        tbody tr:nth-child(even) { background-color: #f9f9f9; }
+    </style>
+</head>
+<body>
+    <h1>Relatório de Alunos por Série</h1>
+
+    <div class="info">
+        <strong>Ano Letivo:</strong> {{ ano_letivo.ano if ano_letivo else 'N/A' }}<br>
+        <strong>Data de Geração:</strong> {{ data_geracao.strftime('%d/%m/%Y %H:%M') }}
+    </div>
+
+    {% if matriculas %}
+        {% for nome_da_serie, matriculas_do_grupo in matriculas|groupby('serie.nome') %}
+            <h2>Série: {{ nome_da_serie }}</h2>
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nome do Aluno</th>
+                        <th>E-mail</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for matricula in matriculas_do_grupo|sort(attribute='aluno.nome') %}
+                    <tr>
+                        <td>{{ matricula.aluno.nome }}</td>
+                        <td>{{ matricula.aluno.email }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endfor %}
+    {% else %}
+        <p>Nenhuma matrícula encontrada para os filtros selecionados.</p>
+    {% endif %}
+</body>
+</html>

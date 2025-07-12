@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Relatório de Resultados - {{ avaliacao.nome }}</title>
+    <style>
+        body { font-family: sans-serif; }
+        h1 { text-align: center; font-size: 24px; }
+        h2 { background-color: #e0e0e0; padding: 12px; font-size: 20px; text-align: center; margin-bottom: 25px; }
+        h3 { background-color: #f2f2f2; padding: 10px; font-size: 16px; border-top: 1px solid #ccc; margin-top: 20px;}
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #e8e8e8; }
+        .media-final { font-weight: bold; background-color: #f0f8ff; }
+        .no-results { color: #888; font-style: italic; text-align: center; padding: 20px; }
+        .info-simulado { margin-bottom: 20px; }
+        .info-simulado p { margin: 5px 0; }
+        .info-simulado strong { display: inline-block; width: 120px; }
+    </style>
+</head>
+<body>
+    <h1>Relatório de Resultados do Simulado</h1>
+    <p style="text-align: center;">Data de Geração: {{ data_geracao.strftime('%d/%m/%Y %H:%M') }}</p>
+    <hr>
+
+    <h2>{{ avaliacao.nome }}</h2>
+
+    <div class="info-simulado">
+        <h3>Detalhes do Simulado</h3>
+        <p><strong>Série:</strong> {{ avaliacao.serie.nome if avaliacao.serie else 'N/A' }}</p>
+        <p><strong>Criado por:</strong> {{ avaliacao.criador.nome }}</p>
+        <p><strong>Total de Questões:</strong> {{ avaliacao.questoes|length }}</p>
+        <p><strong>Participantes:</strong> {{ resultados|length }}</p>
+    </div>
+
+    {% if resultados %}
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 5%;">#</th>
+                    <th>Aluno(a)</th>
+                    <th style="width: 20%;">Nota Final</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for resultado in resultados %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ resultado.aluno.nome }}</td>
+                    <td>
+                        {% if resultado.nota is not none %}
+                            {{ "%.2f"|format(resultado.nota) }}
+                        {% else %}
+                            Pendente
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                {% set notas = [] %}
+                {% for r in resultados if r.nota is not none %}
+                    {% set _ = notas.append(r.nota) %}
+                {% endfor %}
+                
+                {% if notas %}
+                <tr class="media-final">
+                    <td colspan="2">MÉDIA GERAL DA TURMA</td>
+                    <td>
+                        {% if notas|length > 0 %}
+                            {{ "%.2f"|format(notas|sum / notas|length) }}
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endif %}
+            </tfoot>
+        </table>
+    {% else %}
+        <p class="no-results">Nenhum resultado finalizado encontrado para este simulado.</p>
+    {% endif %}
+
+</body>
+</html>

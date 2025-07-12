@@ -1,0 +1,8 @@
+{% extends 'app/base.html' %}
+{% block title %}Meu Painel{% endblock %}
+{% block content %}
+    <h1>Bem-vindo, {{ current_user.nome }}!</h1>
+    <p>Aqui estão as avaliações disponíveis para você responder.</p>
+    
+    <a href="{{ url_for('listar_avaliacoes_aluno') }}" class="action-button">Ver Minhas Avaliações</a>
+{% endblock %}

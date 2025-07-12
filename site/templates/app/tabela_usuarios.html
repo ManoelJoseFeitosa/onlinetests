@@ -1,0 +1,63 @@
+<div class="card shadow-sm">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Email</th>
+                        <th class="text-center">Perfil</th>
+                        <th>{{ titulo_coluna }}</th>
+                        <th class="text-center">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% set usuarios_filtrados = usuarios | selectattr('role', 'equalto', perfil) | list %}
+                    {% if usuarios_filtrados %}
+                        {% for usuario in usuarios_filtrados %}
+                        <tr>
+                            <td>{{ usuario.nome }}</td>
+                            <td>{{ usuario.email }}</td>
+                            <td class="text-center">
+                                <span class="badge 
+                                    {% if usuario.role == 'coordenador' %} bg-primary
+                                    {% elif usuario.role == 'professor' %} bg-info text-dark
+                                    {% else %} bg-secondary
+                                    {% endif %}">
+                                    {{ usuario.role|capitalize }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if usuario.role == 'aluno' %}
+                                    {{ usuario.serie_atual.nome if usuario.serie_atual else '<span class="text-danger small">Sem matrícula ativa</span>'|safe }}
+                                
+                                {% elif usuario.role == 'professor' %}
+                                    {% if usuario.series_lecionadas %}
+                                        {% for serie in usuario.series_lecionadas %}
+                                            <span class="badge bg-secondary fw-normal me-1">{{ serie.nome }}</span>
+                                        {% endfor %}
+                                    {% else %}
+                                        <span class="text-muted small">Nenhuma turma</span>
+                                    {% endif %}
+
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <a href="{{ url_for('editar_usuario', user_id=usuario.id) }}" class="btn btn-sm btn-outline-primary" title="Editar {{ usuario.nome }}">
+                                    <i class="bi bi-pencil-fill"></i> Editar
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center text-muted py-4">Nenhum usuário com o perfil '{{ perfil }}' encontrado.</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Detalhes do Curso</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <h2>Detalhes do Curso {{ curso_id }}</h2>
+    <h3>{{ curso[0] }}</h3>
+    <p>{{ curso[1] }}</p>
+    <p><a href="{{ url_for('listar_avaliacoes', curso_id=curso_id) }}">Listar Avaliações</a></p>
+    <p><a href="{{ url_for('index') }}">Voltar para a página inicial</a></p>
+</body>
+</html>

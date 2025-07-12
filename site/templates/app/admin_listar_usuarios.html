@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Gerenciar Usuários</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <h2>Gerenciar Usuários</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nome de Usuário</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for usuario in usuarios %}
+            <tr>
+                <td>{{ usuario[0] }}</td>
+                <td>{{ usuario[1] }}</td>
+                <td>{{ usuario[2] }}</td>
+                <td>{{ usuario[3] }}</td>
+                <td>
+                    <a href="{{ url_for('editar_usuario_admin', user_id=usuario[0]) }}">Editar</a>
+                    <a href="{{ url_for('excluir_usuario_admin', user_id=usuario[0]) }}">Excluir</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <p><a href="{{ url_for('criar_usuario_admin') }}">Criar Novo Usuário</a></p>
+    <p><a href="{{ url_for('index') }}">Voltar para a página inicial</a></p>
+</body>
+</html>

@@ -1,0 +1,70 @@
+{% extends 'public_base.html' %}
+
+{% block title %}Planos e Preços - Online Tests{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="display-5 fw-bold">Planos que se adaptam à sua realidade</h1>
+            <p class="lead text-muted mb-0">Escolha a opção que melhor atende às necessidades da sua instituição.</p>
+        </div>
+        <img src="{{ url_for('static', filename='images/onlinetests.jpg') }}" alt="Logo Online Tests" style="width: 150px; height: auto;" class="d-none d-md-block rounded">
+    </div>
+    <hr class="mb-5">
+    <div class="row row-cols-1 row-cols-md-3 g-4 text-center">
+        <div class="col">
+            <div class="card h-100">
+                <div class="card-header py-3">
+                    <h4 class="my-0 fw-normal">Essencial</h4>
+                </div>
+                <div class="card-body">
+                    <h3 class="card-title pricing-card-title">Consulte<small class="text-muted fw-light">/mês</small></h3>
+                    <ul class="list-unstyled mt-3 mb-4">
+                        <li>Até 500 alunos</li>
+                        <li>Ciação, gerenciamento e aplicação de provas e simulados</li>
+                        <li>R$ 400,00</li>
+                        <li>Suporte via email e telefone</li>
+                    </ul>
+                    <a href="{{ url_for('contato') }}" class="w-100 btn btn-lg btn-outline-primary">Solicitar Orçamento</a>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card h-100 rounded-3 shadow-lg border-primary">
+                 <div class="card-header py-3 text-white bg-primary border-primary">
+                    <h4 class="my-0 fw-normal">Profissional</h4>
+                </div>
+                <div class="card-body">
+                    <h3 class="card-title pricing-card-title">Consulte<small class="text-muted fw-light">/mês</small></h3>
+                    <ul class="list-unstyled mt-3 mb-4">
+                        <li>De 500 a 1000 alunos</li>
+                        <li>Ciação, gerenciamento e aplicação de provas e simulados</li>
+                        <li>R$ 650,00</li>
+                        <li><strong>Suporte via email e telefone</strong></li>
+                    </ul>
+                    <a href="{{ url_for('contato') }}" class="w-100 btn btn-lg btn-primary">Fale Conosco</a>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card h-100">
+                <div class="card-header py-3">
+                    <h4 class="my-0 fw-normal">Enterprise</h4>
+                </div>
+                <div class="card-body">
+                    <h3 class="card-title pricing-card-title">Consulte<small class="text-muted fw-light">/mês</small></h3>
+                    <ul class="list-unstyled mt-3 mb-4">
+                        <li>Acima de 1000 alunos</li>
+                        <li>Ciação, gerenciamento e aplicação de provas e simulados</li>
+                        <li>R$ 950,00</li>
+                        <li>Suporte via email e telefone</li>
+                    </ul>
+                    <a href="{{ url_for('contato') }}" class="w-100 btn btn-lg btn-outline-primary">Fale com um Especialista</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

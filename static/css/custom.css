@@ -1,0 +1,167 @@
+/* static/css/custom.css (VERSÃO CORRIGIDA) */
+
+/* 1. Paleta de Cores */
+:root {
+    --dark-blue: #0A2B4C;
+    --bright-blue: #1E90FF;
+    --accent-green: #6ECB4A;
+    --light-gray-bg: #f8f9fa;
+    --text-color: #333;
+}
+
+/* 2. Estilo do Corpo */
+body {
+    background-color: var(--light-gray-bg);
+    font-family: 'Segoe UI', 'Roboto', sans-serif;
+    color: var(--text-color);
+    position: relative; /* Essencial para a marca d'água funcionar */
+    min-height: 100vh;
+}
+
+/* 3. LÓGICA DA MARCA D'ÁGUA */
+body::before {
+    content: ''; /* Pseudo-elemento precisa de conteúdo */
+    position: fixed; /* Fica fixo na tela, mesmo com rolagem */
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+
+    /* Caminho para a sua logo */
+    background-image: url('../images/OnlineTests.png');
+    background-repeat: no-repeat;
+    background-position: center center; /* Centraliza perfeitamente */
+    background-size: 350px auto; /* Tamanho da logo (ajuste se necessário) */
+
+    opacity: 0.05; /* OPACIDADE MUITO SUTIL - SÓ PARA A LOGO */
+    z-index: -1;   /* JOGA A CAMADA PARA TRÁS DE TODO O CONTEÚDO */
+}
+
+
+/* 4. Estilos da Barra de Navegação */
+.navbar.navbar-custom {
+    background-color: var(--dark-blue);
+}
+/* ... (outros estilos da navbar que você já tinha) */
+.navbar.navbar-custom .nav-link:hover {
+    color: var(--accent-green);
+}
+
+
+/* 5. Estilo do Container Principal */
+/* Garante que o conteúdo fique sobre um fundo branco e na frente da marca d'água */
+.content-container {
+    background-color: white;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);
+    position: relative; /* Garante o empilhamento correto */
+    z-index: 1;
+}
+
+/* 6. Botões e outros estilos */
+.btn-primary {
+    background-color: var(--bright-blue);
+    color: white;
+}
+.btn-custom-green {
+    background-color: var(--accent-green);
+    color: white;
+}
+h1, h2, h3 {
+    color: var(--dark-blue);
+}
+
+.logo-container {
+    background-color: #f0f0f0;  /* Cor de fundo cinza claro */
+    padding: 20px;              /* Espaçamento interno */
+    border-radius: 8px;         /* Bordas arredondadas */
+    display: inline-block;      /* Faz a div se ajustar ao tamanho da logo */
+}
+
+.home-logo {
+    max-width: 250px;   /* Tamanho máximo da logo */
+    height: auto;
+}
+
+.timer-container {
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    background-color: var(--dark-blue);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 5px;
+    font-size: 1.2em;
+    font-weight: bold;
+    z-index: 1000;
+}
+
+.back-to-dashboard-btn {
+    /* Posiciona o botão no canto superior direito do container pai */
+    position: absolute;
+    top: 2rem;
+    right: 2rem;
+    
+    /* Estilo visual sutil */
+    font-weight: 500;
+    border-color: #ced4da; /* Um cinza claro */
+    color: #495057;
+    background-color: transparent;
+}
+
+.back-to-dashboard-btn:hover {
+    background-color: #f8f9fa; /* Um cinza bem clarinho ao passar o mouse */
+    color: #212529;
+}
+
+/* Estilos para o container do "Modo Prova" */
+#exam-container {
+    /* Escondido por padrão, será ativado pelo JavaScript */
+    display: none;
+}
+
+/* Estilo para a tela de "lançamento" da prova */
+#exam-launch-screen {
+    text-align: center;
+    padding: 50px 20px;
+    border: 1px solid #eee;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+}
+
+#exam-launch-screen h2 {
+    color: var(--dark-blue);
+}
+
+#exam-launch-screen .instructions {
+    max-width: 600px;
+    margin: 20px auto;
+    text-align: left;
+    line-height: 1.6;
+}
+
+#start-exam-btn {
+    font-size: 1.2rem;
+    padding: 12px 30px;
+}
+
+/* Estilo para o aviso de tela cheia (inicialmente escondido) */
+#fullscreen-warning {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.9);
+    color: white;
+    z-index: 2000;
+    text-align: center;
+    padding-top: 20%;
+}
+
+#fullscreen-warning h1 {
+    font-size: 3rem;
+    color: #ffc107; /* Amarelo alerta */
+}

@@ -1,0 +1,152 @@
+{% extends 'app/base.html' %}
+
+{% block title %}Editar Questão #{{ questao.id }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Editar Questão <span class="text-muted">#{{ questao.id }}</span></h2>
+        <a href="{{ url_for('banco_questoes') }}" class="btn btn-outline-secondary">&larr; Voltar ao Banco de Questões</a>
+    </div>
+
+    <form method="POST" action="{{ url_for('editar_questao', questao_id=questao.id) }}" enctype="multipart/form-data">
+        <!-- O formulário aqui é quase idêntico ao de 'criar_questao.html' -->
+        <!-- A principal diferença é o atributo 'value' e as condições 'selected'/'checked' -->
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label for="disciplina_id" class="form-label">Disciplina</label>
+                <select id="disciplina_id" name="disciplina_id" class="form-select" required>
+                    {% for disciplina in disciplinas %}
+                        <option value="{{ disciplina.id }}" {% if questao.disciplina_id == disciplina.id %}selected{% endif %}>
+                            {{ disciplina.nome }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label for="serie_id" class="form-label">Série de Aplicação</label>
+                <select id="serie_id" name="serie_id" class="form-select" required>
+                    {% for serie in series %}
+                        <option value="{{ serie.id }}" {% if questao.serie_id == serie.id %}selected{% endif %}>
+                            {{ serie.nome }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label for="assunto" class="form-label">Assunto</label>
+            <input type="text" id="assunto" name="assunto" class="form-control" value="{{ questao.assunto }}" required>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label for="tipo" class="form-label">Tipo de Questão</label>
+                <select id="tipo" name="tipo" class="form-select" required>
+                    <option value="multipla_escolha" {% if questao.tipo == 'multipla_escolha' %}selected{% endif %}>Múltipla Escolha</option>
+                    <option value="verdadeiro_falso" {% if questao.tipo == 'verdadeiro_falso' %}selected{% endif %}>Verdadeiro ou Falso</option>
+                    <option value="discursiva" {% if questao.tipo == 'discursiva' %}selected{% endif %}>Discursiva</option>
+                </select>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label for="nivel" class="form-label">Nível de Dificuldade</label>
+                <select id="nivel" name="nivel" class="form-select" required>
+                    <option value="facil" {% if questao.nivel == 'facil' %}selected{% endif %}>Fácil</option>
+                    <option value="media" {% if questao.nivel == 'media' %}selected{% endif %}>Média</option>
+                    <option value="dificil" {% if questao.nivel == 'dificil' %}selected{% endif %}>Difícil</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="mb-3">
+            <label for="texto" class="form-label">Enunciado da Questão</label>
+            <textarea id="texto" name="texto" rows="4" class="form-control" required>{{ questao.texto }}</textarea>
+        </div>
+
+        <!-- Campos de Imagem -->
+        <div class="border rounded p-3 mb-4 bg-light">
+            {% if questao.imagem_nome %}
+            <div class="mb-2">
+                <p class="mb-1 small"><strong>Imagem Atual:</strong></p>
+                <img src="{{ url_for('static', filename='uploads/questoes/' + questao.imagem_nome) }}" alt="{{ questao.imagem_alt }}" style="max-width: 200px; height: auto; border-radius: 5px;">
+            </div>
+            {% endif %}
+            <div class="mb-3">
+                <label for="imagem_questao" class="form-label fw-bold">Substituir Imagem (Opcional)</label>
+                <input class="form-control" type="file" id="imagem_questao" name="imagem_questao" accept="image/png, image/jpeg, image/gif">
+            </div>
+            <div class="mb-2">
+                <label for="imagem_alt" class="form-label">Descrição da Imagem</label>
+                <input type="text" id="imagem_alt" name="imagem_alt" class="form-control" value="{{ questao.imagem_alt or '' }}">
+            </div>
+        </div>
+
+        <!-- Campos de Resposta -->
+        <div id="multipla_escolha_fields">
+            <h6>Opções de Resposta (Múltipla Escolha)</h6>
+            <div class="input-group mb-2">
+                <span class="input-group-text">A</span>
+                <input type="text" name="opcao_a" class="form-control" value="{{ questao.opcao_a or '' }}">
+            </div>
+            <div class="input-group mb-2">
+                <span class="input-group-text">B</span>
+                <input type="text" name="opcao_b" class="form-control" value="{{ questao.opcao_b or '' }}">
+            </div>
+            <div class="input-group mb-2">
+                <span class="input-group-text">C</span>
+                <input type="text" name="opcao_c" class="form-control" value="{{ questao.opcao_c or '' }}">
+            </div>
+            <div class="input-group mb-2">
+                <span class="input-group-text">D</span>
+                <input type="text" name="opcao_d" class="form-control" value="{{ questao.opcao_d or '' }}">
+            </div>
+            <div class="form-group mt-2">
+                <label for="gabarito_multipla">Gabarito:</label>
+                <input type="text" id="gabarito_multipla" name="gabarito_multipla" class="form-control" style="width: 80px;" value="{{ questao.gabarito or '' }}">
+            </div>
+        </div>
+
+        <div id="vf_fields" style="display: none;">
+            <h6>Gabarito (Verdadeiro ou Falso)</h6>
+            <select name="gabarito_vf" class="form-select" style="width: 200px;">
+                <option value="A" {% if questao.gabarito == 'A' %}selected{% endif %}>Verdadeiro</option>
+                <option value="B" {% if questao.gabarito == 'B' %}selected{% endif %}>Falso</option>
+            </select>
+        </div>
+
+        <div class="mt-4">
+            <label for="justificativa_gabarito" class="form-label">Justificativa do Gabarito (Opcional)</label>
+            <textarea name="justificativa_gabarito" id="justificativa_gabarito" class="form-control" rows="3">{{ questao.justificativa_gabarito or '' }}</textarea>
+        </div>
+
+        <div class="text-center mt-4">
+            <button type="submit" class="btn btn-primary btn-lg">Salvar Alterações na Questão</button>
+        </div>
+    </form>
+</div>
+
+<script>
+// Script para mostrar/ocultar campos de resposta (igual ao de criar_questao)
+document.addEventListener('DOMContentLoaded', function() {
+    const tipoQuestaoSelect = document.getElementById('tipo');
+    const multiplaEscolhaContainer = document.getElementById('multipla_escolha_fields');
+    const vfContainer = document.getElementById('vf_fields');
+
+    function toggleFields() {
+        const selectedType = tipoQuestaoSelect.value;
+        multiplaEscolhaContainer.style.display = 'none';
+        vfContainer.style.display = 'none';
+
+        if (selectedType === 'multipla_escolha') {
+            multiplaEscolhaContainer.style.display = 'block';
+        } else if (selectedType === 'verdadeiro_falso') {
+            vfContainer.style.display = 'block';
+        }
+    }
+    tipoQuestaoSelect.addEventListener('change', toggleFields);
+    toggleFields();
+});
+</script>
+{% endblock %}

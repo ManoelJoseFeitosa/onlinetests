@@ -1,0 +1,195 @@
+{% extends 'app/base.html' %}
+{% block title %}Criar Modelo de Avaliação{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Criar Modelo de Avaliação</h2>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">&larr; Voltar ao Painel</a>
+    </div>
+    <p class="text-muted">Crie um modelo com regras para gerar provas e simulados dinâmicos para cada aluno.</p>
+    <hr>
+
+    <form id="modelo-form" method="POST" 
+          data-disciplinas='{{ disciplinas_json|safe }}' data-api-assuntos-url="{{ url_for('get_assuntos_por_disciplina_e_serie') }}"
+          data-api-simulado-url-base="/api/conteudo_simulado/">
+
+        <div class="card shadow-sm mb-4">
+            <div class="card-header"><h5 class="mb-0">1. Informações Gerais</h5></div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="nome_modelo" class="form-label">Nome do Modelo</label>
+                        <input type="text" name="nome_modelo" id="nome_modelo" class="form-control" required placeholder="Ex: Prova Mensal de Biologia - 1º Ano">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="serie_id" class="form-label">Série de Aplicação</label>
+                        <select id="serie_id" name="serie_id" class="form-select" required>
+                            <option value="" selected disabled>-- Selecione uma Série --</option>
+                            {% for serie in series %}<option value="{{ serie.id }}">{{ serie.nome }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="tipo_modelo" class="form-label">Tipo de Modelo</label>
+                        <select id="tipo_modelo" name="tipo_modelo" class="form-select" required>
+                            <option value="prova" selected>Prova (Única Disciplina)</option>
+                            <option value="simulado">Simulado (Múltiplas Disciplinas)</option>
+                        </select>
+                    </div>
+                     <div class="col-md-6 mb-3">
+                        <label for="tempo_limite" class="form-label">Tempo Limite (em minutos)</label>
+                        <input type="number" class="form-control" id="tempo_limite" name="tempo_limite" min="1" placeholder="Opcional. Ex: 90">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="regras-container"></div>
+        <div class="text-center mt-4">
+            <button type="submit" class="btn btn-primary btn-lg">Salvar Modelo de Avaliação</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('modelo-form');
+        const tipoSelect = document.getElementById('tipo_modelo');
+        const serieSelect = document.getElementById('serie_id');
+        const regrasContainer = document.getElementById('regras-container');
+        const allDisciplinas = JSON.parse(form.dataset.disciplinas);
+        const assuntosApiUrl = form.dataset.apiAssuntosUrl;
+        const simuladoApiUrlBase = form.dataset.apiSimuladoUrlBase;
+        // ... (resto do seu script que já estava funcionando) ...
+        function renderizarRegrasProva() {
+            const disciplinaOptions = allDisciplinas.map(d => `<option value="${d.id}">${d.nome}</option>`).join('');
+            const provaHTML = `
+                <div class="card shadow-sm">
+                    <div class="card-header"><h5 class="mb-0">2. Regras de Geração da Prova</h5></div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="disciplina_id" class="form-label">Disciplina</label>
+                                <select id="disciplina_id" name="disciplina_id" class="form-select" required>
+                                    <option value="" selected disabled>-- Selecione a Disciplina --</option>
+                                    ${disciplinaOptions}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="assuntos" class="form-label">Assuntos (segure Ctrl ou Shift para selecionar vários)</label>
+                            <select name="assuntos" id="assuntos" class="form-select" multiple required size="6">
+                                <option disabled>Selecione uma disciplina para ver os assuntos.</option>
+                            </select>
+                        </div>
+                        <fieldset class="border p-3 rounded mt-3">
+                            <legend class="fs-6 fw-bold px-2">Quantidade de Questões por Nível</legend>
+                            <div class="row">
+                                <div class="col-md-4 mb-2"><label for="qtd_facil" class="form-label text-success">Fáceis</label><input type="number" name="qtd_facil" id="qtd_facil" class="form-control" min="0" value="0" required></div>
+                                <div class="col-md-4 mb-2"><label for="qtd_media" class="form-label text-primary">Médias</label><input type="number" name="qtd_media" id="qtd_media" class="form-control" min="0" value="0" required></div>
+                                <div class="col-md-4 mb-2"><label for="qtd_dificil" class="form-label text-danger">Difíceis</label><input type="number" name="qtd_dificil" id="qtd_dificil" class="form-control" min="0" value="0" required></div>
+                            </div>
+                        </fieldset>
+                    </div>
+                </div>`;
+            regrasContainer.innerHTML = provaHTML;
+            document.getElementById('disciplina_id').addEventListener('change', fetchAssuntos);
+        }
+        function renderizarRegrasSimulado(disciplinasDoSimulado) {
+            const simuladoHTML = disciplinasDoSimulado.map(disciplina => `
+                <div class="card mb-3">
+                    <div class="card-header bg-light">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="disciplinas_selecionadas" value="${disciplina.id}" id="disc-${disciplina.id}">
+                            <label class="form-check-label fw-bold" for="disc-${disciplina.id}">${disciplina.nome}</label>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <p class="small fw-bold mb-2">Selecione os Assuntos:</p>
+                            ${disciplina.assuntos.map(assunto => `
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" name="assuntos_disciplina_${disciplina.id}" value="${assunto.id}" id="assunto-${disciplina.id}-${assunto.id}">
+                                    <label class="form-check-label" for="assunto-${disciplina.id}-${assunto.id}">${assunto.nome}</label>
+                                </div>`).join('') || '<p class="text-muted small">Nenhum assunto cadastrado para esta disciplina.</p>'}
+                        </div>
+                        <hr>
+                        <p class="small fw-bold mb-2">Quantidade por Nível:</p>
+                        <div class="row">
+                            <div class="col-4"><label class="form-label text-success small">Fáceis</label><input type="number" name="qtd_facil_disciplina_${disciplina.id}" class="form-control form-control-sm" min="0" value="0"></div>
+                            <div class="col-4"><label class="form-label text-primary small">Médias</label><input type="number" name="qtd_media_disciplina_${disciplina.id}" class="form-control form-control-sm" min="0" value="0"></div>
+                            <div class="col-4"><label class="form-label text-danger small">Difíceis</label><input type="number" name="qtd_dificil_disciplina_${disciplina.id}" class="form-control form-control-sm" min="0" value="0"></div>
+                        </div>
+                    </div>
+                </div>`).join('');
+            regrasContainer.innerHTML = `
+                <div class="card shadow-sm">
+                    <div class="card-header"><h5 class="mb-0">2. Regras de Geração do Simulado</h5></div>
+                    <div class="card-body">${simuladoHTML}</div>
+                </div>`;
+        }
+        function fetchAssuntos() {
+            const disciplinaId = document.getElementById('disciplina_id').value;
+            const assuntosSelect = document.getElementById('assuntos');
+            const serieId = serieSelect.value;
+            if (!disciplinaId || !serieId) return;
+            assuntosSelect.innerHTML = '<option disabled>Carregando...</option>';
+            fetch(`${assuntosApiUrl}?disciplina_id=${disciplinaId}&serie_id=${serieId}`)
+                .then(response => response.ok ? response.json() : Promise.reject('Erro de rede'))
+                .then(data => {
+                    assuntosSelect.innerHTML = '';
+                    if (data.assuntos && data.assuntos.length > 0) {
+                        data.assuntos.forEach(assunto => {
+                            assuntosSelect.add(new Option(assunto.nome, assunto.id));
+                        });
+                    } else {
+                        assuntosSelect.innerHTML = '<option disabled>Nenhum assunto encontrado</option>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro ao buscar assuntos:', error);
+                    assuntosSelect.innerHTML = '<option disabled>Erro ao carregar assuntos</option>';
+                });
+        }
+        function fetchConteudoSimulado() {
+            const serieId = serieSelect.value;
+            if (!serieId) return;
+            regrasContainer.innerHTML = '<p class="text-center text-muted p-4">Carregando disciplinas para o simulado...</p>';
+            const url = simuladoApiUrlBase + serieId;
+            fetch(url)
+                .then(response => response.ok ? response.json() : Promise.reject('Erro de rede'))
+                .then(data => {
+                    if (data.error || !data.disciplinas || data.disciplinas.length === 0) {
+                        regrasContainer.innerHTML = '<div class="alert alert-warning">Nenhuma disciplina com questões encontradas para esta série.</div>';
+                    } else {
+                        renderizarRegrasSimulado(data.disciplinas);
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro ao buscar conteúdo do simulado:', error);
+                    regrasContainer.innerHTML = '<div class="alert alert-danger">Não foi possível carregar os dados para o simulado. Tente novamente.</div>';
+                });
+        }
+        function atualizarUI() {
+            const tipo = tipoSelect.value;
+            const serieId = serieSelect.value;
+            regrasContainer.innerHTML = '';
+            if (!serieId) {
+                regrasContainer.innerHTML = '<div class="alert alert-info">Por favor, selecione uma série para continuar.</div>';
+                return;
+            }
+            if (tipo === 'prova') {
+                renderizarRegrasProva();
+            } else if (tipo === 'simulado') {
+                fetchConteudoSimulado();
+            }
+        }
+        tipoSelect.addEventListener('change', atualizarUI);
+        serieSelect.addEventListener('change', atualizarUI);
+        atualizarUI();
+    });
+})();
+</script>
+{% endblock %}

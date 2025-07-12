@@ -1,0 +1,168 @@
+{% extends 'app/base.html' %}
+
+{% block title %}Criar Novo Simulado{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="display-6">Criar Novo Simulado</h2>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">&larr; Voltar ao Painel</a>
+    </div>
+
+    <p class="text-muted">Crie uma avaliação que abrange múltiplas disciplinas, ideal para preparar os alunos de forma completa.</p>
+
+    <form method="POST" action="{{ url_for('criar_simulado') }}" id="form-criar-simulado">
+        
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-primary text-white">
+                <h4 class="h6 mb-0">1. Informações Gerais do Simulado</h4>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label for="nome_simulado" class="form-label fw-bold">Nome do Simulado</label>
+                    <input type="text" class="form-control" id="nome_simulado" name="nome_simulado" required placeholder="Ex: Simulado Nacional - 1º Semestre">
+                </div>
+                <div class="mb-3">
+                    <label for="tempo_limite" class="form-label fw-bold">Tempo Limite (em minutos)</label>
+                    <input type="number" class="form-control" id="tempo_limite" name="tempo_limite" min="1" placeholder="Deixe em branco para não ter limite de tempo">
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-primary text-white">
+                <h4 class="h6 mb-0">2. Seleção de Conteúdo e Dificuldade</h4>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label for="serie_id_simulado" class="form-label fw-bold">Selecione a Série para buscar as disciplinas:</label>
+                    <select class="form-select" id="serie_id_simulado" name="serie_id_simulado" required>
+                        <option value="" selected disabled>-- Escolha uma Série --</option>
+                        {% for serie in series %}
+                        <option value="{{ serie.id }}">{{ serie.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <hr>
+                <div id="feedback-container"></div>
+                <div id="disciplinas-container" class="mt-3">
+                    <p class="text-center text-muted">Selecione uma série para ver as disciplinas disponíveis.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-end mt-4">
+            <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Cancelar</a>
+            <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Criar Simulado</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const serieSelect = document.getElementById('serie_id_simulado');
+    const disciplinasContainer = document.getElementById('disciplinas-container');
+    const feedbackContainer = document.getElementById('feedback-container');
+
+    serieSelect.addEventListener('change', function() {
+        const serieId = this.value;
+        
+        disciplinasContainer.innerHTML = '';
+        feedbackContainer.innerHTML = '';
+
+        if (!serieId) {
+            disciplinasContainer.innerHTML = '<p class="text-center text-muted">Selecione uma série para ver as disciplinas disponíveis.</p>';
+            return;
+        }
+
+        feedbackContainer.innerHTML = `<div class="alert alert-info">Carregando disciplinas e assuntos...</div>`;
+
+        fetch(`/api/conteudo_simulado_por_serie/${serieId}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Erro de rede ao buscar o conteúdo.');
+                }
+                return response.json();
+            })
+            .then(data => {
+                feedbackContainer.innerHTML = '';
+
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+
+                if (!data.disciplinas || data.disciplinas.length === 0) {
+                    feedbackContainer.innerHTML = `<div class="alert alert-warning">Nenhuma disciplina com questões objetivas encontrada para esta série.</div>`;
+                    return;
+                }
+
+                data.disciplinas.forEach(disciplina => {
+                    const card = document.createElement('div');
+                    card.className = 'card mb-3';
+                    
+                    let assuntosHTML = '<p class="text-muted small">Nenhum assunto com questões objetivas encontrado.</p>';
+                    if (disciplina.assuntos.length > 0) {
+                        assuntosHTML = disciplina.assuntos.map(assunto => `
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" name="assuntos_disciplina_${disciplina.id}" value="${assunto}" id="assunto-${disciplina.id}-${assunto.replace(/\s+/g, '')}">
+                                <label class="form-check-label" for="assunto-${disciplina.id}-${assunto.replace(/\s+/g, '')}">${assunto}</label>
+                            </div>
+                        `).join('');
+                    }
+
+                    // ===================================================================
+                    // ALTERAÇÃO PRINCIPAL AQUI: Mudança na estrutura do card-body
+                    // ===================================================================
+                    card.innerHTML = `
+                        <div class="card-header bg-light">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="disciplinas_selecionadas" value="${disciplina.id}" id="disciplina-${disciplina.id}">
+                                <label class="form-check-label fw-bold" for="disciplina-${disciplina.id}">
+                                    ${disciplina.nome}
+                                </label>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-lg-7">
+                                    <p class="small fw-bold mb-2">Selecione os Assuntos:</p>
+                                    ${assuntosHTML}
+                                </div>
+
+                                <div class="col-lg-5">
+                                    <p class="small fw-bold mb-2">Definir Quantidade de Questões por Nível:</p>
+                                    <div class="row">
+                                        <div class="col-4">
+                                            <label for="qtd_facil_disciplina_${disciplina.id}" class="form-label text-success small">Fáceis</label>
+                                            <input type="number" name="qtd_facil_disciplina_${disciplina.id}" id="qtd_facil_disciplina_${disciplina.id}" class="form-control form-control-sm" min="0" value="0">
+                                        </div>
+                                        <div class="col-4">
+                                            <label for="qtd_media_disciplina_${disciplina.id}" class="form-label text-primary small">Médias</label>
+                                            <input type="number" name="qtd_media_disciplina_${disciplina.id}" id="qtd_media_disciplina_${disciplina.id}" class="form-control form-control-sm" min="0" value="0">
+                                        </div>
+                                        <div class="col-4">
+                                            <label for="qtd_dificil_disciplina_${disciplina.id}" class="form-label text-danger small">Difíceis</label>
+                                            <input type="number" name="qtd_dificil_disciplina_${disciplina.id}" id="qtd_dificil_disciplina_${disciplina.id}" class="form-control form-control-sm" min="0" value="0">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    // ===================================================================
+                    // FIM DA ALTERAÇÃO
+                    // ===================================================================
+
+                    disciplinasContainer.appendChild(card);
+                });
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                feedbackContainer.innerHTML = `<div class="alert alert-danger">Erro ao carregar as disciplinas. Verifique o console ou tente novamente.</div>`;
+            });
+    });
+});
+</script>
+{% endblock %}
