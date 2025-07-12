@@ -32,7 +32,15 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 app.config['SECRET_KEY'] = 'uma_chave_secreta_muito_forte_e_dificil_de_adivinhar'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:123456@localhost/onlinetests'
+# O JEITO CORRETO PARA FUNCIONAR NO RENDER E LOCALMENTE:
+database_uri = os.environ.get('DATABASE_URL')
+
+# Esta linha é um pequeno truque, pois o Render usa "postgres://" mas o SQLAlchemy prefere "postgresql://"
+if database_uri and database_uri.startswith("postgres://"):
+    database_uri = database_uri.replace("postgres://", "postgresql://", 1)
+
+# A linha final de configuração
+app.config['SQLALCHEMY_DATABASE_URI'] = database_uri or 'postgresql://postgres:sua_senha@localhost/seu_banco'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 def allowed_file(filename):
