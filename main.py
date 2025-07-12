@@ -422,9 +422,22 @@ def logout():
 @app.route('/dashboard')
 @login_required
 def dashboard():
+    # Se for superadmin, redireciona para o painel dele
     if current_user.is_superadmin:
         return redirect(url_for('superadmin_painel'))
-    return render_template('app/dashboard.html')
+
+    # Para outros usuários (como o Coordenador), vamos verificar
+    # se já existe um ano letivo ativo para a escola dele.
+    ano_letivo_ativo = None
+    if current_user.escola_id:
+        ano_letivo_ativo = AnoLetivo.query.filter_by(
+            escola_id=current_user.escola_id,
+            status='ativo'
+        ).first()
+
+    # Agora passamos essa informação para o template.
+    # Se 'ano_letivo_ativo' for None, significa que não há um ciclo ativo.
+    return render_template('app/dashboard.html', ano_letivo_ativo=ano_letivo_ativo)
 
 @app.route('/trocar-senha', methods=['GET', 'POST'])
 @login_required
