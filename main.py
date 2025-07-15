@@ -329,7 +329,7 @@ def log_audit(action, target_obj=None, details=None):
         db.session.rollback()
         # Imprime o erro nos logs do servidor para depuração
         print(f"ERRO CRÍTICO AO SALVAR LOG DE AUDITORIA: {e}")
-        
+
 @login_manager.user_loader
 def load_user(user_id):
     return Usuario.query.get(int(user_id))
@@ -1650,22 +1650,30 @@ def painel_relatorios():
 def painel_auditoria():
     page = request.args.get('page', 1, type=int)
     
-    # Filtros
+    # Filtros do formulário
     action_filter = request.args.get('action')
     user_filter = request.args.get('user')
     
-    query = AuditLog.query.join(Usuario).filter(Usuario.escola_id == current_user.escola_id)
+    # --- CORREÇÃO ---
+    # 1. Pega a lista de todos os e-mails de usuários da escola do coordenador.
+    # Isso é mais seguro do que usar JOINs que podem falhar com logs de sistema ou usuários deletados.
+    emails_da_escola = db.session.query(Usuario.email).filter(Usuario.escola_id == current_user.escola_id).scalar_subquery()
     
+    # 2. Filtra os logs para mostrar apenas aqueles cujo user_email está na lista de e-mails da escola.
+    query = AuditLog.query.filter(AuditLog.user_email.in_(emails_da_escola))
+    
+    # 3. Aplica os filtros do formulário sobre o resultado inicial.
     if action_filter:
         query = query.filter(AuditLog.action == action_filter)
     if user_filter:
         query = query.filter(AuditLog.user_email.ilike(f'%{user_filter}%'))
 
-    logs = query.order_by(AuditLog.timestamp.desc()).paginate(page=page, per_page=20)
+    # 4. Ordena e pagina os resultados.
+    logs = query.order_by(AuditLog.timestamp.desc()).paginate(page=page, per_page=20, error_out=False)
     
-    # Para popular os filtros no HTML
-    distinct_actions = db.session.query(AuditLog.action).distinct().order_by(AuditLog.action).all()
-    actions = [a[0] for a in distinct_actions]
+    # Para popular o dropdown de filtros, busca ações distintas apenas dos logs da escola.
+    distinct_actions_query = query.with_entities(AuditLog.action).distinct().order_by(AuditLog.action)
+    actions = [a[0] for a in distinct_actions_query.all()]
 
     return render_template('app/painel_auditoria.html', logs=logs, actions=actions, action_filter=action_filter, user_filter=user_filter)
 
