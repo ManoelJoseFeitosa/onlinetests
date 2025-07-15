@@ -21,11 +21,6 @@
         {# ==================== VISÃO DO COORDENADOR ==================== #}
         {% if current_user.role == 'coordenador' %}
 
-            <!-- 
-              *** CORREÇÃO PRINCIPAL APLICADA AQUI ***
-              Este card só aparece se a variável 'ano_letivo_ativo' (que vem do main.py) for nula,
-              indicando que o coordenador PRECISA criar um novo ciclo.
-            -->
             {% if not ano_letivo_ativo %}
             <div class="col-12"> <!-- Ocupa a largura total para destaque -->
                 <div class="card h-100 shadow-sm border-primary border-3">
@@ -38,7 +33,7 @@
             </div>
             {% endif %}
 
-            <!-- Os cards existentes continuam aqui -->
+            <!-- Cards de Funcionalidades do Coordenador -->
             <div class="col">
                 <div class="card h-100 shadow-sm">
                     <div class="card-body d-flex flex-column">
@@ -90,6 +85,19 @@
                         <h5 class="card-title"><i class="bi bi-file-earmark-bar-graph-fill me-2 text-secondary"></i>Central de Relatórios</h5>
                         <p class="card-text">Gere relatórios em PDF para análise e acompanhamento acadêmico.</p>
                         <a href="{{ url_for('painel_relatorios') }}" class="btn btn-secondary mt-auto">Gerar Relatórios</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ================================================= -->
+            <!-- NOVO CARD DE AUDITORIA ADICIONADO AQUI -->
+            <!-- ================================================= -->
+            <div class="col">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body d-flex flex-column">
+                        <h5 class="card-title"><i class="bi bi-shield-check me-2 text-dark"></i>Painel de Auditoria</h5>
+                        <p class="card-text">Monitore ações críticas e visualize o histórico de atividades no sistema.</p>
+                        <a href="{{ url_for('painel_auditoria') }}" class="btn btn-dark mt-auto">Acessar Auditoria</a>
                     </div>
                 </div>
             </div>
