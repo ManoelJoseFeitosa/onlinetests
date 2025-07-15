@@ -300,14 +300,23 @@ def log_audit(action, target_obj=None, details=None):
     - details: Um dicionário com informações extras (opcional).
     """
     try:
-        # Cria a entrada do log sem o usuário primeiro
+        # --- CORREÇÃO DO IP ---
+        # Tenta pegar o IP real do usuário a partir do cabeçalho X-Forwarded-For (padrão para proxies).
+        # Se não encontrar, usa o request.remote_addr como fallback.
+        # .split(',')[0] pega o primeiro IP da lista, que é o do cliente original.
+        if request:
+            ip_address = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
+        else:
+            ip_address = None
+
+        # Cria a entrada do log
         log_entry = AuditLog(
             action=action,
             details=details,
-            ip_address=request.remote_addr if request else None
+            ip_address=ip_address
         )
 
-        # Tenta associar o usuário logado, se houver
+        # Associa o usuário logado, se houver
         if current_user and current_user.is_authenticated:
             log_entry.user_id = current_user.id
             log_entry.user_email = current_user.email
@@ -325,9 +334,7 @@ def log_audit(action, target_obj=None, details=None):
         db.session.add(log_entry)
         db.session.commit()
     except Exception as e:
-        # Se houver um erro ao salvar o log, faz rollback para não quebrar a aplicação principal
         db.session.rollback()
-        # Imprime o erro nos logs do servidor para depuração
         print(f"ERRO CRÍTICO AO SALVAR LOG DE AUDITORIA: {e}")
 
 @login_manager.user_loader
