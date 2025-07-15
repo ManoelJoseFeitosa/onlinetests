@@ -292,7 +292,44 @@ class AuditLog(db.Model):
 # ===================================================================
 # SEÇÃO 5: ROTAS DA APLICAÇÃO
 # ===================================================================
-# (Todas as suas outras rotas permanecem as mesmas)
+def log_audit(action, target_obj=None, details=None):
+    """
+    Registra um evento de auditoria.
+    - action: Uma string descrevendo a ação (ex: 'USER_UPDATE').
+    - target_obj: O objeto do banco de dados que foi modificado (opcional).
+    - details: Um dicionário com informações extras (opcional).
+    """
+    try:
+        # Cria a entrada do log sem o usuário primeiro
+        log_entry = AuditLog(
+            action=action,
+            details=details,
+            ip_address=request.remote_addr if request else None
+        )
+
+        # Tenta associar o usuário logado, se houver
+        if current_user and current_user.is_authenticated:
+            log_entry.user_id = current_user.id
+            log_entry.user_email = current_user.email
+        # Se não houver usuário logado (ex: falha de login), tenta pegar do formulário
+        elif request and request.form:
+            log_entry.user_email = request.form.get('email', 'N/A')
+        else:
+            log_entry.user_email = 'Sistema' # Para ações automáticas
+
+        # Se um objeto alvo foi passado, registra seu tipo e ID
+        if target_obj and hasattr(target_obj, 'id'):
+            log_entry.target_type = target_obj.__class__.__name__
+            log_entry.target_id = target_obj.id
+
+        db.session.add(log_entry)
+        db.session.commit()
+    except Exception as e:
+        # Se houver um erro ao salvar o log, faz rollback para não quebrar a aplicação principal
+        db.session.rollback()
+        # Imprime o erro nos logs do servidor para depuração
+        print(f"ERRO CRÍTICO AO SALVAR LOG DE AUDITORIA: {e}")
+        
 @login_manager.user_loader
 def load_user(user_id):
     return Usuario.query.get(int(user_id))
