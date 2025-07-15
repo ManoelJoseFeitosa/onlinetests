@@ -2,6 +2,8 @@
 # SEÇÃO 1: IMPORTS
 # ===================================================================
 import os
+from dotenv import load_dotenv
+load_dotenv()
 import resend
 from PIL import Image
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, abort, make_response
@@ -33,15 +35,17 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 app.config['SECRET_KEY'] = 'uma_chave_secreta_muito_forte_e_dificil_de_adivinhar'
-# O JEITO CORRETO PARA FUNCIONAR NO RENDER E LOCALMENTE:
-database_uri = os.environ.get('DATABASE_URL')
 
-# Esta linha é um pequeno truque, pois o Render usa "postgres://" mas o SQLAlchemy prefere "postgresql://"
-if database_uri and database_uri.startswith("postgres://"):
+# --- FORMA ROBUSTA DE CARREGAR A URL DO BANCO ---
+load_dotenv() 
+database_uri = os.getenv('DATABASE_URL')
+if not database_uri:
+    raise ValueError("A variável de ambiente DATABASE_URL não foi encontrada. Verifique seu arquivo .env.")
+
+if database_uri.startswith("postgres://"):
     database_uri = database_uri.replace("postgres://", "postgresql://", 1)
 
-# A linha final de configuração
-app.config['SQLALCHEMY_DATABASE_URI'] = database_uri or 'postgresql://postgres:sua_senha@localhost/seu_banco'
+app.config['SQLALCHEMY_DATABASE_URI'] = database_uri
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 def allowed_file(filename):
@@ -268,6 +272,23 @@ class TrocarSenhaForm(FlaskForm):
     confirm_password = PasswordField('Confirme a Nova Senha', validators=[DataRequired(), EqualTo('password', message='As senhas devem ser iguais.')])
     submit = SubmitField('Atualizar Senha')
 
+class AuditLog(db.Model):
+    __tablename__ = 'audit_log'
+    id = db.Column(db.Integer, primary_key=True)
+    timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    user_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=True)
+    user_email = db.Column(db.String(150), nullable=False)
+    action = db.Column(db.String(100), nullable=False, index=True) # Ex: 'LOGIN_SUCCESS', 'QUESTION_CREATE'
+    target_type = db.Column(db.String(50), nullable=True, index=True) # Ex: 'Usuario', 'Questao'
+    target_id = db.Column(db.Integer, nullable=True)
+    details = db.Column(db.JSON, nullable=True) # Para armazenar dados extras, como 'antes' e 'depois'
+    ip_address = db.Column(db.String(45), nullable=True)
+
+    user = db.relationship('Usuario', backref='audit_logs')
+
+    def __repr__(self):
+        return f'<AuditLog {self.timestamp} - {self.user_email} - {self.action}>'
+
 # ===================================================================
 # SEÇÃO 5: ROTAS DA APLICAÇÃO
 # ===================================================================
@@ -464,22 +485,44 @@ def editar_escola(escola_id):
 # --- Rotas de Autenticação e Dashboard ---
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    # Se o usuário já estiver autenticado, redireciona para o dashboard
     if current_user.is_authenticated:
         return redirect(url_for('dashboard'))
+
     form = LoginForm()
     if form.validate_on_submit():
-        user = Usuario.query.filter_by(email=form.email.data).first()
-        if user and not user.is_superadmin and user.escola and user.escola.status == 'bloqueado':
-            flash('O acesso para esta escola está temporariamente bloqueado.', 'danger')
-            return redirect(url_for('login'))
+        user = Usuario.query.filter(func.lower(Usuario.email) == func.lower(form.email.data)).first()
+
+        # 1. Verifica se o usuário existe e se a senha está correta
         if user and check_password_hash(user.password, form.password.data):
+            
+            # 2. Verifica se a escola do usuário está bloqueada (APENAS se for um usuário comum)
+            if not user.is_superadmin and user.escola and user.escola.status == 'bloqueado':
+                # AUDITORIA: Registra a tentativa de login em uma escola bloqueada
+                log_audit('LOGIN_BLOCKED_SCHOOL', target_obj=user, details={'escola_nome': user.escola.nome})
+                flash('O acesso para esta escola está temporariamente bloqueado.', 'danger')
+                return redirect(url_for('login'))
+            
+            # Se tudo estiver correto, faz o login
             login_user(user)
+            
+            # AUDITORIA: Registra o login bem-sucedido
+            log_audit('LOGIN_SUCCESS', target_obj=user)
+            
+            # Redireciona para a troca de senha se necessário
             if user.precisa_trocar_senha:
                 flash('Este é o seu primeiro acesso. Por favor, crie uma nova senha.', 'info')
                 return redirect(url_for('trocar_senha'))
+            
+            # Redireciona para o dashboard principal
             return redirect(url_for('dashboard'))
+        
         else:
+            # AUDITORIA: Registra a tentativa de login inválida (usuário não encontrado ou senha incorreta)
+            # A função log_audit pegará o email do formulário automaticamente.
+            log_audit('LOGIN_FAILURE')
             flash('Login inválido. Verifique seu e-mail e senha.', 'danger')
+    
     return render_template('app/login.html', form=form)
 
 @app.route('/logout')
@@ -552,84 +595,195 @@ def gerenciar_usuarios():
     if not ano_letivo_ativo:
         flash('Nenhum ano letivo ativo encontrado. Por favor, crie um na página "Gerenciar Ciclo".', 'warning')
         return redirect(url_for('gerenciar_ciclo'))
+
     if request.method == 'POST':
+        # --- Lógica de Pesquisa de Usuário ---
         if 'submit_pesquisa' in request.form:
             email_pesquisa = request.form.get('email_pesquisa')
-            usuario = Usuario.query.filter_by(email=email_pesquisa, escola_id=current_user.escola_id).first()
+            if not email_pesquisa:
+                 flash('Por favor, digite um e-mail para pesquisar.', 'warning')
+                 return redirect(url_for('gerenciar_usuarios'))
+
+            # Melhoria: Busca case-insensitive para o e-mail
+            usuario = Usuario.query.filter(
+                func.lower(Usuario.email) == func.lower(email_pesquisa),
+                Usuario.escola_id == current_user.escola_id
+            ).first()
+
             if usuario:
+                # AUDITORIA: Registra a busca por um usuário específico (opcional, mas bom para rastreabilidade)
+                log_audit('USER_SEARCH_SUCCESS', details={'searched_email': email_pesquisa, 'found_user_id': usuario.id})
                 return redirect(url_for('editar_usuario', user_id=usuario.id))
             else:
+                # AUDITORIA: Registra que uma busca foi feita mas não encontrou resultados
+                log_audit('USER_SEARCH_NOT_FOUND', details={'searched_email': email_pesquisa})
                 flash('Nenhum usuário encontrado com este e-mail nesta escola.', 'danger')
+
+        # --- Lógica de Cadastro de Novo Usuário ---
         elif 'submit_cadastro' in request.form:
             nome = request.form.get('nome')
             email = request.form.get('email')
             senha = request.form.get('senha')
             role = request.form.get('role')
+
             if not all([nome, email, senha, role]):
                 flash('Todos os campos obrigatórios devem ser preenchidos.', 'warning')
                 return redirect(url_for('gerenciar_usuarios'))
-            if Usuario.query.filter_by(email=email).first():
-                flash('Este e-mail já está cadastrado.', 'warning')
+
+            # Melhoria: Verifica se o e-mail já existe de forma case-insensitive
+            if Usuario.query.filter(func.lower(Usuario.email) == func.lower(email)).first():
+                flash('Este e-mail já está cadastrado no sistema.', 'warning')
             else:
-                novo_usuario = Usuario(nome=nome, email=email, password=generate_password_hash(senha, method='pbkdf2:sha256'), role=role, escola_id=current_user.escola_id)
-                db.session.add(novo_usuario)
-                if role == 'aluno':
-                    serie_id = request.form.get('serie_id', type=int)
-                    if not serie_id:
-                        flash('A série é obrigatória para cadastrar um aluno.', 'danger')
-                        db.session.rollback()
-                        return redirect(url_for('gerenciar_usuarios'))
-                    db.session.flush()
-                    nova_matricula = Matricula(aluno_id=novo_usuario.id, serie_id=serie_id, ano_letivo_id=ano_letivo_ativo.id)
-                    db.session.add(nova_matricula)
-                elif role == 'professor':
-                    disciplinas_ids = request.form.getlist('disciplinas_ids')
-                    series_ids = request.form.getlist('series_ids')
-                    if disciplinas_ids:
-                        novo_usuario.disciplinas_lecionadas = Disciplina.query.filter(Disciplina.id.in_(disciplinas_ids)).all()
-                    if series_ids:
-                        novo_usuario.series_lecionadas = Serie.query.filter(Serie.id.in_(series_ids)).all()
-                db.session.commit()
-                flash(f'Usuário {nome} ({role}) criado com sucesso!', 'success')
-            return redirect(url_for('gerenciar_usuarios'))
+                try:
+                    novo_usuario = Usuario(
+                        nome=nome,
+                        email=email,
+                        password=generate_password_hash(senha, method='pbkdf2:sha256'),
+                        role=role,
+                        escola_id=current_user.escola_id
+                    )
+                    db.session.add(novo_usuario)
+
+                    if role == 'aluno':
+                        serie_id = request.form.get('serie_id', type=int)
+                        if not serie_id:
+                            flash('A série é obrigatória para cadastrar um aluno.', 'danger')
+                            # O rollback acontece no bloco except
+                            raise ValueError("Série não fornecida para o aluno.")
+                        
+                        # O flush atribui um ID ao novo_usuario antes do commit final
+                        db.session.flush()
+                        nova_matricula = Matricula(aluno_id=novo_usuario.id, serie_id=serie_id, ano_letivo_id=ano_letivo_ativo.id)
+                        db.session.add(nova_matricula)
+
+                    elif role == 'professor':
+                        disciplinas_ids = request.form.getlist('disciplinas_ids')
+                        series_ids = request.form.getlist('series_ids')
+                        if disciplinas_ids:
+                            novo_usuario.disciplinas_lecionadas = Disciplina.query.filter(Disciplina.id.in_(disciplinas_ids)).all()
+                        if series_ids:
+                            novo_usuario.series_lecionadas = Serie.query.filter(Serie.id.in_(series_ids)).all()
+                    
+                    # Se tudo deu certo até aqui, faz o commit
+                    db.session.commit()
+
+                    # AUDITORIA: Registra a criação do novo usuário APÓS o commit bem-sucedido
+                    log_audit('USER_CREATE', target_obj=novo_usuario, details={'role': role})
+                    
+                    flash(f'Usuário {nome} ({role}) criado com sucesso!', 'success')
+
+                except Exception as e:
+                    # Em caso de qualquer erro, desfaz todas as operações
+                    db.session.rollback()
+                    print(f"Erro ao criar usuário: {e}") # Log do erro no console do servidor
+                    flash('Ocorreu um erro ao criar o usuário. Tente novamente.', 'danger')
+
+                return redirect(url_for('gerenciar_usuarios'))
+
+    # --- Lógica GET (carregamento da página) ---
     series = Serie.query.filter_by(escola_id=current_user.escola_id).order_by(Serie.nome).all()
     disciplinas = Disciplina.query.filter_by(escola_id=current_user.escola_id).order_by(Disciplina.nome).all()
-    usuarios = Usuario.query.filter_by(escola_id=current_user.escola_id).order_by(Usuario.nome).all()
+    # Otimização: Carrega a série atual do aluno junto com a query principal para evitar múltiplas buscas no template
+    usuarios = Usuario.query.options(joinedload(Usuario.matriculas).joinedload(Matricula.serie))\
+        .filter_by(escola_id=current_user.escola_id).order_by(Usuario.nome).all()
+
     return render_template('app/gerenciar_usuarios.html', series=series, disciplinas=disciplinas, usuarios=usuarios)
 
 @app.route('/admin/editar_usuario/<int:user_id>', methods=['GET', 'POST'])
 @login_required
 @role_required('coordenador')
 def editar_usuario(user_id):
-    usuario = Usuario.query.options(joinedload(Usuario.disciplinas_lecionadas), joinedload(Usuario.series_lecionadas)).filter_by(id=user_id, escola_id=current_user.escola_id).first_or_404()
+    # Carrega o usuário e suas associações de forma otimizada
+    usuario = Usuario.query.options(
+        joinedload(Usuario.disciplinas_lecionadas), 
+        joinedload(Usuario.series_lecionadas)
+    ).filter_by(id=user_id, escola_id=current_user.escola_id).first_or_404()
+
     if request.method == 'POST':
-        usuario.nome = request.form.get('nome')
-        usuario.email = request.form.get('email')
-        if usuario.role == 'professor':
-            disciplinas_ids = request.form.getlist('disciplinas_ids', type=int)
-            series_ids = request.form.getlist('series_ids', type=int)
-            usuario.disciplinas_lecionadas = Disciplina.query.filter(Disciplina.id.in_(disciplinas_ids)).all()
-            usuario.series_lecionadas = Serie.query.filter(Serie.id.in_(series_ids)).all()
-        nova_senha = request.form.get('senha')
-        if nova_senha:
-            usuario.password = generate_password_hash(nova_senha, method='pbkdf2:sha256')
-            usuario.precisa_trocar_senha = True
-            flash('Senha atualizada com sucesso! O usuário deverá trocá-la no próximo acesso.', 'info')
+        # --- AUDITORIA: Captura o estado do usuário ANTES da alteração ---
+        dados_antigos = {
+            'nome': usuario.nome,
+            'email': usuario.email,
+            'disciplinas': [d.nome for d in usuario.disciplinas_lecionadas],
+            'series': [s.nome for s in usuario.series_lecionadas]
+        }
+        alteracoes_realizadas = []
+
         try:
-            db.session.commit()
-            flash(f'Usuário {usuario.nome} atualizado com sucesso!', 'success')
+            # --- Processamento das alterações ---
+            novo_nome = request.form.get('nome')
+            if novo_nome and novo_nome != usuario.nome:
+                usuario.nome = novo_nome
+                alteracoes_realizadas.append(f"Nome alterado para '{novo_nome}'")
+
+            novo_email = request.form.get('email')
+            if novo_email and novo_email.lower() != usuario.email.lower():
+                # Verifica se o novo e-mail já está em uso por OUTRO usuário
+                email_existente = Usuario.query.filter(
+                    func.lower(Usuario.email) == func.lower(novo_email), 
+                    Usuario.id != user_id
+                ).first()
+                if email_existente:
+                    flash('Este e-mail já está sendo utilizado por outro usuário.', 'danger')
+                    return redirect(url_for('editar_usuario', user_id=user_id))
+                
+                usuario.email = novo_email
+                alteracoes_realizadas.append(f"Email alterado para '{novo_email}'")
+
+            if usuario.role == 'professor':
+                disciplinas_ids = request.form.getlist('disciplinas_ids', type=int)
+                series_ids = request.form.getlist('series_ids', type=int)
+                
+                # Atualiza apenas se houver mudança para registrar na auditoria
+                novas_disciplinas = Disciplina.query.filter(Disciplina.id.in_(disciplinas_ids)).all()
+                if set(d.id for d in novas_disciplinas) != set(d.id for d in usuario.disciplinas_lecionadas):
+                    usuario.disciplinas_lecionadas = novas_disciplinas
+                    alteracoes_realizadas.append("Disciplinas lecionadas foram atualizadas.")
+
+                novas_series = Serie.query.filter(Serie.id.in_(series_ids)).all()
+                if set(s.id for s in novas_series) != set(s.id for s in usuario.series_lecionadas):
+                    usuario.series_lecionadas = novas_series
+                    alteracoes_realizadas.append("Séries lecionadas foram atualizadas.")
+
+            nova_senha = request.form.get('senha')
+            if nova_senha:
+                usuario.password = generate_password_hash(nova_senha, method='pbkdf2:sha256')
+                usuario.precisa_trocar_senha = True
+                alteracoes_realizadas.append("Senha foi redefinida.")
+                flash('Senha redefinida com sucesso! O usuário deverá trocá-la no próximo acesso.', 'info')
+            
+            # Se alguma alteração foi feita, commita e audita
+            if alteracoes_realizadas:
+                db.session.commit()
+                
+                # --- AUDITORIA: Registra o evento de atualização ---
+                log_audit(
+                    'USER_UPDATE', 
+                    target_obj=usuario, 
+                    details={'before': dados_antigos, 'changes': alteracoes_realizadas}
+                )
+                
+                flash(f'Usuário {usuario.nome} atualizado com sucesso!', 'success')
+            else:
+                flash('Nenhuma alteração foi detectada.', 'info')
+
         except Exception as e:
             db.session.rollback()
             flash(f'Erro ao atualizar o usuário: {e}', 'danger')
+        
         return redirect(url_for('gerenciar_usuarios'))
+
+    # --- Lógica GET (carregamento da página) ---
     ano_letivo_ativo = AnoLetivo.query.filter_by(escola_id=current_user.escola_id, status='ativo').first()
     matricula_atual = None
     if usuario.role == 'aluno' and ano_letivo_ativo:
         matricula_atual = Matricula.query.filter_by(aluno_id=usuario.id, ano_letivo_id=ano_letivo_ativo.id).first()
+    
     series_para_select = Serie.query.filter_by(escola_id=current_user.escola_id).order_by(Serie.nome).all()
     series_para_json = [{'id': s.id, 'nome': s.nome} for s in series_para_select]
     disciplinas = Disciplina.query.filter_by(escola_id=current_user.escola_id).order_by(Disciplina.nome).all()
     anos_letivos = AnoLetivo.query.filter_by(escola_id=current_user.escola_id).order_by(AnoLetivo.ano.desc()).all()
+    
     return render_template('app/editar_usuario.html', usuario=usuario, series=series_para_select, series_json=series_para_json, disciplinas=disciplinas, matricula_atual=matricula_atual, anos_letivos=anos_letivos)
 
 @app.route('/api/matricula/<int:user_id>/<int:ano_letivo_id>')
@@ -719,37 +873,39 @@ def gerenciar_academico():
 @role_required('professor', 'coordenador')
 def criar_questao():
     if request.method == 'POST':
-        # --- A lógica POST para salvar a questão está correta e não precisa de alterações ---
-        disciplina_id = request.form.get('disciplina_id', type=int)
-        serie_id = request.form.get('serie_id', type=int)
-        assunto = request.form.get('assunto', '').strip()
-        tipo = request.form.get('tipo')
-        texto = request.form.get('texto')
-        justificativa = request.form.get('justificativa_gabarito')
-        nivel = request.form.get('nivel')
+        # Envolve toda a lógica de criação em um bloco try/except
+        try:
+            disciplina_id = request.form.get('disciplina_id', type=int)
+            serie_id = request.form.get('serie_id', type=int)
+            assunto = request.form.get('assunto', '').strip()
+            tipo = request.form.get('tipo')
+            texto = request.form.get('texto')
+            justificativa = request.form.get('justificativa_gabarito')
+            nivel = request.form.get('nivel')
 
-        disciplina = Disciplina.query.filter_by(id=disciplina_id, escola_id=current_user.escola_id).first()
-        serie = Serie.query.filter_by(id=serie_id, escola_id=current_user.escola_id).first()
-        
-        if not all([disciplina, serie, assunto, tipo, texto, nivel]):
-            flash('Todos os campos obrigatórios devem ser preenchidos.', 'danger')
-            # É importante recarregar os dados para o template em caso de falha
-            return redirect(url_for('criar_questao'))
+            # Validação dos dados de entrada
+            disciplina = Disciplina.query.filter_by(id=disciplina_id, escola_id=current_user.escola_id).first()
+            serie = Serie.query.filter_by(id=serie_id, escola_id=current_user.escola_id).first()
+            
+            if not all([disciplina, serie, assunto, tipo, texto, nivel]):
+                flash('Todos os campos obrigatórios devem ser preenchidos.', 'danger')
+                # Redireciona de volta para a página de criação, os dados do GET serão recarregados
+                return redirect(url_for('criar_questao'))
 
-        nova_questao = Questao(
-            disciplina_id=disciplina_id, 
-            serie_id=serie_id, 
-            assunto=assunto, 
-            tipo=tipo, 
-            texto=texto, 
-            justificativa_gabarito=justificativa, 
-            nivel=nivel,
-            criador_id=current_user.id
-        )
+            nova_questao = Questao(
+                disciplina_id=disciplina_id, 
+                serie_id=serie_id, 
+                assunto=assunto, 
+                tipo=tipo, 
+                texto=texto, 
+                justificativa_gabarito=justificativa, 
+                nivel=nivel,
+                criador_id=current_user.id
+            )
 
-        imagem_arquivo = request.files.get('imagem_questao')
-        if imagem_arquivo and allowed_file(imagem_arquivo.filename):
-            try:
+            # Processamento da imagem
+            imagem_arquivo = request.files.get('imagem_questao')
+            if imagem_arquivo and allowed_file(imagem_arquivo.filename):
                 img = Image.open(imagem_arquivo.stream)
                 max_width = 1200
                 if img.width > max_width:
@@ -759,7 +915,9 @@ def criar_questao():
 
                 original_filename = secure_filename(imagem_arquivo.filename)
                 filename_sem_ext, _ = os.path.splitext(original_filename)
-                novo_filename = f"{filename_sem_ext}.webp"
+                # Adiciona um timestamp para garantir nome de arquivo único
+                timestamp = int(datetime.now().timestamp())
+                novo_filename = f"{filename_sem_ext}_{timestamp}.webp"
                 
                 caminho_salvar = os.path.join(app.config['UPLOAD_FOLDER'], novo_filename)
                 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -768,29 +926,36 @@ def criar_questao():
                 nova_questao.imagem_nome = novo_filename
                 nova_questao.imagem_alt = request.form.get('imagem_alt')
 
-            except Exception as e:
-                flash(f'Houve um erro ao processar a imagem: {e}', 'danger')
-                return redirect(url_for('criar_questao'))
+            # Define as opções com base no tipo de questão
+            if tipo == 'multipla_escolha':
+                nova_questao.opcao_a = request.form.get('opcao_a')
+                nova_questao.opcao_b = request.form.get('opcao_b')
+                nova_questao.opcao_c = request.form.get('opcao_c')
+                nova_questao.opcao_d = request.form.get('opcao_d')
+                nova_questao.gabarito = request.form.get('gabarito_multipla')
+            elif tipo == 'verdadeiro_falso':
+                nova_questao.opcao_a = 'Verdadeiro'
+                nova_questao.opcao_b = 'Falso'
+                nova_questao.gabarito = request.form.get('gabarito_vf')
 
-        if tipo == 'multipla_escolha':
-            nova_questao.opcao_a = request.form.get('opcao_a')
-            nova_questao.opcao_b = request.form.get('opcao_b')
-            nova_questao.opcao_c = request.form.get('opcao_c')
-            nova_questao.opcao_d = request.form.get('opcao_d')
-            nova_questao.gabarito = request.form.get('gabarito_multipla')
-        elif tipo == 'verdadeiro_falso':
-            nova_questao.opcao_a = 'Verdadeiro'
-            nova_questao.opcao_b = 'Falso'
-            nova_questao.gabarito = request.form.get('gabarito_vf')
+            # Salva no banco de dados
+            db.session.add(nova_questao)
+            db.session.commit()
+            
+            # AUDITORIA: Registra a criação da questão APÓS o commit bem-sucedido
+            log_audit('QUESTION_CREATE', target_obj=nova_questao, details={'disciplina': disciplina.nome, 'serie': serie.nome, 'assunto': assunto})
+            
+            flash('Questão criada com sucesso!', 'success')
+            return redirect(url_for('banco_questoes'))
 
-        db.session.add(nova_questao)
-        db.session.commit()
-        
-        flash('Questão criada com sucesso!', 'success')
-        return redirect(url_for('banco_questoes'))
+        except Exception as e:
+            # Em caso de qualquer erro, desfaz a transação e informa o usuário
+            db.session.rollback()
+            print(f"ERRO AO CRIAR QUESTÃO: {e}") # Log do erro no console do servidor
+            flash(f'Ocorreu um erro inesperado ao salvar a questão: {e}', 'danger')
+            return redirect(url_for('criar_questao'))
 
-    # --- Lógica GET CORRIGIDA com filtro de perfil para Disciplinas e Séries ---
-    
+    # --- Lógica GET (carregamento da página) ---
     disciplinas_usuario = []
     series_usuario = []
 
@@ -817,39 +982,132 @@ def banco_questoes():
 @login_required
 @role_required('professor', 'coordenador')
 def editar_questao(questao_id):
-    questao = Questao.query.filter_by(id=questao_id, criador_id=current_user.id).first_or_404()
+    # Lógica de permissão aprimorada:
+    # Coordenador pode editar qualquer questão da escola.
+    # Professor só pode editar as que ele criou.
+    query = Questao.query.filter_by(id=questao_id)
+    if current_user.role == 'coordenador':
+        # Garante que a questão pertence à escola do coordenador
+        questao = query.join(Questao.disciplina).filter(Disciplina.escola_id == current_user.escola_id).first_or_404()
+    else: # Professor
+        questao = query.filter_by(criador_id=current_user.id).first_or_404()
+
     if request.method == 'POST':
-        questao.disciplina_id = request.form.get('disciplina_id', type=int)
-        questao.serie_id = request.form.get('serie_id', type=int)
-        questao.assunto = request.form.get('assunto', '').strip()
-        questao.tipo = request.form.get('tipo')
-        questao.nivel = request.form.get('nivel')
-        questao.texto = request.form.get('texto')
-        questao.justificativa_gabarito = request.form.get('justificativa_gabarito')
-        questao.imagem_alt = request.form.get('imagem_alt')
-        imagem_arquivo = request.files.get('imagem_questao')
-        if imagem_arquivo and allowed_file(imagem_arquivo.filename):
-            filename = secure_filename(imagem_arquivo.filename)
-            caminho_salvar = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            imagem_arquivo.save(caminho_salvar)
-            questao.imagem_nome = filename
-        if questao.tipo == 'multipla_escolha':
-            questao.opcao_a = request.form.get('opcao_a')
-            questao.opcao_b = request.form.get('opcao_b')
-            questao.opcao_c = request.form.get('opcao_c')
-            questao.opcao_d = request.form.get('opcao_d')
-            questao.gabarito = request.form.get('gabarito_multipla')
-        elif questao.tipo == 'verdadeiro_falso':
-            questao.gabarito = request.form.get('gabarito_vf')
+        # --- AUDITORIA: Captura o estado da questão ANTES da alteração ---
+        dados_antigos = {
+            'disciplina_id': questao.disciplina_id,
+            'serie_id': questao.serie_id,
+            'assunto': questao.assunto,
+            'tipo': questao.tipo,
+            'nivel': questao.nivel,
+            'texto': questao.texto,
+            'gabarito': questao.gabarito
+        }
+        alteracoes_realizadas = []
+
         try:
-            db.session.commit()
-            flash('Questão atualizada com sucesso!', 'success')
+            # --- Processamento das alterações ---
+            # Compara cada campo do formulário com o valor existente antes de alterar
+            
+            novo_disciplina_id = request.form.get('disciplina_id', type=int)
+            if novo_disciplina_id != questao.disciplina_id:
+                questao.disciplina_id = novo_disciplina_id
+                alteracoes_realizadas.append('Disciplina foi alterada.')
+
+            novo_serie_id = request.form.get('serie_id', type=int)
+            if novo_serie_id != questao.serie_id:
+                questao.serie_id = novo_serie_id
+                alteracoes_realizadas.append('Série foi alterada.')
+
+            novo_assunto = request.form.get('assunto', '').strip()
+            if novo_assunto != questao.assunto:
+                questao.assunto = novo_assunto
+                alteracoes_realizadas.append('Assunto foi alterado.')
+
+            novo_nivel = request.form.get('nivel')
+            if novo_nivel != questao.nivel:
+                questao.nivel = novo_nivel
+                alteracoes_realizadas.append(f'Nível alterado para {novo_nivel}.')
+            
+            novo_texto = request.form.get('texto')
+            if novo_texto != questao.texto:
+                questao.texto = novo_texto
+                alteracoes_realizadas.append('Texto do enunciado foi alterado.')
+
+            questao.justificativa_gabarito = request.form.get('justificativa_gabarito')
+            questao.imagem_alt = request.form.get('imagem_alt')
+
+            # Processamento da imagem (com conversão para webp e nome único)
+            imagem_arquivo = request.files.get('imagem_questao')
+            if imagem_arquivo and allowed_file(imagem_arquivo.filename):
+                imagem_antiga = questao.imagem_nome
+                
+                img = Image.open(imagem_arquivo.stream)
+                max_width = 1200
+                if img.width > max_width:
+                    ratio = max_width / float(img.width)
+                    new_height = int(float(img.height) * float(ratio))
+                    img = img.resize((max_width, new_height), Image.Resampling.LANCZOS)
+
+                original_filename = secure_filename(imagem_arquivo.filename)
+                filename_sem_ext, _ = os.path.splitext(original_filename)
+                timestamp = int(datetime.now().timestamp())
+                novo_filename = f"{filename_sem_ext}_{timestamp}.webp"
+                
+                caminho_salvar = os.path.join(app.config['UPLOAD_FOLDER'], novo_filename)
+                os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+                img.save(caminho_salvar, 'webp', quality=85)
+
+                questao.imagem_nome = novo_filename
+                alteracoes_realizadas.append('Imagem foi atualizada.')
+
+                # Remove a imagem antiga para não ocupar espaço
+                if imagem_antiga:
+                    try:
+                        os.remove(os.path.join(app.config['UPLOAD_FOLDER'], imagem_antiga))
+                    except OSError as e:
+                        print(f"Erro ao deletar imagem antiga: {e}")
+
+            # Atualiza opções e gabarito com base no tipo
+            # O tipo não pode ser alterado na edição para manter a consistência
+            if questao.tipo == 'multipla_escolha':
+                questao.opcao_a = request.form.get('opcao_a')
+                questao.opcao_b = request.form.get('opcao_b')
+                questao.opcao_c = request.form.get('opcao_c')
+                questao.opcao_d = request.form.get('opcao_d')
+                questao.gabarito = request.form.get('gabarito_multipla')
+            elif questao.tipo == 'verdadeiro_falso':
+                questao.gabarito = request.form.get('gabarito_vf')
+
+            # Se alguma alteração foi feita, commita e audita
+            if alteracoes_realizadas or db.session.is_modified(questao):
+                db.session.commit()
+                
+                # --- AUDITORIA: Registra o evento de atualização ---
+                log_audit(
+                    'QUESTION_UPDATE', 
+                    target_obj=questao, 
+                    details={'before': dados_antigos, 'changes': alteracoes_realizadas or ['Campos de opções/gabarito foram alterados.']}
+                )
+                
+                flash('Questão atualizada com sucesso!', 'success')
+            else:
+                flash('Nenhuma alteração foi detectada.', 'info')
+
             return redirect(url_for('banco_questoes'))
+
         except Exception as e:
             db.session.rollback()
             flash(f'Erro ao atualizar a questão: {e}', 'danger')
-    disciplinas = Disciplina.query.filter_by(escola_id=current_user.escola_id).order_by(Disciplina.nome).all()
-    series = Serie.query.filter_by(escola_id=current_user.escola_id).order_by(Serie.nome).all()
+
+    # --- Lógica GET (carregamento da página) ---
+    if current_user.role == 'coordenador':
+        disciplinas = Disciplina.query.filter_by(escola_id=current_user.escola_id).order_by(Disciplina.nome).all()
+        series = Serie.query.filter_by(escola_id=current_user.escola_id).order_by(Serie.nome).all()
+    else: # Professor
+        disciplinas = sorted(current_user.disciplinas_lecionadas, key=lambda d: d.nome)
+        series = sorted(current_user.series_lecionadas, key=lambda s: s.nome)
+        
     return render_template('app/editar_questao.html', questao=questao, disciplinas=disciplinas, series=series)
 
 # --- Rotas de Avaliação ---
@@ -858,101 +1116,126 @@ def editar_questao(questao_id):
 @role_required('coordenador', 'professor')
 def criar_modelo_avaliacao():
     if request.method == 'POST':
-        # Sua lógica POST está correta e não precisa de alterações.
-        nome_modelo = request.form.get('nome_modelo')
-        serie_id = request.form.get('serie_id', type=int)
-        tipo_modelo = request.form.get('tipo_modelo')
-        tempo_limite_str = request.form.get('tempo_limite')
-        tempo_limite = int(tempo_limite_str) if tempo_limite_str and tempo_limite_str.isdigit() else None
+        # Envolve toda a lógica de criação em um bloco try/except para garantir a integridade dos dados
+        try:
+            nome_modelo = request.form.get('nome_modelo')
+            serie_id = request.form.get('serie_id', type=int)
+            tipo_modelo = request.form.get('tipo_modelo')
+            tempo_limite_str = request.form.get('tempo_limite')
+            tempo_limite = int(tempo_limite_str) if tempo_limite_str and tempo_limite_str.isdigit() else None
 
-        if not all([nome_modelo, serie_id, tipo_modelo]):
-            flash('Nome, série e tipo do modelo são obrigatórios.', 'danger')
-            return redirect(url_for('criar_modelo_avaliacao'))
-
-        regras_json = {'tipo': tipo_modelo, 'disciplinas': []}
-
-        if tipo_modelo == 'prova':
-            disciplina_id = request.form.get('disciplina_id', type=int)
-            assuntos = request.form.getlist('assuntos')
-            niveis = {
-                'facil': request.form.get('qtd_facil', type=int, default=0),
-                'media': request.form.get('qtd_media', type=int, default=0),
-                'dificil': request.form.get('qtd_dificil', type=int, default=0)
-            }
-            if sum(niveis.values()) <= 0:
-                flash('Você deve especificar pelo menos uma questão para a prova.', 'danger')
-                return redirect(url_for('criar_modelo_avaliacao'))
-            
-            regras_json['disciplinas'].append({
-                'id': disciplina_id,
-                'assuntos': assuntos,
-                'niveis': niveis
-            })
-
-        elif tipo_modelo == 'simulado':
-            disciplinas_selecionadas_ids = request.form.getlist('disciplinas_selecionadas')
-            if not disciplinas_selecionadas_ids:
-                flash('Você deve selecionar pelo menos uma disciplina para o simulado.', 'danger')
+            # Validação inicial
+            if not all([nome_modelo, serie_id, tipo_modelo]):
+                flash('Nome, série e tipo do modelo são obrigatórios.', 'danger')
                 return redirect(url_for('criar_modelo_avaliacao'))
 
-            for disc_id_str in disciplinas_selecionadas_ids:
-                disc_id = int(disc_id_str)
-                assuntos = request.form.getlist(f'assuntos_disciplina_{disc_id}')
+            regras_json = {'tipo': tipo_modelo, 'disciplinas': []}
+            total_questoes_modelo = 0
+
+            # Lógica para PROVA
+            if tipo_modelo == 'prova':
+                disciplina_id = request.form.get('disciplina_id', type=int)
+                assuntos = request.form.getlist('assuntos')
                 niveis = {
-                    'facil': request.form.get(f'qtd_facil_disciplina_{disc_id}', type=int, default=0),
-                    'media': request.form.get(f'qtd_media_disciplina_{disc_id}', type=int, default=0),
-                    'dificil': request.form.get(f'qtd_dificil_disciplina_{disc_id}', type=int, default=0)
+                    'facil': request.form.get('qtd_facil', type=int, default=0),
+                    'media': request.form.get('qtd_media', type=int, default=0),
+                    'dificil': request.form.get('qtd_dificil', type=int, default=0)
                 }
-                if sum(niveis.values()) > 0 and assuntos:
-                    regras_json['disciplinas'].append({
-                        'id': disc_id,
-                        'assuntos': assuntos,
-                        'niveis': niveis
-                    })
+                total_questoes_disciplina = sum(niveis.values())
+                
+                if total_questoes_disciplina <= 0 or not assuntos:
+                    flash('Para uma prova, você deve selecionar ao menos um assunto e especificar pelo menos uma questão.', 'danger')
+                    return redirect(url_for('criar_modelo_avaliacao'))
+                
+                regras_json['disciplinas'].append({
+                    'id': disciplina_id,
+                    'assuntos': assuntos,
+                    'niveis': niveis
+                })
+                total_questoes_modelo = total_questoes_disciplina
+
+            # Lógica para SIMULADO
+            elif tipo_modelo == 'simulado':
+                disciplinas_selecionadas_ids = request.form.getlist('disciplinas_selecionadas')
+                if not disciplinas_selecionadas_ids:
+                    flash('Você deve selecionar pelo menos uma disciplina para o simulado.', 'danger')
+                    return redirect(url_for('criar_modelo_avaliacao'))
+
+                for disc_id_str in disciplinas_selecionadas_ids:
+                    disc_id = int(disc_id_str)
+                    assuntos = request.form.getlist(f'assuntos_disciplina_{disc_id}')
+                    niveis = {
+                        'facil': request.form.get(f'qtd_facil_disciplina_{disc_id}', type=int, default=0),
+                        'media': request.form.get(f'qtd_media_disciplina_{disc_id}', type=int, default=0),
+                        'dificil': request.form.get(f'qtd_dificil_disciplina_{disc_id}', type=int, default=0)
+                    }
+                    total_questoes_disciplina = sum(niveis.values())
+                    
+                    if total_questoes_disciplina > 0 and assuntos:
+                        regras_json['disciplinas'].append({
+                            'id': disc_id,
+                            'assuntos': assuntos,
+                            'niveis': niveis
+                        })
+                        total_questoes_modelo += total_questoes_disciplina
             
+            # Validação final: garante que o modelo não está vazio
             if not regras_json['disciplinas']:
-                 flash('Nenhuma regra válida foi definida para o simulado. Verifique as quantidades e os assuntos marcados.', 'danger')
+                 flash('Nenhuma regra válida foi definida. Verifique as quantidades de questões e os assuntos marcados.', 'danger')
                  return redirect(url_for('criar_modelo_avaliacao'))
 
-        novo_modelo = ModeloAvaliacao(
-            nome=nome_modelo,
-            tipo=tipo_modelo,
-            serie_id=serie_id,
-            tempo_limite=tempo_limite,
-            escola_id=current_user.escola_id,
-            criador_id=current_user.id,
-            regras_selecao=regras_json
-        )
-        db.session.add(novo_modelo)
-        db.session.commit()
-        
-        flash(f'Modelo de avaliação "{nome_modelo}" criado com sucesso!', 'success')
-        return redirect(url_for('listar_modelos_avaliacao'))
+            # Cria o objeto do modelo
+            novo_modelo = ModeloAvaliacao(
+                nome=nome_modelo,
+                tipo=tipo_modelo,
+                serie_id=serie_id,
+                tempo_limite=tempo_limite,
+                escola_id=current_user.escola_id,
+                criador_id=current_user.id,
+                regras_selecao=regras_json
+            )
+            
+            db.session.add(novo_modelo)
+            db.session.commit()
+            
+            # --- AUDITORIA: Registra a criação do modelo APÓS o commit ---
+            serie = Serie.query.get(serie_id)
+            log_audit(
+                'ASSESSMENT_MODEL_CREATE', 
+                target_obj=novo_modelo, 
+                details={
+                    'nome': nome_modelo,
+                    'tipo': tipo_modelo,
+                    'serie': serie.nome,
+                    'total_questoes': total_questoes_modelo
+                }
+            )
+            
+            flash(f'Modelo de avaliação "{nome_modelo}" criado com sucesso!', 'success')
+            return redirect(url_for('listar_modelos_avaliacao'))
 
-    # --- LÓGICA GET CORRIGIDA COM FILTRO DE PERFIL PARA SÉRIES E DISCIPLINAS ---
-    
-    # Listas vazias para serem preenchidas de acordo com o perfil
+        except Exception as e:
+            db.session.rollback()
+            print(f"ERRO AO CRIAR MODELO DE AVALIAÇÃO: {e}")
+            flash(f'Ocorreu um erro inesperado ao salvar o modelo: {e}', 'danger')
+            return redirect(url_for('criar_modelo_avaliacao'))
+
+    # --- Lógica GET (carregamento da página) ---
     series_query = []
     disciplinas_query = []
 
     if current_user.role == 'coordenador':
-        # Coordenador: Pega todas as séries e disciplinas da escola.
         series_query = Serie.query.filter_by(escola_id=current_user.escola_id).order_by(Serie.nome).all()
         disciplinas_query = Disciplina.query.filter_by(escola_id=current_user.escola_id).order_by(Disciplina.nome).all()
     
     elif current_user.role == 'professor':
-        # Professor: Pega apenas as séries e disciplinas vinculadas a ele.
         series_query = sorted(current_user.series_lecionadas, key=lambda s: s.nome)
         disciplinas_query = sorted(current_user.disciplinas_lecionadas, key=lambda d: d.nome)
 
-    # Converte as listas de objetos para listas de dicionários
     series_list = [{'id': s.id, 'nome': s.nome} for s in series_query]
     disciplinas_list = [{'id': d.id, 'nome': d.nome} for d in disciplinas_query]
-
-    # Prepara a string JSON para as disciplinas (usada pelo JavaScript)
     disciplinas_json_string = json.dumps(disciplinas_list)
     
-    # Envia os dados já filtrados para o template
     return render_template(
         'app/criar_modelo_avaliacao.html', 
         series=series_list, 
@@ -1236,24 +1519,81 @@ def correcao_lista_alunos(avaliacao_id):
 @login_required
 @role_required('professor', 'coordenador')
 def corrigir_respostas(resultado_id):
-    resultado = Resultado.query.get_or_404(resultado_id)
-    if request.method == 'POST':
-        for resposta in resultado.respostas.filter(Resposta.questao.has(tipo='discursiva')):
-            status = request.form.get(f'status_{resposta.id}')
-            feedback = request.form.get(f'feedback_{resposta.id}')
-            if status:
-                resposta.status_correcao, resposta.feedback_professor = status, feedback
-                if status == 'correta': resposta.pontos = 1.0
-                elif status == 'parcial': resposta.pontos = 0.5
-                else: resposta.pontos = 0.0
-        total_pontos = sum(r.pontos for r in resultado.respostas)
-        total_questoes = len(resultado.avaliacao.questoes)
-        nota_final = round((total_pontos / total_questoes) * 10, 2) if total_questoes > 0 else 0
-        resultado.nota, resultado.status = nota_final, 'Finalizado'
-        db.session.commit()
-        flash(f'Correção salva! A nota final do aluno {resultado.aluno.nome} é {nota_final}.', 'success')
+    # Otimiza a query para carregar todas as informações necessárias de uma vez
+    resultado = Resultado.query.options(
+        joinedload(Resultado.aluno),
+        joinedload(Resultado.avaliacao).joinedload(Avaliacao.questoes),
+        joinedload(Resultado.respostas).joinedload(Resposta.questao)
+    ).filter(Resultado.id == resultado_id).first_or_404()
+
+    # --- Verificação de Segurança e Permissão ---
+    # Garante que o professor/coordenador pertence à mesma escola do resultado
+    if resultado.avaliacao.escola_id != current_user.escola_id:
+        abort(403) # Acesso Proibido
+    # Garante que um professor só pode corrigir avaliações que ele criou
+    if current_user.role == 'professor' and resultado.avaliacao.criador_id != current_user.id:
+        flash('Você não tem permissão para corrigir esta avaliação, pois não é o criador.', 'danger')
+        return redirect(url_for('listar_modelos_avaliacao'))
+    # Impede a re-correção de uma prova já finalizada
+    if resultado.status == 'Finalizado':
+        flash('Esta avaliação já foi corrigida e finalizada.', 'info')
         return redirect(url_for('detalhes_avaliacao', avaliacao_id=resultado.avaliacao_id))
-    respostas_discursivas = resultado.respostas.filter(Resposta.questao.has(tipo='discursiva')).all()
+
+    if request.method == 'POST':
+        # Envolve toda a lógica de correção em um bloco try/except
+        try:
+            # Itera apenas sobre as respostas discursivas para aplicar a correção manual
+            for resposta in resultado.respostas:
+                if resposta.questao.tipo == 'discursiva':
+                    status = request.form.get(f'status_{resposta.id}')
+                    feedback = request.form.get(f'feedback_{resposta.id}')
+                    
+                    if status:
+                        resposta.status_correcao = status
+                        resposta.feedback_professor = feedback
+                        if status == 'correta':
+                            resposta.pontos = 1.0
+                        elif status == 'parcial':
+                            resposta.pontos = 0.5
+                        else: # 'incorreta'
+                            resposta.pontos = 0.0
+            
+            # Recalcula a nota final somando os pontos de TODAS as respostas (objetivas + discursivas)
+            total_pontos = sum(r.pontos for r in resultado.respostas)
+            total_questoes = len(resultado.avaliacao.questoes)
+            nota_final = round((total_pontos / total_questoes) * 10, 2) if total_questoes > 0 else 0
+            
+            # Atualiza o resultado com a nova nota e o status final
+            resultado.nota = nota_final
+            resultado.status = 'Finalizado'
+            
+            db.session.commit()
+
+            # --- AUDITORIA: Registra a finalização da correção APÓS o commit ---
+            log_audit(
+                'GRADING_COMPLETED',
+                target_obj=resultado.avaliacao,
+                details={
+                    'aluno_id': resultado.aluno_id,
+                    'aluno_nome': resultado.aluno.nome,
+                    'resultado_id': resultado.id,
+                    'nota_final': nota_final
+                }
+            )
+
+            flash(f'Correção salva com sucesso! A nota final do aluno {resultado.aluno.nome} é {nota_final}.', 'success')
+            return redirect(url_for('detalhes_avaliacao', avaliacao_id=resultado.avaliacao_id))
+
+        except Exception as e:
+            db.session.rollback()
+            print(f"ERRO AO CORRIGIR RESPOSTAS: {e}")
+            flash(f'Ocorreu um erro inesperado ao salvar a correção: {e}', 'danger')
+            return redirect(url_for('corrigir_respostas', resultado_id=resultado_id))
+
+    # --- Lógica GET (carregamento da página) ---
+    # Filtra as respostas discursivas para exibir na página
+    respostas_discursivas = [r for r in resultado.respostas if r.questao.tipo == 'discursiva']
+    
     return render_template('app/correcao_respostas.html', resultado=resultado, respostas=respostas_discursivas)
 
 @app.route('/admin/relatorios')
@@ -1266,6 +1606,31 @@ def painel_relatorios():
     disciplinas = Disciplina.query.filter_by(escola_id=current_user.escola_id).order_by(Disciplina.nome).all()
     avaliacoes = Avaliacao.query.filter_by(escola_id=current_user.escola_id).order_by(Avaliacao.nome).all()
     return render_template('app/painel_relatorios.html', series=series, simulados=simulados, anos_letivos=anos_letivos, disciplinas=disciplinas, avaliacoes=avaliacoes)
+
+@app.route('/admin/auditoria')
+@login_required
+@role_required('coordenador')
+def painel_auditoria():
+    page = request.args.get('page', 1, type=int)
+    
+    # Filtros
+    action_filter = request.args.get('action')
+    user_filter = request.args.get('user')
+    
+    query = AuditLog.query.join(Usuario).filter(Usuario.escola_id == current_user.escola_id)
+    
+    if action_filter:
+        query = query.filter(AuditLog.action == action_filter)
+    if user_filter:
+        query = query.filter(AuditLog.user_email.ilike(f'%{user_filter}%'))
+
+    logs = query.order_by(AuditLog.timestamp.desc()).paginate(page=page, per_page=20)
+    
+    # Para popular os filtros no HTML
+    distinct_actions = db.session.query(AuditLog.action).distinct().order_by(AuditLog.action).all()
+    actions = [a[0] for a in distinct_actions]
+
+    return render_template('app/painel_auditoria.html', logs=logs, actions=actions, action_filter=action_filter, user_filter=user_filter)
 
 @app.route('/admin/relatorios/desempenho_por_assunto', methods=['POST'])
 @login_required
@@ -1572,41 +1937,103 @@ def relatorio_boletim_aluno():
 @login_required
 @role_required('aluno')
 def responder_avaliacao(avaliacao_id):
-    avaliacao = Avaliacao.query.filter_by(id=avaliacao_id, escola_id=current_user.escola_id).first_or_404()
-    resultado_existente = Resultado.query.filter_by(aluno_id=current_user.id, avaliacao_id=avaliacao.id).first()
-    if resultado_existente and resultado_existente.status == 'Finalizado':
-        flash('Você já finalizou esta avaliação.', 'info')
-        return redirect(url_for('listar_avaliacoes'))
+    # Otimiza a query para já carregar as questões junto com a avaliação
+    avaliacao = Avaliacao.query.options(
+        joinedload(Avaliacao.questoes)
+    ).filter_by(id=avaliacao_id, escola_id=current_user.escola_id).first_or_404()
+
+    # Busca por um resultado existente para este aluno e avaliação
+    resultado_existente = Resultado.query.filter_by(
+        aluno_id=current_user.id, 
+        avaliacao_id=avaliacao.id
+    ).first()
+
+    # Se o resultado já foi finalizado ou está pendente de correção, bloqueia o acesso
+    if resultado_existente and resultado_existente.status in ['Finalizado', 'Pendente']:
+        flash('Você já enviou esta avaliação. Não é possível respondê-la novamente.', 'info')
+        # Redireciona para a lista de modelos, que é a página inicial das avaliações para o aluno
+        return redirect(url_for('listar_modelos_avaliacao'))
+
     if request.method == 'POST':
-        resultado = resultado_existente
-        if not resultado:
-            resultado = Resultado(aluno_id=current_user.id, avaliacao_id=avaliacao.id, status='Iniciada', ano_letivo_id=avaliacao.ano_letivo_id)
-            db.session.add(resultado)
-            db.session.commit()
-        total_pontos = 0
-        possui_discursiva = False
-        for questao in avaliacao.questoes:
-            resposta_aluno_str = request.form.get(f'resposta_{questao.id}')
-            nova_resposta = Resposta(resultado_id=resultado.id, questao_id=questao.id, resposta_aluno=resposta_aluno_str)
-            if questao.tipo != 'discursiva':
-                if resposta_aluno_str == questao.gabarito:
-                    nova_resposta.status_correcao = 'correta'
-                    nova_resposta.pontos = 1.0
-                    total_pontos += 1.0
+        # Envolve toda a lógica de submissão em um bloco try/except
+        try:
+            resultado = resultado_existente
+            # Se não houver um resultado, cria um novo
+            if not resultado:
+                resultado = Resultado(
+                    aluno_id=current_user.id, 
+                    avaliacao_id=avaliacao.id, 
+                    status='Iniciada', 
+                    ano_letivo_id=avaliacao.ano_letivo_id
+                )
+                db.session.add(resultado)
+            
+            # Se o aluno está reenviando (ex: caiu a conexão), limpa as respostas antigas para evitar duplicatas
+            elif resultado.respostas.count() > 0:
+                Resposta.query.filter_by(resultado_id=resultado.id).delete()
+                db.session.flush() # Aplica a exclusão antes de continuar
+
+            total_pontos = 0
+            possui_discursiva = False
+            
+            # Itera sobre todas as questões da avaliação para processar as respostas
+            for questao in avaliacao.questoes:
+                resposta_aluno_str = request.form.get(f'resposta_{questao.id}')
+
+                # Cria o objeto da nova resposta
+                nova_resposta = Resposta(
+                    resultado=resultado, 
+                    questao_id=questao.id, 
+                    resposta_aluno=resposta_aluno_str
+                )
+                
+                # Correção automática para questões não discursivas
+                if questao.tipo != 'discursiva':
+                    if resposta_aluno_str == questao.gabarito:
+                        nova_resposta.status_correcao = 'correta'
+                        nova_resposta.pontos = 1.0
+                        total_pontos += 1.0
+                    else:
+                        nova_resposta.status_correcao = 'incorreta'
+                        nova_resposta.pontos = 0.0
                 else:
-                    nova_resposta.status_correcao = 'incorreta'
-                    nova_resposta.pontos = 0.0
-            else:
-                possui_discursiva = True
-                nova_resposta.status_correcao = 'nao_avaliada'
-            db.session.add(nova_resposta)
-        total_questoes = len(avaliacao.questoes)
-        resultado.nota = round((total_pontos / total_questoes) * 10, 2) if total_questoes > 0 else 0
-        resultado.status = 'Pendente' if possui_discursiva else 'Finalizado'
-        resultado.data_realizacao = datetime.utcnow()
-        db.session.commit()
-        flash('Avaliação enviada com sucesso!', 'success')
-        return redirect(url_for('meus_resultados'))
+                    possui_discursiva = True
+                    nova_resposta.status_correcao = 'nao_avaliada'
+                    nova_resposta.pontos = 0.0 # Pontos de discursivas são atribuídos na correção
+                
+                db.session.add(nova_resposta)
+
+            # Calcula a nota final e define o status
+            total_questoes = len(avaliacao.questoes)
+            resultado.nota = round((total_pontos / total_questoes) * 10, 2) if total_questoes > 0 else 0
+            resultado.status = 'Pendente' if possui_discursiva else 'Finalizado'
+            resultado.data_realizacao = datetime.utcnow()
+            
+            # Commita a transação inteira (resultado e todas as respostas)
+            db.session.commit()
+
+            # --- AUDITORIA: Registra a submissão da avaliação APÓS o commit bem-sucedido ---
+            log_audit(
+                'ASSESSMENT_SUBMITTED', 
+                target_obj=avaliacao, 
+                details={
+                    'resultado_id': resultado.id,
+                    'nota_parcial': resultado.nota,
+                    'status_final': resultado.status
+                }
+            )
+
+            flash('Avaliação enviada com sucesso!', 'success')
+            return redirect(url_for('meus_resultados'))
+
+        except Exception as e:
+            # Em caso de qualquer erro, desfaz toda a operação
+            db.session.rollback()
+            print(f"ERRO AO ENVIAR AVALIAÇÃO: {e}")
+            flash(f'Ocorreu um erro inesperado ao enviar sua avaliação. Por favor, tente novamente.', 'danger')
+            return redirect(url_for('responder_avaliacao', avaliacao_id=avaliacao_id))
+
+    # Lógica GET: Apenas renderiza a página da avaliação
     return render_template('app/responder_avaliacao.html', avaliacao=avaliacao, layout_simples=True)
 
 # --- ROTAS DE API ---

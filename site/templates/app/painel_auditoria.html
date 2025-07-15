@@ -1,0 +1,93 @@
+{% extends 'app_base.html' %}
+
+{% block title %}Relatório de Auditoria{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="h3 mb-4 text-gray-800">Relatório de Auditoria do Sistema</h1>
+
+    <div class="card shadow mb-4">
+        <div class="card-header">
+            <h6 class="m-0 font-weight-bold text-primary">Filtrar Registros</h6>
+        </div>
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('painel_auditoria') }}">
+                <div class="row">
+                    <div class="col-md-5">
+                        <div class="form-group">
+                            <label for="user">Usuário (Email)</label>
+                            <input type="text" id="user" name="user" class="form-control" value="{{ user_filter or '' }}" placeholder="parte.do.email@exemplo.com">
+                        </div>
+                    </div>
+                    <div class="col-md-5">
+                        <div class="form-group">
+                            <label for="action">Ação</label>
+                            <select id="action" name="action" class="form-control">
+                                <option value="">-- Todas as Ações --</option>
+                                {% for act in actions %}
+                                <option value="{{ act }}" {% if act == action_filter %}selected{% endif %}>{{ act.replace('_', ' ').title() }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary btn-block">Filtrar</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover" id="dataTable" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>Data/Hora</th>
+                            <th>Usuário</th>
+                            <th>Ação</th>
+                            <th>Objeto Alvo</th>
+                            <th>ID do Alvo</th>
+                            <th>IP</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in logs.items %}
+                        <tr>
+                            <td>{{ log.timestamp.strftime('%d/%m/%Y %H:%M:%S') }}</td>
+                            <td>{{ log.user_email }}</td>
+                            <td><span class="badge badge-info">{{ log.action.replace('_', ' ').title() }}</span></td>
+                            <td>{{ log.target_type or 'N/A' }}</td>
+                            <td>{{ log.target_id or 'N/A' }}</td>
+                            <td>{{ log.ip_address or 'N/A' }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center">Nenhum registro encontrado.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <nav>
+                <ul class="pagination justify-content-center">
+                    {% if logs.has_prev %}
+                        <li class="page-item"><a class="page-link" href="{{ url_for('painel_auditoria', page=logs.prev_num, action=action_filter, user=user_filter) }}">Anterior</a></li>
+                    {% endif %}
+                    {% for page_num in logs.iter_pages() %}
+                        {% if page_num %}
+                            <li class="page-item {% if logs.page == page_num %}active{% endif %}"><a class="page-link" href="{{ url_for('painel_auditoria', page=page_num, action=action_filter, user=user_filter) }}">{{ page_num }}</a></li>
+                        {% else %}
+                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                        {% endif %}
+                    {% endfor %}
+                    {% if logs.has_next %}
+                        <li class="page-item"><a class="page-link" href="{{ url_for('painel_auditoria', page=logs.next_num, action=action_filter, user=user_filter) }}">Próxima</a></li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+    </div>
+</div>
+{% endblock %}
