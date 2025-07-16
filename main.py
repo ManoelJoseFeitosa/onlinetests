@@ -59,6 +59,32 @@ login_manager.login_view = 'login'
 login_manager.login_message = "Por favor, faça o login para acessar esta página."
 login_manager.login_message_category = "info"
 
+# --- CONFIGURAÇÃO DOS PLANOS DE ASSINATURA ---
+# Centraliza as regras de cada plano para fácil manutenção.
+PLANS = {
+    'essencial': {
+        'questoes': 1000,
+        'coordenador': 2,
+        'professor': 50,
+        'aluno': 500,
+        'display_name': 'Plano Essencial'
+    },
+    'profissional': {
+        'questoes': 2000,
+        'coordenador': 4,
+        'professor': 100,
+        'aluno': 1000,
+        'display_name': 'Plano Profissional'
+    },
+    'enterprise': {
+        'questoes': float('inf'),  # 'inf' representa infinito (ilimitado)
+        'coordenador': float('inf'),
+        'professor': float('inf'),
+        'aluno': float('inf'),
+        'display_name': 'Plano Enterprise'
+    }
+}
+
 # ===================================================================
 # SEÇÃO 3: DECORATOR DE AUTORIZAÇÃO
 # ===================================================================
@@ -83,6 +109,48 @@ def superadmin_required(f):
             return redirect(url_for('dashboard'))
         return f(*args, **kwargs)
     return decorated_function
+
+def check_plan_limit(resource_type):
+    """
+    Decorator que verifica se a escola atingiu o limite de um recurso
+    específico (ex: 'aluno', 'questoes') antes de executar a rota.
+    """
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            # O superadmin não tem limites
+            if current_user.is_superadmin:
+                return f(*args, **kwargs)
+
+            escola = current_user.escola
+            if not escola or not escola.plano or escola.plano not in PLANS:
+                flash('Plano da escola inválido ou não encontrado. Contate o suporte.', 'danger')
+                return redirect(request.referrer or url_for('dashboard'))
+
+            plan_limits = PLANS[escola.plano]
+            limit = plan_limits.get(resource_type)
+            
+            # Se o limite for infinito, permite a ação imediatamente
+            if limit == float('inf'):
+                return f(*args, **kwargs)
+
+            # Conta a quantidade atual de recursos no banco de dados
+            if resource_type in ['aluno', 'professor', 'coordenador']:
+                current_count = Usuario.query.filter_by(escola_id=escola.id, role=resource_type).count()
+            elif resource_type == 'questoes':
+                current_count = db.session.query(Questao.id).join(Disciplina, Questao.disciplina_id == Disciplina.id).filter(Disciplina.escola_id == escola.id).count()
+            else:
+                return f(*args, **kwargs) # Tipo de recurso desconhecido, permite a passagem
+
+            # Se o limite foi atingido, bloqueia e exibe uma mensagem
+            if current_count >= limit:
+                resource_name = resource_type.replace('_', ' ').capitalize() + 's'
+                flash(f'Limite de {resource_name} ({int(limit)}) para o {plan_limits["display_name"]} foi atingido. Para adicionar mais, peça ao administrador para fazer um upgrade do plano.', 'warning')
+                return redirect(request.referrer or url_for('dashboard'))
+            
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
 
 # ===================================================================
 # SEÇÃO 4: MODELOS DO BANCO DE DADOS
@@ -137,6 +205,7 @@ class Escola(db.Model):
     cnpj = db.Column(db.String(18), unique=True, nullable=True)
     data_cadastro = db.Column(db.DateTime, default=datetime.utcnow)
     status = db.Column(db.String(20), default='ativo', nullable=False)
+    plano = db.Column(db.String(20), default='essencial', nullable=False)
 
 class Serie(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -456,15 +525,46 @@ def superadmin_painel():
     escolas_com_contagem = db.session.query(Escola, func.count(Usuario.id)).outerjoin(Usuario, and_(Escola.id == Usuario.escola_id, Usuario.role == 'aluno')).group_by(Escola.id).order_by(Escola.nome).all()
     return render_template('app/superadmin_painel.html', escolas_com_contagem=escolas_com_contagem)
 
-@app.route('/superadmin/escola/<int:escola_id>/toggle-status', methods=['POST'])
+@app.route('/superadmin/editar-escola/<int:escola_id>', methods=['GET', 'POST'])
 @login_required
 @superadmin_required
-def toggle_escola_status(escola_id):
+def editar_escola(escola_id):
     escola = Escola.query.get_or_404(escola_id)
-    escola.status = 'bloqueado' if escola.status == 'ativo' else 'ativo'
-    db.session.commit()
-    flash(f"Status da escola {escola.nome} alterado.", "info")
-    return redirect(url_for('superadmin_painel'))
+    coordenador = Usuario.query.filter_by(escola_id=escola.id, role='coordenador').first()
+    
+    # A verificação de coordenador foi movida para fora do POST para garantir que ele sempre exista
+    if not coordenador:
+        flash('Coordenador não encontrado para esta escola. Por favor, verifique os dados.', 'danger')
+        return redirect(url_for('superadmin_painel'))
+
+    if request.method == 'POST':
+        escola.nome = request.form.get('nome_escola')
+        escola.cnpj = request.form.get('cnpj_escola')
+        
+        # --- LINHA ADICIONADA AQUI ---
+        # Atualiza o plano da escola com base na seleção do formulário
+        escola.plano = request.form.get('plano_escola')
+        
+        coordenador.nome = request.form.get('nome_coordenador')
+        coordenador.email = request.form.get('email_coordenador')
+        
+        nova_senha = request.form.get('senha_coordenador')
+        if nova_senha:
+            coordenador.password = generate_password_hash(nova_senha, method='pbkdf2:sha256')
+            coordenador.precisa_trocar_senha = True
+            flash('Senha do coordenador redefinida com sucesso!', 'info')
+            
+        try:
+            db.session.commit()
+            log_audit('SCHOOL_UPDATE', target_obj=escola, details={'plano_alterado_para': escola.plano})
+            flash(f'Dados da escola "{escola.nome}" atualizados com sucesso!', 'success')
+            return redirect(url_for('superadmin_painel'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erro ao atualizar os dados: {e}', 'danger')
+            
+    # Passa a lista de planos para o template poder renderizar o dropdown
+    return render_template('app/editar_escola.html', escola=escola, coordenador=coordenador, plans=PLANS)
 
 @app.route('/superadmin/nova-escola', methods=['GET', 'POST'])
 @login_required
@@ -497,34 +597,6 @@ def superadmin_nova_escola():
         flash(f'Escola "{nome_escola}" e seu coordenador foram criados com sucesso!', 'success')
         return redirect(url_for('superadmin_painel'))
     return render_template('app/nova_escola.html')
-
-@app.route('/superadmin/editar-escola/<int:escola_id>', methods=['GET', 'POST'])
-@login_required
-@superadmin_required
-def editar_escola(escola_id):
-    escola = Escola.query.get_or_404(escola_id)
-    coordenador = Usuario.query.filter_by(escola_id=escola.id, role='coordenador').first()
-    if not coordenador:
-        flash('Coordenador não encontrado para esta escola. Por favor, verifique os dados.', 'danger')
-        return redirect(url_for('superadmin_painel'))
-    if request.method == 'POST':
-        escola.nome = request.form.get('nome_escola')
-        escola.cnpj = request.form.get('cnpj_escola')
-        coordenador.nome = request.form.get('nome_coordenador')
-        coordenador.email = request.form.get('email_coordenador')
-        nova_senha = request.form.get('senha_coordenador')
-        if nova_senha:
-            coordenador.password = generate_password_hash(nova_senha, method='pbkdf2:sha256')
-            coordenador.precisa_trocar_senha = True
-            flash('Senha do coordenador redefinida com sucesso!', 'info')
-        try:
-            db.session.commit()
-            flash(f'Dados da escola "{escola.nome}" atualizados com sucesso!', 'success')
-            return redirect(url_for('superadmin_painel'))
-        except Exception as e:
-            db.session.rollback()
-            flash(f'Erro ao atualizar os dados: {e}', 'danger')
-    return render_template('app/editar_escola.html', escola=escola, coordenador=coordenador)
 
 # --- Rotas de Autenticação e Dashboard ---
 @app.route('/login', methods=['GET', 'POST'])
@@ -635,6 +707,7 @@ def gerenciar_ciclo():
 @login_required
 @role_required('coordenador')
 def gerenciar_usuarios():
+    # Garante que existe um ano letivo ativo para associar novas matrículas.
     ano_letivo_ativo = AnoLetivo.query.filter_by(escola_id=current_user.escola_id, status='ativo').first()
     if not ano_letivo_ativo:
         flash('Nenhum ano letivo ativo encontrado. Por favor, crie um na página "Gerenciar Ciclo".', 'warning')
@@ -645,21 +718,19 @@ def gerenciar_usuarios():
         if 'submit_pesquisa' in request.form:
             email_pesquisa = request.form.get('email_pesquisa')
             if not email_pesquisa:
-                 flash('Por favor, digite um e-mail para pesquisar.', 'warning')
-                 return redirect(url_for('gerenciar_usuarios'))
+                flash('Por favor, digite um e-mail para pesquisar.', 'warning')
+                return redirect(url_for('gerenciar_usuarios'))
 
-            # Melhoria: Busca case-insensitive para o e-mail
+            # Busca o usuário pelo e-mail (sem diferenciar maiúsculas/minúsculas)
             usuario = Usuario.query.filter(
                 func.lower(Usuario.email) == func.lower(email_pesquisa),
                 Usuario.escola_id == current_user.escola_id
             ).first()
 
             if usuario:
-                # AUDITORIA: Registra a busca por um usuário específico (opcional, mas bom para rastreabilidade)
                 log_audit('USER_SEARCH_SUCCESS', details={'searched_email': email_pesquisa, 'found_user_id': usuario.id})
                 return redirect(url_for('editar_usuario', user_id=usuario.id))
             else:
-                # AUDITORIA: Registra que uma busca foi feita mas não encontrou resultados
                 log_audit('USER_SEARCH_NOT_FOUND', details={'searched_email': email_pesquisa})
                 flash('Nenhum usuário encontrado com este e-mail nesta escola.', 'danger')
 
@@ -674,10 +745,24 @@ def gerenciar_usuarios():
                 flash('Todos os campos obrigatórios devem ser preenchidos.', 'warning')
                 return redirect(url_for('gerenciar_usuarios'))
 
-            # Melhoria: Verifica se o e-mail já existe de forma case-insensitive
+            # --- VERIFICAÇÃO DE LIMITE DO PLANO ---
+            escola = current_user.escola
+            plan_limits = PLANS[escola.plano]
+            limit = plan_limits.get(role)
+
+            # A verificação só é feita se o limite não for infinito
+            if limit != float('inf'):
+                current_count = Usuario.query.filter_by(escola_id=escola.id, role=role).count()
+                if current_count >= limit:
+                    flash(f'Limite de {role.capitalize()}s ({int(limit)}) para o {plan_limits["display_name"]} foi atingido.', 'danger')
+                    return redirect(url_for('gerenciar_usuarios'))
+            # --- FIM DA VERIFICAÇÃO ---
+
+            # Verifica se o e-mail já existe no sistema
             if Usuario.query.filter(func.lower(Usuario.email) == func.lower(email)).first():
                 flash('Este e-mail já está cadastrado no sistema.', 'warning')
             else:
+                # Tenta criar o usuário e suas associações em uma única transação
                 try:
                     novo_usuario = Usuario(
                         nome=nome,
@@ -691,12 +776,8 @@ def gerenciar_usuarios():
                     if role == 'aluno':
                         serie_id = request.form.get('serie_id', type=int)
                         if not serie_id:
-                            flash('A série é obrigatória para cadastrar um aluno.', 'danger')
-                            # O rollback acontece no bloco except
-                            raise ValueError("Série não fornecida para o aluno.")
-                        
-                        # O flush atribui um ID ao novo_usuario antes do commit final
-                        db.session.flush()
+                            raise ValueError("A série é obrigatória para cadastrar um aluno.")
+                        db.session.flush()  # Atribui um ID ao novo_usuario para usar na matrícula
                         nova_matricula = Matricula(aluno_id=novo_usuario.id, serie_id=serie_id, ano_letivo_id=ano_letivo_ativo.id)
                         db.session.add(nova_matricula)
 
@@ -708,25 +789,22 @@ def gerenciar_usuarios():
                         if series_ids:
                             novo_usuario.series_lecionadas = Serie.query.filter(Serie.id.in_(series_ids)).all()
                     
-                    # Se tudo deu certo até aqui, faz o commit
                     db.session.commit()
-
-                    # AUDITORIA: Registra a criação do novo usuário APÓS o commit bem-sucedido
                     log_audit('USER_CREATE', target_obj=novo_usuario, details={'role': role})
-                    
                     flash(f'Usuário {nome} ({role}) criado com sucesso!', 'success')
 
                 except Exception as e:
-                    # Em caso de qualquer erro, desfaz todas as operações
-                    db.session.rollback()
-                    print(f"Erro ao criar usuário: {e}") # Log do erro no console do servidor
-                    flash('Ocorreu um erro ao criar o usuário. Tente novamente.', 'danger')
+                    db.session.rollback() # Desfaz todas as operações em caso de erro
+                    print(f"Erro ao criar usuário: {e}")
+                    flash(f'Ocorreu um erro ao criar o usuário: {e}', 'danger')
 
-                return redirect(url_for('gerenciar_usuarios'))
+            return redirect(url_for('gerenciar_usuarios'))
 
     # --- Lógica GET (carregamento da página) ---
+    # Busca os dados necessários para popular os formulários e a lista de usuários
     series = Serie.query.filter_by(escola_id=current_user.escola_id).order_by(Serie.nome).all()
     disciplinas = Disciplina.query.filter_by(escola_id=current_user.escola_id).order_by(Disciplina.nome).all()
+    
     # Otimização: Carrega a série atual do aluno junto com a query principal para evitar múltiplas buscas no template
     usuarios = Usuario.query.options(joinedload(Usuario.matriculas).joinedload(Matricula.serie))\
         .filter_by(escola_id=current_user.escola_id).order_by(Usuario.nome).all()
@@ -915,6 +993,7 @@ def gerenciar_academico():
 @app.route('/professor/criar_questao', methods=['GET', 'POST'])
 @login_required
 @role_required('professor', 'coordenador')
+@check_plan_limit('questoes')
 def criar_questao():
     if request.method == 'POST':
         # Envolve toda a lógica de criação em um bloco try/except
