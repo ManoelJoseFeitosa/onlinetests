@@ -571,32 +571,71 @@ def editar_escola(escola_id):
 @superadmin_required
 def superadmin_nova_escola():
     if request.method == 'POST':
+        # 1. Coleta de dados do formulário
         nome_escola = request.form.get('nome_escola')
         cnpj_escola = request.form.get('cnpj_escola')
+        plano_selecionado = request.form.get('plano')
         nome_coordenador = request.form.get('nome_coordenador')
         email_coordenador = request.form.get('email_coordenador')
         senha_coordenador = request.form.get('senha_coordenador')
-        if not all([nome_escola, nome_coordenador, email_coordenador, senha_coordenador]):
-            flash("Todos os campos são obrigatórios.", "danger")
+
+        # 2. Validação dos dados recebidos
+        if not all([nome_escola, plano_selecionado, nome_coordenador, email_coordenador, senha_coordenador]):
+            flash("Todos os campos, exceto CNPJ, são obrigatórios.", "danger")
             return redirect(url_for('superadmin_nova_escola'))
+        
+        # Validação extra para garantir que o plano enviado existe na nossa configuração
+        if plano_selecionado not in PLANS:
+            flash("O plano selecionado é inválido. Por favor, tente novamente.", "danger")
+            return redirect(url_for('superadmin_nova_escola'))
+
         if Escola.query.filter_by(nome=nome_escola).first() or (cnpj_escola and Escola.query.filter_by(cnpj=cnpj_escola).first()):
             flash('Uma escola com este nome ou CNPJ já existe.', 'danger')
             return redirect(url_for('superadmin_nova_escola'))
+            
         if Usuario.query.filter_by(email=email_coordenador).first():
             flash('Este e-mail já está sendo utilizado por outro usuário.', 'danger')
             return redirect(url_for('superadmin_nova_escola'))
-        nova_escola = Escola(nome=nome_escola, cnpj=cnpj_escola)
-        db.session.add(nova_escola)
-        db.session.flush()
-        ano_atual = datetime.now().year
-        novo_ano_letivo = AnoLetivo(ano=ano_atual, escola_id=nova_escola.id, status='ativo')
-        db.session.add(novo_ano_letivo)
-        novo_coordenador = Usuario(nome=nome_coordenador, email=email_coordenador, password=generate_password_hash(senha_coordenador, method='pbkdf2:sha256'), role='coordenador', escola_id=nova_escola.id, precisa_trocar_senha=True)
-        db.session.add(novo_coordenador)
-        db.session.commit()
-        flash(f'Escola "{nome_escola}" e seu coordenador foram criados com sucesso!', 'success')
-        return redirect(url_for('superadmin_painel'))
-    return render_template('app/nova_escola.html')
+
+        # 3. Criação dos objetos no banco de dados (transação)
+        try:
+            # Cria a escola com o plano selecionado
+            nova_escola = Escola(nome=nome_escola, cnpj=cnpj_escola, plano=plano_selecionado)
+            db.session.add(nova_escola)
+            db.session.flush() # Garante que a nova_escola tenha um ID para as próximas etapas
+
+            # Cria o ano letivo inicial para a nova escola
+            ano_atual = datetime.now().year
+            novo_ano_letivo = AnoLetivo(ano=ano_atual, escola_id=nova_escola.id, status='ativo')
+            db.session.add(novo_ano_letivo)
+
+            # Cria o usuário coordenador principal
+            novo_coordenador = Usuario(
+                nome=nome_coordenador, 
+                email=email_coordenador, 
+                password=generate_password_hash(senha_coordenador, method='pbkdf2:sha256'), 
+                role='coordenador', 
+                escola_id=nova_escola.id, 
+                precisa_trocar_senha=True
+            )
+            db.session.add(novo_coordenador)
+            
+            # Confirma todas as operações no banco
+            db.session.commit()
+            
+            # Auditoria e feedback de sucesso
+            log_audit('SCHOOL_CREATE', target_obj=nova_escola, details={'plano_inicial': plano_selecionado})
+            flash(f'Escola "{nome_escola}" e seu coordenador foram criados com sucesso!', 'success')
+            return redirect(url_for('superadmin_painel'))
+
+        except Exception as e:
+            # Em caso de qualquer erro, desfaz todas as operações
+            db.session.rollback()
+            flash(f"Ocorreu um erro ao criar a escola: {e}", "danger")
+            return redirect(url_for('superadmin_nova_escola'))
+
+    # Para a requisição GET, passa a lista de planos para o template renderizar o formulário
+    return render_template('app/nova_escola.html', plans=PLANS)
 
 @app.route('/superadmin/escola/<int:escola_id>/toggle-status', methods=['POST'])
 @login_required
