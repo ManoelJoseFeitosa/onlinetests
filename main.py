@@ -598,6 +598,25 @@ def superadmin_nova_escola():
         return redirect(url_for('superadmin_painel'))
     return render_template('app/nova_escola.html')
 
+@app.route('/superadmin/escola/<int:escola_id>/toggle-status', methods=['POST'])
+@login_required
+@superadmin_required
+def toggle_escola_status(escola_id):
+    escola = Escola.query.get_or_404(escola_id)
+    
+    # Lógica para alternar o status
+    if escola.status == 'ativo':
+        escola.status = 'bloqueado'
+        log_audit('SCHOOL_STATUS_CHANGED', target_obj=escola, details={'novo_status': 'bloqueado'})
+    else:
+        escola.status = 'ativo'
+        log_audit('SCHOOL_STATUS_CHANGED', target_obj=escola, details={'novo_status': 'ativo'})
+        
+    db.session.commit()
+    
+    flash(f"Status da escola '{escola.nome}' alterado para {escola.status}.", "info")
+    return redirect(url_for('superadmin_painel'))
+
 # --- Rotas de Autenticação e Dashboard ---
 @app.route('/login', methods=['GET', 'POST'])
 def login():
