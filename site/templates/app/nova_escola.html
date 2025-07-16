@@ -3,53 +3,69 @@
 {% block title %}Cadastrar Nova Escola{% endblock %}
 
 {% block content %}
-<h1 class="h2 mb-4">Cadastrar Nova Escola e Coordenador 🏫</h1>
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">Cadastrar Nova Escola e Coordenador <i class="bi bi-building-fill-add"></i></h2>
+        <!-- BOTÃO PARA VOLTAR ADICIONADO AQUI -->
+        <a href="{{ url_for('superadmin_painel') }}" class="btn btn-outline-secondary">&larr; Voltar ao Painel</a>
+    </div>
+    <hr>
 
-<div class="card shadow-sm">
-    <div class="card-body">
-        <form method="POST">
-            <fieldset class="mb-4">
-                <legend class="fs-5 border-bottom pb-2 mb-3">Dados da Escola</legend>
-                <div class="row">
-                    <div class="col-md-8 mb-3">
-                        <label for="nome_escola" class="form-label">Nome da Nova Escola</label>
-                        <input type="text" class="form-control" id="nome_escola" name="nome_escola" required>
+    <div class="card shadow-sm">
+        <div class="card-body p-4">
+            <form method="POST">
+                <fieldset class="mb-4">
+                    <legend class="fs-5 border-bottom pb-2 mb-3">Dados da Escola</legend>
+                    <div class="row">
+                        <div class="col-md-8 mb-3">
+                            <label for="nome_escola" class="form-label">Nome da Nova Escola</label>
+                            <input type="text" class="form-control" id="nome_escola" name="nome_escola" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="cnpj_escola" class="form-label">CNPJ (Opcional)</label>
+                            <input type="text" class="form-control" id="cnpj_escola" name="cnpj_escola" placeholder="XX.XXX.XXX/XXXX-XX">
+                        </div>
                     </div>
-                    <div class="col-md-4 mb-3">
-                        <label for="cnpj_escola" class="form-label">CNPJ (Opcional)</label>
-                        <input type="text" class="form-control" id="cnpj_escola" name="cnpj_escola" placeholder="XX.XXX.XXX/XXXX-XX">
+                    <!-- CAMPO DE SELEÇÃO DE PLANO ADICIONADO AQUI -->
+                    <div class="form-group mb-3">
+                        <label for="plano" class="form-label">Plano Inicial</label>
+                        <select class="form-select" id="plano" name="plano" required>
+                            <option value="" disabled selected>Selecione um plano</option>
+                            {% for plan_key, plan_details in plans.items() %}
+                                <option value="{{ plan_key }}">{{ plan_details.display_name }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text">Selecione o plano de assinatura inicial para esta escola.</div>
                     </div>
-                    </div>
-            </fieldset>
+                </fieldset>
 
-            <fieldset>
-                <legend class="fs-5 border-bottom pb-2 mb-3">Dados do Coordenador Principal</legend>
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label for="nome_coordenador" class="form-label">Nome do Coordenador</label>
-                        <input type="text" class="form-control" id="nome_coordenador" name="nome_coordenador" required>
+                <fieldset>
+                    <legend class="fs-5 border-bottom pb-2 mb-3">Dados do Coordenador Principal</legend>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="nome_coordenador" class="form-label">Nome do Coordenador</label>
+                            <input type="text" class="form-control" id="nome_coordenador" name="nome_coordenador" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="email_coordenador" class="form-label">E-mail do Coordenador</label>
+                            <input type="email" class="form-control" id="email_coordenador" name="email_coordenador" required>
+                        </div>
                     </div>
-                    <div class="col-md-6 mb-3">
-                        <label for="email_coordenador" class="form-label">E-mail do Coordenador</label>
-                        <input type="email" class="form-control" id="email_coordenador" name="email_coordenador" required>
+                    <div class="mb-3">
+                        <label for="senha_coordenador" class="form-label">Senha Provisória</label>
+                        <input type="password" class="form-control" id="senha_coordenador" name="senha_coordenador" required>
+                        <div class="form-text">O coordenador será solicitado a trocar esta senha no primeiro login.</div>
                     </div>
+                </fieldset>
+
+                <div class="text-center mt-4">
+                    <a href="{{ url_for('superadmin_painel') }}" class="btn btn-secondary">Cancelar</a>
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="bi bi-check-circle-fill me-2"></i>Salvar Escola e Coordenador
+                    </button>
                 </div>
-                <div class="mb-3">
-                    <label for="senha_coordenador" class="form-label">Senha Provisória</label>
-                    <input type="password" class="form-control" id="senha_coordenador" name="senha_coordenador" required>
-                    <div class="form-text">O coordenador será solicitado a trocar esta senha no primeiro login.</div>
-                </div>
-            </fieldset>
-
-            <hr class="my-4">
-
-            <div class="d-flex justify-content-end">
-                <a href="{{ url_for('superadmin_painel') }}" class="btn btn-secondary me-2">Cancelar</a>
-                <button type="submit" class="btn btn-primary">
-                    <i class="bi bi-check-lg me-1"></i> Salvar Escola e Coordenador
-                </button>
-            </div>
-        </form>
+            </form>
+        </div>
     </div>
 </div>
 {% endblock %}
