@@ -155,7 +155,7 @@ def check_plan_limit(resource_type):
 # ===================================================================
 # SEÇÃO 4: MODELOS DO BANCO DE DADOS
 # ===================================================================
-# (Seu código de modelos está correto e permanece o mesmo)
+
 simulado_disciplinas = db.Table('simulado_disciplinas',
     db.Column('avaliacao_id', db.Integer, db.ForeignKey('avaliacao.id'), primary_key=True),
     db.Column('disciplina_id', db.Integer, db.ForeignKey('disciplina.id'), primary_key=True)
