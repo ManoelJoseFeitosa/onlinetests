@@ -1429,9 +1429,19 @@ def criar_modelo_avaliacao():
 def iniciar_avaliacao_dinamica(modelo_id):
     modelo = ModeloAvaliacao.query.get_or_404(modelo_id)
     ano_letivo_ativo = AnoLetivo.query.filter_by(escola_id=current_user.escola_id, status='ativo').first()
-    avaliacao_existente = Avaliacao.query.join(Resultado).filter(Avaliacao.modelo_id == modelo_id, Avaliacao.is_dinamica == True, Resultado.aluno_id == current_user.id, Resultado.status != 'Finalizado').first()
+    
+    # Verifica se já existe uma avaliação em andamento para este modelo/aluno
+    avaliacao_existente = Avaliacao.query.join(Resultado).filter(
+        Avaliacao.modelo_id == modelo_id, 
+        Avaliacao.is_dinamica == True, 
+        Resultado.aluno_id == current_user.id, 
+        Resultado.status != 'Finalizado'
+    ).first()
+
     if avaliacao_existente:
         return redirect(url_for('responder_avaliacao', avaliacao_id=avaliacao_existente.id))
+
+    # Lógica para selecionar questões (continua a mesma)
     regras = modelo.regras_selecao
     questoes_selecionadas = []
     disciplinas_incluidas_simulado = []
@@ -1441,23 +1451,48 @@ def iniciar_avaliacao_dinamica(modelo_id):
         disciplinas_incluidas_simulado.append(Disciplina.query.get(disciplina_id))
         for nivel, quantidade in regra_disciplina['niveis'].items():
             if quantidade > 0:
-                questoes_disponiveis = Questao.query.filter(Questao.disciplina_id == disciplina_id, Questao.serie_id == modelo.serie_id, Questao.assunto.in_(assuntos), Questao.nivel == nivel).all()
+                questoes_disponiveis = Questao.query.filter(
+                    Questao.disciplina_id == disciplina_id, 
+                    Questao.serie_id == modelo.serie_id, 
+                    Questao.assunto.in_(assuntos), 
+                    Questao.nivel == nivel
+                ).all()
                 if len(questoes_disponiveis) < quantidade:
                     flash(f"Não há questões suficientes (nível: {nivel}, disciplina: {Disciplina.query.get(disciplina_id).nome}) para gerar sua avaliação. Contate o professor.", "danger")
                     return redirect(url_for('listar_modelos_avaliacao'))
                 questoes_selecionadas.extend(random.sample(questoes_disponiveis, quantidade))
+    
     if not questoes_selecionadas:
         flash("Não foi possível gerar a avaliação pois nenhuma questão foi encontrada com as regras definidas.", "danger")
         return redirect(url_for('listar_modelos_avaliacao'))
+    
     random.shuffle(questoes_selecionadas)
-    nova_avaliacao = Avaliacao(nome=f"{modelo.nome} - {current_user.nome}", tipo=modelo.tipo, serie_id=modelo.serie_id, disciplina_id=regras['disciplinas'][0]['id'] if modelo.tipo == 'prova' else None, criador_id=modelo.criador_id, escola_id=modelo.escola_id, ano_letivo_id=ano_letivo_ativo.id, is_dinamica=True, modelo_id=modelo.id)
+    
+    # --- CORREÇÃO APLICADA AQUI ---
+    # Agora, o tempo_limite do modelo é copiado para a nova avaliação.
+    nova_avaliacao = Avaliacao(
+        nome=f"{modelo.nome} - {current_user.nome}", 
+        tipo=modelo.tipo, 
+        tempo_limite=modelo.tempo_limite,  # <-- LINHA CORRIGIDA/ADICIONADA
+        serie_id=modelo.serie_id, 
+        disciplina_id=regras['disciplinas'][0]['id'] if modelo.tipo == 'prova' else None, 
+        criador_id=modelo.criador_id, 
+        escola_id=modelo.escola_id, 
+        ano_letivo_id=ano_letivo_ativo.id, 
+        is_dinamica=True, 
+        modelo_id=modelo.id
+    )
+    
     if modelo.tipo == 'simulado':
         nova_avaliacao.disciplinas_simulado = disciplinas_incluidas_simulado
+        
     nova_avaliacao.questoes = questoes_selecionadas
     novo_resultado = Resultado(aluno_id=current_user.id, avaliacao=nova_avaliacao, ano_letivo_id=ano_letivo_ativo.id, status="Iniciada")
+    
     db.session.add(nova_avaliacao)
     db.session.add(novo_resultado)
     db.session.commit()
+    
     return redirect(url_for('responder_avaliacao', avaliacao_id=nova_avaliacao.id))
 
 @app.route('/modelos-avaliacoes')
@@ -1546,29 +1581,52 @@ def criar_recuperacao():
     if not ano_letivo_ativo:
         flash('Não é possível criar avaliações sem um ano letivo ativo.', 'warning')
         return redirect(url_for('dashboard'))
+
     if request.method == 'POST':
         nome_avaliacao = request.form.get('nome_avaliacao')
         disciplina_id = request.form.get('disciplina_id', type=int)
         serie_id = request.form.get('serie_id', type=int)
         alunos_ids = request.form.getlist('alunos_ids', type=int)
+        
+        # --- CORREÇÃO APLICADA AQUI ---
+        # Captura o tempo limite do formulário.
+        tempo_limite_str = request.form.get('tempo_limite')
+        tempo_limite = int(tempo_limite_str) if tempo_limite_str and tempo_limite_str.isdigit() else None
+        
         if not all([nome_avaliacao, disciplina_id, serie_id, alunos_ids]):
             flash('Nome, disciplina, série e ao menos um aluno são obrigatórios.', 'danger')
             return redirect(url_for('criar_recuperacao'))
-        qtd_facil = request.form.get('qtd_facil', type=int, default=0)
-        qtd_media = request.form.get('qtd_media', type=int, default=0)
-        qtd_dificil = request.form.get('qtd_dificil', type=int, default=0)
-        assuntos = request.form.getlist('assuntos')
+            
+        # AVISO: A lógica de seleção de questões para recuperação ainda precisa ser implementada.
+        # Por enquanto, estamos criando uma prova vazia.
         questoes_selecionadas = []
         alunos_selecionados = Usuario.query.filter(Usuario.id.in_(alunos_ids)).all()
-        nova_recuperacao = Avaliacao(nome=nome_avaliacao, tipo='recuperacao', disciplina_id=disciplina_id, serie_id=serie_id, criador_id=current_user.id, escola_id=current_user.escola_id, ano_letivo_id=ano_letivo_ativo.id, is_dinamica=False)
+        
+        # Adiciona o tempo_limite ao criar o objeto de avaliação.
+        nova_recuperacao = Avaliacao(
+            nome=nome_avaliacao, 
+            tipo='recuperacao', 
+            tempo_limite=tempo_limite, # <-- LINHA CORRIGIDA/ADICIONADA
+            disciplina_id=disciplina_id, 
+            serie_id=serie_id, 
+            criador_id=current_user.id, 
+            escola_id=current_user.escola_id, 
+            ano_letivo_id=ano_letivo_ativo.id, 
+            is_dinamica=False
+        )
+        
         nova_recuperacao.questoes = questoes_selecionadas
         nova_recuperacao.alunos_designados = alunos_selecionados
+        
         db.session.add(nova_recuperacao)
         db.session.commit()
+        
         flash(f'Prova de recuperação "{nome_avaliacao}" criada e designada com sucesso!', 'success')
-        return redirect(url_for('listar_avaliacoes'))
+        return redirect(url_for('listar_modelos_avaliacao'))
+
     series = Serie.query.filter_by(escola_id=current_user.escola_id).order_by(Serie.nome).all()
     disciplinas = Disciplina.query.filter_by(escola_id=current_user.escola_id).order_by(Disciplina.nome).all()
+    
     return render_template('app/criar_recuperacao.html', series=series, disciplinas=disciplinas)
 
 @app.route('/avaliacoes')
