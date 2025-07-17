@@ -73,6 +73,16 @@
         <hr>
         <div class="text-start my-4">
             <h4>Atenção: Regras da Avaliação</h4>
+            
+            <!-- INFORMAÇÃO DO TEMPO LIMITE ADICIONADA AQUI -->
+            <p class="mb-2"><strong><i class="bi bi-stopwatch"></i> Tempo Limite:</strong> 
+                {% if avaliacao.tempo_limite and avaliacao.tempo_limite > 0 %}
+                    {{ avaliacao.tempo_limite }} minutos.
+                {% else %}
+                    Ilimitado.
+                {% endif %}
+            </p>
+            
             <p>Para garantir a lisura do processo, esta avaliação será realizada em <strong>modo de tela cheia</strong>. As seguintes regras se aplicam:</p>
             <ul>
                 <li>Você não poderá sair do modo de tela cheia durante a prova.</li>
