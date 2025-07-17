@@ -11,12 +11,14 @@
     <hr>
 
     <form method="POST">
+        <!-- Card para Seleção de Alunos -->
         <div class="card shadow-sm mb-4">
             <div class="card-header"><h5 class="mb-0">1. Seleção de Alunos</h5></div>
             <div class="card-body">
                 <div class="mb-3">
                     <label for="serie_id_alunos" class="form-label">Selecione a Série para listar os alunos</label>
-                    <select id="serie_id_alunos" name="serie_id" class="form-select" required>
+                    <!-- Este select agora tem um nome diferente para não conflitar, ele serve apenas para o filtro -->
+                    <select id="serie_id_alunos" class="form-select" required>
                         <option value="" selected disabled>-- Selecione uma Série --</option>
                         {% for serie in series %}<option value="{{ serie.id }}">{{ serie.nome }}</option>{% endfor %}
                     </select>
@@ -24,21 +26,45 @@
                 <div id="lista_alunos_container" class="border p-3 rounded" style="display:none;">
                     <label class="form-label fw-bold">Alunos para Recuperação (marque todos que precisar)</label>
                     <div id="checkbox_alunos" class="mt-2" style="max-height: 200px; overflow-y: auto;">
-                        </div>
+                        <!-- Alunos serão inseridos aqui pelo JavaScript -->
+                    </div>
                 </div>
             </div>
         </div>
 
+        <!-- Card para Detalhes da Prova -->
         <div class="card shadow-sm">
             <div class="card-header"><h5 class="mb-0">2. Detalhes e Questões da Prova</h5></div>
             <div class="card-body">
+                <div class="row">
+                    <div class="col-md-8 mb-3">
+                        <label for="nome_avaliacao" class="form-label">Nome da Avaliação</label>
+                        <input type="text" name="nome_avaliacao" id="nome_avaliacao" class="form-control" required placeholder="Ex: Recuperação Final - Biologia">
+                    </div>
+                    <!-- CAMPO DE TEMPO LIMITE ADICIONADO -->
+                    <div class="col-md-4 mb-3">
+                        <label for="tempo_limite" class="form-label">Tempo Limite (em minutos)</label>
+                        <input type="number" class="form-control" id="tempo_limite" name="tempo_limite" placeholder="Opcional">
+                    </div>
+                </div>
+                <!-- CAMPO DE DISCIPLINA ADICIONADO -->
                 <div class="mb-3">
-                    <label for="nome_avaliacao" class="form-label">Nome da Avaliação</label>
-                    <input type="text" name="nome_avaliacao" class="form-control" required placeholder="Ex: Recuperação Final - Biologia">
+                     <label for="disciplina_id" class="form-label">Disciplina da Recuperação</label>
+                     <select class="form-select" id="disciplina_id" name="disciplina_id" required>
+                         <option value="" selected disabled>-- Selecione uma Disciplina --</option>
+                          {% for disciplina in disciplinas %}
+                             <option value="{{ disciplina.id }}">{{ disciplina.nome }}</option>
+                         {% endfor %}
+                     </select>
                 </div>
+                 <!-- AVISO SOBRE QUESTÕES -->
+                <div class="alert alert-info mt-3">
+                    <strong>Atenção:</strong> A funcionalidade para adicionar questões específicas a esta prova de recuperação será implementada em uma futura atualização. Por enquanto, a prova será criada sem questões.
                 </div>
+            </div>
         </div>
 
+        <!-- Botão de Envio -->
         <div class="text-center mt-4">
             <button type="submit" class="btn btn-primary btn-lg">Criar e Designar Recuperação</button>
         </div>
@@ -53,8 +79,16 @@ document.addEventListener('DOMContentLoaded', function() {
     const containerAlunos = document.getElementById('lista_alunos_container');
     const checkboxContainer = document.getElementById('checkbox_alunos');
 
+    // Adiciona um campo hidden para armazenar o serie_id para o formulário
+    const hiddenSerieIdInput = document.createElement('input');
+    hiddenSerieIdInput.type = 'hidden';
+    hiddenSerieIdInput.name = 'serie_id';
+    document.querySelector('form').appendChild(hiddenSerieIdInput);
+
     serieSelect.addEventListener('change', function() {
         const serieId = this.value;
+        hiddenSerieIdInput.value = serieId; // Atualiza o valor do campo hidden
+
         if (!serieId) {
             containerAlunos.style.display = 'none';
             return;
@@ -63,7 +97,6 @@ document.addEventListener('DOMContentLoaded', function() {
         checkboxContainer.innerHTML = '<p>Carregando alunos...</p>';
         containerAlunos.style.display = 'block';
 
-        // Usa uma API para buscar alunos por série
         fetch(`/api/alunos_por_serie/${serieId}`)
             .then(response => response.ok ? response.json() : Promise.reject('Erro de rede'))
             .then(data => {
