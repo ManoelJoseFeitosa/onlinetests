@@ -28,6 +28,7 @@
                             <p class="card-text small text-muted mb-3">
                                 <strong>Série:</strong> {{ item.serie.nome }} <br>
                                 {% set total_questoes = namespace(value=0) %}
+                                <!-- CORREÇÃO APLICADA AQUI: Verifica se 'regras_selecao' existe -->
                                 {% if item.regras_selecao and item.regras_selecao.disciplinas %}
                                     {% for disc in item.regras_selecao.disciplinas %}
                                         {% set total_questoes.value = total_questoes.value + (disc.niveis.facil or 0) + (disc.niveis.media or 0) + (disc.niveis.dificil or 0) %}
