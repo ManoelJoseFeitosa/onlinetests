@@ -27,21 +27,28 @@
                     </div>
                 </fieldset>
 
-                <!-- ================================================= -->
-                <!-- NOVO CAMPO DE PLANO ADICIONADO AQUI -->
-                <!-- ================================================= -->
                 <fieldset class="mb-4">
-                    <legend class="fs-5 border-bottom pb-2 mb-3">Plano e Assinatura</legend>
-                    <div class="form-group mb-3">
-                        <label for="plano_escola" class="form-label">Plano de Assinatura</label>
-                        <select class="form-select" id="plano_escola" name="plano_escola" required>
-                            {% for plan_key, plan_details in plans.items() %}
-                                <option value="{{ plan_key }}" {% if escola.plano == plan_key %}selected{% endif %}>
-                                    {{ plan_details.display_name }}
-                                </option>
-                            {% endfor %}
-                        </select>
-                        <div class="form-text">Selecione o nível de acesso e os limites para esta escola.</div>
+                    <legend class="fs-5 border-bottom pb-2 mb-3">Configurações da Assinatura</legend>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="plano_escola" class="form-label">Plano de Assinatura</label>
+                            <select class="form-select" id="plano_escola" name="plano_escola" required>
+                                {% for plan_key, plan_details in plans.items() %}
+                                    <option value="{{ plan_key }}" {% if escola.plano == plan_key %}selected{% endif %}>
+                                        {{ plan_details.display_name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">Selecione o nível de acesso e os limites para esta escola.</div>
+                        </div>
+
+                        <!-- CAMPO DE MÉDIA PARA RECUPERAÇÃO ADICIONADO AQUI -->
+                        <div class="col-md-6 mb-3">
+                            <label for="media_recuperacao" class="form-label">Média para Recuperação</label>
+                            <input type="number" class="form-control" id="media_recuperacao" name="media_recuperacao" 
+                                   step="0.1" min="0" max="10" value="{{ escola.media_recuperacao or 6.0 }}" required>
+                            <div class="form-text">Nota mínima para aprovação.</div>
+                        </div>
                     </div>
                 </fieldset>
 

@@ -206,6 +206,7 @@ class Escola(db.Model):
     data_cadastro = db.Column(db.DateTime, default=datetime.utcnow)
     status = db.Column(db.String(20), default='ativo', nullable=False)
     plano = db.Column(db.String(20), default='essencial', nullable=False)
+    media_recuperacao = db.Column(db.Float, nullable=False, default=6.0, server_default='6.0')
 
 class Serie(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -544,7 +545,7 @@ def editar_escola(escola_id):
         # --- LINHA ADICIONADA AQUI ---
         # Atualiza o plano da escola com base na seleção do formulário
         escola.plano = request.form.get('plano_escola')
-        
+        escola.media_recuperacao = request.form.get('media_recuperacao', type=float)        
         coordenador.nome = request.form.get('nome_coordenador')
         coordenador.email = request.form.get('email_coordenador')
         
@@ -575,6 +576,7 @@ def superadmin_nova_escola():
         nome_escola = request.form.get('nome_escola')
         cnpj_escola = request.form.get('cnpj_escola')
         plano_selecionado = request.form.get('plano')
+        media_recuperacao = request.form.get('media_recuperacao', type=float)
         nome_coordenador = request.form.get('nome_coordenador')
         email_coordenador = request.form.get('email_coordenador')
         senha_coordenador = request.form.get('senha_coordenador')
@@ -600,7 +602,7 @@ def superadmin_nova_escola():
         # 3. Criação dos objetos no banco de dados (transação)
         try:
             # Cria a escola com o plano selecionado
-            nova_escola = Escola(nome=nome_escola, cnpj=cnpj_escola, plano=plano_selecionado)
+            nova_escola = Escola(nome=nome_escola, cnpj=cnpj_escola, plano=plano_selecionado, media_recuperacao=media_recuperacao)
             db.session.add(nova_escola)
             db.session.flush() # Garante que a nova_escola tenha um ID para as próximas etapas
 
@@ -1757,31 +1759,26 @@ def correcao_lista_alunos(avaliacao_id):
 @login_required
 @role_required('professor', 'coordenador')
 def corrigir_respostas(resultado_id):
-    # Otimiza a query para carregar todas as informações necessárias de uma vez
+    # Otimiza a query, removendo o joinedload da relação dinâmica 'respostas'
     resultado = Resultado.query.options(
         joinedload(Resultado.aluno),
-        joinedload(Resultado.avaliacao).joinedload(Avaliacao.questoes),
-        joinedload(Resultado.respostas).joinedload(Resposta.questao)
+        joinedload(Resultado.avaliacao).joinedload(Avaliacao.questoes)
     ).filter(Resultado.id == resultado_id).first_or_404()
 
-    # --- Verificação de Segurança e Permissão ---
-    # Garante que o professor/coordenador pertence à mesma escola do resultado
+    # --- Verificação de Segurança e Permissão (continua a mesma) ---
     if resultado.avaliacao.escola_id != current_user.escola_id:
-        abort(403) # Acesso Proibido
-    # Garante que um professor só pode corrigir avaliações que ele criou
+        abort(403)
     if current_user.role == 'professor' and resultado.avaliacao.criador_id != current_user.id:
         flash('Você não tem permissão para corrigir esta avaliação, pois não é o criador.', 'danger')
         return redirect(url_for('listar_modelos_avaliacao'))
-    # Impede a re-correção de uma prova já finalizada
     if resultado.status == 'Finalizado':
         flash('Esta avaliação já foi corrigida e finalizada.', 'info')
         return redirect(url_for('detalhes_avaliacao', avaliacao_id=resultado.avaliacao_id))
 
     if request.method == 'POST':
-        # Envolve toda a lógica de correção em um bloco try/except
         try:
             # Itera apenas sobre as respostas discursivas para aplicar a correção manual
-            for resposta in resultado.respostas:
+            for resposta in resultado.respostas.all(): # .all() é necessário para relações dinâmicas
                 if resposta.questao.tipo == 'discursiva':
                     status = request.form.get(f'status_{resposta.id}')
                     feedback = request.form.get(f'feedback_{resposta.id}')
@@ -1796,18 +1793,18 @@ def corrigir_respostas(resultado_id):
                         else: # 'incorreta'
                             resposta.pontos = 0.0
             
-            # Recalcula a nota final somando os pontos de TODAS as respostas (objetivas + discursivas)
-            total_pontos = sum(r.pontos for r in resultado.respostas)
+            # Recalcula a nota final somando os pontos de TODAS as respostas
+            # Usamos .all() aqui também para garantir que a lista seja carregada
+            total_pontos = sum(r.pontos for r in resultado.respostas.all())
             total_questoes = len(resultado.avaliacao.questoes)
             nota_final = round((total_pontos / total_questoes) * 10, 2) if total_questoes > 0 else 0
             
-            # Atualiza o resultado com a nova nota e o status final
             resultado.nota = nota_final
             resultado.status = 'Finalizado'
             
             db.session.commit()
 
-            # --- AUDITORIA: Registra a finalização da correção APÓS o commit ---
+            # --- AUDITORIA ---
             log_audit(
                 'GRADING_COMPLETED',
                 target_obj=resultado.avaliacao,
@@ -1830,7 +1827,8 @@ def corrigir_respostas(resultado_id):
 
     # --- Lógica GET (carregamento da página) ---
     # Filtra as respostas discursivas para exibir na página
-    respostas_discursivas = [r for r in resultado.respostas if r.questao.tipo == 'discursiva']
+    # Adicionamos .all() para executar a query da relação dinâmica
+    respostas_discursivas = [r for r in resultado.respostas.all() if r.questao.tipo == 'discursiva']
     
     return render_template('app/correcao_respostas.html', resultado=resultado, respostas=respostas_discursivas)
 

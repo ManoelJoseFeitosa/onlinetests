@@ -1,0 +1,12 @@
+LINK DE ACESSO EXTERNO AO BANCO NO RENDER
+-----------------------------------------
+postgresql://onlinetests_user:yYBqv38Q1QhetMNsCGpVhE6odnTaQPo6@dpg-d1p5dfodl3ps739fh9ag-a.oregon-postgres.render.com/onlinetests
+
+PSQLCOMMAD
+----------
+PGPASSWORD=yYBqv38Q1QhetMNsCGpVhE6odnTaQPo6 psql -h dpg-d1p5dfodl3ps739fh9ag-a.oregon-postgres.render.com -U onlinetests_user onlinetests
+
+
+pg_dump "postgresql://onlinetests_user:yYBqv38Q1QhetMNsCGpVhE6odnTaQPo6@dpg-d1p5dfodl3ps739fh9ag-a.oregon-postgres.render.com/onlinetests" > backup_onlinetests.sql
+
+psql "postgresql://onlinetests_user:yYBqv38Q1QhetMNsCGpVhE6odnTaQPo6@dpg-d1p5dfodl3ps739fh9ag-a.oregon-postgres.render.com/onlinetests" < backup_onlinetests.sql
