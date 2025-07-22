@@ -24,6 +24,12 @@
                 <i class="bi bi-grid-1x2-fill me-2"></i>Simulados
             </button>
         </li>
+        <!-- NOVA ABA DE RECUPERAÇÃO -->
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="recuperacao-tab" data-bs-toggle="tab" data-bs-target="#recuperacao-pane" type="button" role="tab" aria-controls="recuperacao-pane" aria-selected="false">
+                <i class="bi bi-arrow-clockwise me-2"></i>Recuperação
+            </button>
+        </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link" id="disciplinas-tab" data-bs-toggle="tab" data-bs-target="#disciplinas-pane" type="button" role="tab" aria-controls="disciplinas-pane" aria-selected="false">
                 <i class="bi bi-pie-chart-fill me-2"></i>Desempenho por Disciplina
@@ -33,6 +39,7 @@
 
     <div class="tab-content" id="desempenhoTabContent">
         
+        <!-- ABA DE PROVAS -->
         <div class="tab-pane fade show active" id="provas-pane" role="tabpanel" aria-labelledby="provas-tab" tabindex="0">
             <div class="p-4 bg-light border border-top-0 rounded-bottom">
                 {% if total_provas > 0 %}
@@ -53,12 +60,18 @@
                             </div>
                         </div>
                     </div>
-                    <div class="col-lg-4 d-none d-lg-block"></div>
-
+                    <div class="col-lg-4 d-none d-lg-block">
+                        <div class="card bg-light border-0 h-100">
+                             <div class="card-body d-flex flex-column justify-content-center align-items-center">
+                                <i class="bi bi-graph-up-arrow" style="font-size: 3rem; color: #6c757d;"></i>
+                                <p class="text-muted mt-2">Acompanhe sua evolução!</p>
+                            </div>
+                        </div>
+                    </div>
                     <div class="col-12 mt-4">
                         <div class="card">
-                            <div class="card-header fw-bold">Evolução das Notas por Disciplina</div>
-                            <div class="card-body">
+                            <div class="card-header fw-bold">Evolução de Notas nas Provas</div>
+                            <div class="card-body" style="min-height: 400px;">
                                 <canvas id="graficoProvasPorDisciplina"></canvas>
                             </div>
                         </div>
@@ -70,6 +83,7 @@
             </div>
         </div>
 
+        <!-- ABA DE SIMULADOS -->
         <div class="tab-pane fade" id="simulados-pane" role="tabpanel" aria-labelledby="simulados-tab" tabindex="0">
             <div class="p-4 bg-light border border-top-0 rounded-bottom">
                  {% if total_simulados > 0 %}
@@ -92,8 +106,8 @@
                     </div>
                     <div class="col-12 mt-4">
                         <div class="card">
-                            <div class="card-header fw-bold">Evolução das Notas (Simulados)</div>
-                            <div class="card-body">
+                            <div class="card-header fw-bold">Notas nos Simulados</div>
+                            <div class="card-body" style="min-height: 400px;">
                                 <canvas id="graficoSimulados"></canvas>
                             </div>
                         </div>
@@ -105,20 +119,57 @@
             </div>
         </div>
 
+        <!-- ======================= NOVA ABA DE RECUPERAÇÃO ======================= -->
+        <div class="tab-pane fade" id="recuperacao-pane" role="tabpanel" aria-labelledby="recuperacao-tab" tabindex="0">
+            <div class="p-4 bg-light border border-top-0 rounded-bottom">
+                 {% if total_recuperacao > 0 %}
+                <div class="row g-4">
+                    <div class="col-lg-4">
+                        <div class="card text-center text-white bg-warning h-100">
+                            <div class="card-body d-flex flex-column justify-content-center">
+                                <h5 class="card-title">Média (Recuperação)</h5>
+                                <p class="display-4 fw-bold mb-0">{{ media_recuperacao }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="card text-center h-100">
+                              <div class="card-body d-flex flex-column justify-content-center">
+                                <h5 class="card-title">Recuperações Concluídas</h5>
+                                <p class="display-4 fw-bold mb-0">{{ total_recuperacao }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12 mt-4">
+                        <div class="card">
+                            <div class="card-header fw-bold">Notas nas Recuperações</div>
+                            <div class="card-body" style="min-height: 400px;">
+                                <canvas id="graficoRecuperacao"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                 {% else %}
+                <div class="alert alert-info text-center">Você ainda não concluiu nenhuma avaliação de recuperação.</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- ABA DE DESEMPENHO POR DISCIPLINA -->
         <div class="tab-pane fade" id="disciplinas-pane" role="tabpanel" aria-labelledby="disciplinas-tab" tabindex="0">
              <div class="p-4 bg-light border border-top-0 rounded-bottom">
                  <div class="accordion" id="accordionDisciplinas">
                      {% for nome_disciplina, dados in dados_por_disciplina.items() %}
                      <div class="accordion-item">
-                         <h2 class="accordion-header" id="heading_{{ nome_disciplina|replace(' ', '') }}">
-                             <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse_{{ nome_disciplina|replace(' ', '') }}" aria-expanded="false" aria-controls="collapse_{{ nome_disciplina|replace(' ', '') }}">
+                         <h2 class="accordion-header" id="heading_{{ loop.index }}">
+                             <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse_{{ loop.index }}" aria-expanded="false" aria-controls="collapse_{{ loop.index }}">
                                  <div class="d-flex justify-content-between w-100 align-items-center pe-3">
                                      <span class="fw-bold fs-5">{{ nome_disciplina }}</span>
                                      <span class="badge bg-dark rounded-pill">Média: {{ "%.1f"|format(dados.media) }}</span>
                                  </div>
                              </button>
                          </h2>
-                         <div id="collapse_{{ nome_disciplina|replace(' ', '') }}" class="accordion-collapse collapse" data-bs-parent="#accordionDisciplinas">
+                         <div id="collapse_{{ loop.index }}" class="accordion-collapse collapse" data-bs-parent="#accordionDisciplinas">
                              <div class="accordion-body p-0">
                                  <ul class="list-group list-group-flush">
                                      {% for avaliacao in dados.avaliacoes %}
@@ -140,71 +191,73 @@
                  </div>
              </div>
         </div>
-
     </div>
 </div>
 
+<!-- ======================= SCRIPT DOS GRÁFICOS (ALTERADO) ======================= -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     
-    // --- NOVO GRÁFICO DE PROVAS POR DISCIPLINA ---
+    // --- GRÁFICO DE PROVAS POR DISCIPLINA ---
     try {
-        const chartDataProvas = JSON.parse('{{ chart_data_provas_por_disciplina_json | safe }}');
+        const chartDataProvas = JSON.parse('{{ chart_data_provas_por_disciplina_json | tojson | safe }}');
         const canvasProvas = document.getElementById('graficoProvasPorDisciplina');
-
         if (canvasProvas && chartDataProvas && chartDataProvas.datasets && chartDataProvas.datasets.length > 0) {
             new Chart(canvasProvas.getContext('2d'), {
-                type: 'line',
-                data: chartDataProvas, // Usa diretamente a estrutura de dados do backend
+                type: 'line', data: chartDataProvas,
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { position: 'top' },
-                        title: { display: false }, // O título já está no card-header
-                        tooltip: { mode: 'index', intersect: false }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            max: 10,
-                            title: { display: true, text: 'Nota' }
-                        },
-                        x: {
-                            title: { display: true, text: 'Data da Avaliação' }
-                        }
-                    }
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { position: 'top' }, title: { display: false }, tooltip: { mode: 'index', intersect: false }},
+                    scales: { y: { beginAtZero: true, max: 10, title: { display: true, text: 'Nota' }}, x: { title: { display: true, text: 'Avaliação' }}}
                 }
             });
         } else if (canvasProvas) {
-            const container = canvasProvas.parentElement;
-            container.innerHTML = '<p class="text-center text-muted my-5">Não há dados suficientes para exibir a evolução das notas.</p>';
+            canvasProvas.parentElement.innerHTML = '<p class="text-center text-muted my-5">Não há dados suficientes para exibir a evolução das notas.</p>';
         }
-    } catch (e) {
-        console.error("Erro ao renderizar o gráfico de provas:", e);
-    }
+    } catch (e) { console.error("Erro ao renderizar o gráfico de provas:", e); }
 
-    // --- GRÁFICO DE SIMULADOS (LÓGICA MANTIDA) ---
+    // --- GRÁFICO DE SIMULADOS ---
     const canvasSimulados = document.getElementById('graficoSimulados');
     if (canvasSimulados) {
         new Chart(canvasSimulados.getContext('2d'), {
-            type: 'bar', // Mudado para 'bar' para diferenciar visualmente
+            type: 'bar',
             data: {
                 labels: {{ chart_labels_simulados|tojson|safe }},
                 datasets: [{
-                    label: 'Nota do Simulado',
-                    data: {{ chart_data_simulados|tojson|safe }},
-                    backgroundColor: 'rgba(25, 135, 84, 0.6)',
-                    borderColor: 'rgba(25, 135, 84, 1)',
-                    borderWidth: 1
+                    label: 'Nota do Simulado', data: {{ chart_data_simulados|tojson|safe }},
+                    backgroundColor: 'rgba(25, 135, 84, 0.6)', borderColor: 'rgba(25, 135, 84, 1)', borderWidth: 1
                 }]
             },
             options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false }},
                 scales: {
-                    y: { beginAtZero: true, max: 10 }
-                },
-                responsive: true,
-                maintainAspectRatio: false,
+                    y: { beginAtZero: true, max: 10, title: { display: true, text: 'Nota' }},
+                    x: { title: { display: true, text: 'Simulado' }}
+                }
+            }
+        });
+    }
+
+    // --- NOVO GRÁFICO DE RECUPERAÇÃO ---
+    const canvasRecuperacao = document.getElementById('graficoRecuperacao');
+    if (canvasRecuperacao) {
+        new Chart(canvasRecuperacao.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: {{ chart_labels_recuperacao|tojson|safe }},
+                datasets: [{
+                    label: 'Nota da Recuperação', data: {{ chart_data_recuperacao|tojson|safe }},
+                    backgroundColor: 'rgba(255, 193, 7, 0.6)', borderColor: 'rgba(255, 193, 7, 1)', borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, max: 10, title: { display: true, text: 'Nota' }},
+                    x: { title: { display: true, text: 'Avaliação de Recuperação' }}
+                }
             }
         });
     }
