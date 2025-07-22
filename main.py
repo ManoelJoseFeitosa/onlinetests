@@ -1680,46 +1680,27 @@ def meus_resultados():
     soma_notas_provas = sum(r.nota for r in resultados_provas if r.nota is not None)
     media_provas = round(soma_notas_provas / total_provas, 1) if total_provas > 0 else 0.0
 
-    # --- NOVA LÓGICA PARA O GRÁFICO DE PROVAS POR DISCIPLINA ---
+    # --- LÓGICA PARA O GRÁFICO DE PROVAS POR DISCIPLINA ---
     chart_data_provas_por_disciplina = {}
     if resultados_provas:
-        # Cria a lista de rótulos do eixo X com os nomes das provas, em ordem cronológica
         labels_grafico = [r.avaliacao.nome for r in resultados_provas]
-        
-        # Agrupa os resultados por disciplina para fácil acesso
         dados_agrupados = {}
         for r in resultados_provas:
             disciplina_nome = r.avaliacao.disciplina.nome
             if disciplina_nome not in dados_agrupados:
                 dados_agrupados[disciplina_nome] = []
             dados_agrupados[disciplina_nome].append({'nome_avaliacao': r.avaliacao.nome, 'nota': r.nota})
-
         datasets = []
         cores = ['#007bff', '#dc3545', '#28a745', '#ffc107', '#6f42c1', '#fd7e14', '#20c997', '#6610f2']
-        
-        # Monta o dataset para cada disciplina
         for i, (disciplina, resultados_disciplina) in enumerate(dados_agrupados.items()):
-            # Mapeia as notas da disciplina pelo nome da avaliação
             notas_mapeadas = {res['nome_avaliacao']: res['nota'] for res in resultados_disciplina}
-            
-            # Cria o array de pontos de dados. Se a disciplina não tem nota para uma prova, o valor será 'null'
             data_points = [notas_mapeadas.get(nome_prova, None) for nome_prova in labels_grafico]
-            
             datasets.append({
-                'label': disciplina,
-                'data': data_points,
-                'borderColor': cores[i % len(cores)],
-                'backgroundColor': cores[i % len(cores)] + '33', # Cor com transparência
-                'fill': False,
-                'tension': 0.2,
-                'spanGaps': True # Conecta pontos mesmo com dados nulos no meio
+                'label': disciplina, 'data': data_points, 'borderColor': cores[i % len(cores)],
+                'backgroundColor': cores[i % len(cores)] + '33', 'fill': False, 'tension': 0.2, 'spanGaps': True
             })
+        chart_data_provas_por_disciplina = {'labels': labels_grafico, 'datasets': datasets}
 
-        chart_data_provas_por_disciplina = {
-            'labels': labels_grafico,
-            'datasets': datasets
-        }
-    
     # --- Lógica para os Simulados ---
     resultados_simulados = [r for r in resultados_aluno if r.avaliacao.tipo == 'simulado']
     total_simulados = len(resultados_simulados)
@@ -1728,7 +1709,7 @@ def meus_resultados():
     chart_labels_simulados = [res.avaliacao.nome for res in reversed(resultados_simulados)]
     chart_data_simulados = [res.nota for res in reversed(resultados_simulados)]
 
-    # --- NOVA LÓGICA PARA RECUPERAÇÃO ---
+    # --- Lógica para Recuperação ---
     resultados_recuperacao = [r for r in resultados_aluno if r.avaliacao.tipo == 'recuperacao']
     total_recuperacao = len(resultados_recuperacao)
     soma_notas_recuperacao = sum(r.nota for r in resultados_recuperacao if r.nota is not None)
@@ -1738,21 +1719,17 @@ def meus_resultados():
     
     # --- Lógica para Desempenho por Disciplina ---
     dados_por_disciplina = {}
-    for res in resultados_provas: # Reutiliza os resultados de provas já filtrados
+    for res in resultados_provas:
         if res.nota is not None:
             disciplina_nome = res.avaliacao.disciplina.nome
             if disciplina_nome not in dados_por_disciplina:
                 dados_por_disciplina[disciplina_nome] = {'soma_notas': 0.0, 'quantidade': 0, 'media': 0.0, 'avaliacoes': []}
-            
             dados_por_disciplina[disciplina_nome]['soma_notas'] += res.nota
             dados_por_disciplina[disciplina_nome]['quantidade'] += 1
             dados_por_disciplina[disciplina_nome]['avaliacoes'].append({
-                "id": res.id,
-                "nome": res.avaliacao.nome,
-                "nota": res.nota,
+                "id": res.id, "nome": res.avaliacao.nome, "nota": res.nota,
                 "data": res.data_realizacao.strftime('%d/%m/%Y')
             })
-
     for nome, dados in dados_por_disciplina.items():
         if dados['quantidade'] > 0:
             dados['media'] = round(dados['soma_notas'] / dados['quantidade'], 1)
@@ -1762,12 +1739,12 @@ def meus_resultados():
         dados_por_disciplina=dados_por_disciplina,
         total_provas=total_provas,
         media_provas=media_provas,
-        chart_data_provas_por_disciplina_json=json.dumps(chart_data_provas_por_disciplina),
+        # CORREÇÃO: Passando o objeto Python diretamente
+        chart_data_provas_por_disciplina=chart_data_provas_por_disciplina,
         total_simulados=total_simulados,
         media_simulados=media_simulados,
         chart_labels_simulados=chart_labels_simulados,
         chart_data_simulados=chart_data_simulados,
-        # Enviando os novos dados de recuperação para o template
         total_recuperacao=total_recuperacao,
         media_recuperacao=media_recuperacao,
         chart_labels_recuperacao=chart_labels_recuperacao,

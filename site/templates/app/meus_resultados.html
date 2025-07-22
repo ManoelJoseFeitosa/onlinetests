@@ -24,7 +24,6 @@
                 <i class="bi bi-grid-1x2-fill me-2"></i>Simulados
             </button>
         </li>
-        <!-- NOVA ABA DE RECUPERAÇÃO -->
         <li class="nav-item" role="presentation">
             <button class="nav-link" id="recuperacao-tab" data-bs-toggle="tab" data-bs-target="#recuperacao-pane" type="button" role="tab" aria-controls="recuperacao-pane" aria-selected="false">
                 <i class="bi bi-arrow-clockwise me-2"></i>Recuperação
@@ -119,7 +118,7 @@
             </div>
         </div>
 
-        <!-- ======================= NOVA ABA DE RECUPERAÇÃO ======================= -->
+        <!-- ABA DE RECUPERAÇÃO -->
         <div class="tab-pane fade" id="recuperacao-pane" role="tabpanel" aria-labelledby="recuperacao-tab" tabindex="0">
             <div class="p-4 bg-light border border-top-0 rounded-bottom">
                  {% if total_recuperacao > 0 %}
@@ -194,14 +193,16 @@
     </div>
 </div>
 
-<!-- ======================= SCRIPT DOS GRÁFICOS (ALTERADO) ======================= -->
+<!-- ======================= SCRIPT DOS GRÁFICOS (CORRIGIDO) ======================= -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     
     // --- GRÁFICO DE PROVAS POR DISCIPLINA ---
     try {
-        const chartDataProvas = JSON.parse('{{ chart_data_provas_por_disciplina_json | tojson | safe }}');
+        // CORREÇÃO: Lê o objeto diretamente usando o filtro 'tojson' do Jinja2
+        const chartDataProvas = {{ chart_data_provas_por_disciplina | tojson | safe }};
         const canvasProvas = document.getElementById('graficoProvasPorDisciplina');
+
         if (canvasProvas && chartDataProvas && chartDataProvas.datasets && chartDataProvas.datasets.length > 0) {
             new Chart(canvasProvas.getContext('2d'), {
                 type: 'line', data: chartDataProvas,
@@ -239,7 +240,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // --- NOVO GRÁFICO DE RECUPERAÇÃO ---
+    // --- GRÁFICO DE RECUPERAÇÃO ---
     const canvasRecuperacao = document.getElementById('graficoRecuperacao');
     if (canvasRecuperacao) {
         new Chart(canvasRecuperacao.getContext('2d'), {
