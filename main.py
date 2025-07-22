@@ -1500,47 +1500,52 @@ def iniciar_avaliacao_dinamica(modelo_id):
 @login_required
 @role_required('aluno', 'professor', 'coordenador')
 def listar_modelos_avaliacao():
-    """
-    Exibe as avaliações disponíveis para o usuário logado.
-    - Para Alunos: Mostra os modelos que eles podem iniciar.
-    - Para Professores/Coordenadores: Mostra as avaliações já geradas para gerenciamento.
-    """
     ano_letivo_ativo = AnoLetivo.query.filter_by(escola_id=current_user.escola_id, status='ativo').first()
     if not ano_letivo_ativo:
         flash('Nenhum ano letivo ativo configurado. Contate o coordenador.', 'warning')
+        # Retorna listas vazias para evitar erros no template
         if current_user.role in ['coordenador', 'professor']:
              return render_template('app/listar_avaliacoes_geradas.html', avaliacoes=[])
         else:
              return render_template('app/listar_modelos_avaliacao.html', modelos=[], recuperacoes=[], ids_concluidas=set())
 
-    # --- Lógica para Professores e Coordenadores ---
+    # --- LÓGICA ATUALIZADA PARA PROFESSORES E COORDENADORES ---
+    if current_user.role in ['coordenador', 'professor']:
+        
+        # 1. Busca os Modelos de Avaliação (que geram as provas dinâmicas)
+        modelos_query = ModeloAvaliacao.query.options(
+            joinedload(ModeloAvaliacao.serie),
+            joinedload(ModeloAvaliacao.criador)
+        ).filter(ModeloAvaliacao.escola_id == current_user.escola_id)
 
-    if current_user.role == 'coordenador':
-        # Coordenador vê todas as avaliações GERADAS da escola no ano ativo
-        avaliacoes_geradas = Avaliacao.query.options(
+        # 2. Busca as Avaliações Estáticas (ex: Recuperações)
+        avaliacoes_estaticas_query = Avaliacao.query.options(
             joinedload(Avaliacao.serie),
             joinedload(Avaliacao.criador)
         ).filter(
             Avaliacao.escola_id == current_user.escola_id,
+            Avaliacao.is_dinamica == False,
             Avaliacao.ano_letivo_id == ano_letivo_ativo.id
-        ).order_by(Avaliacao.id.desc()).all()
-        return render_template('app/listar_avaliacoes_geradas.html', avaliacoes=avaliacoes_geradas)
-    
-    elif current_user.role == 'professor':
-        # Professor vê apenas as avaliações que ele mesmo criou no ano ativo
-        # CORREÇÃO: Corrigido o erro de digitação de 'Avaliaco' para 'Avaliacao'
-        avaliacoes_geradas = Avaliacao.query.options(
-            joinedload(Avaliacao.serie), # <--- CORRIGIDO AQUI
-            joinedload(Avaliacao.criador)
-        ).filter(
-            Avaliacao.criador_id == current_user.id,
-            Avaliacao.escola_id == current_user.escola_id,
-            Avaliacao.ano_letivo_id == ano_letivo_ativo.id
-        ).order_by(Avaliacao.id.desc()).all()
-        return render_template('app/listar_avaliacoes_geradas.html', avaliacoes=avaliacoes_geradas)
+        )
+
+        # Professor só vê o que ele criou
+        if current_user.role == 'professor':
+            modelos_query = modelos_query.filter(ModeloAvaliacao.criador_id == current_user.id)
+            avaliacoes_estaticas_query = avaliacoes_estaticas_query.filter(Avaliacao.criador_id == current_user.id)
+
+        modelos = modelos_query.order_by(ModeloAvaliacao.id.desc()).all()
+        avaliacoes_estaticas = avaliacoes_estaticas_query.order_by(Avaliacao.id.desc()).all()
+        
+        # Combina as duas listas para exibir tudo na mesma página
+        itens_para_gerenciar = sorted(
+            modelos + avaliacoes_estaticas,
+            key=lambda x: x.id, 
+            reverse=True
+        )
+        
+        return render_template('app/listar_avaliacoes_geradas.html', avaliacoes=itens_para_gerenciar)
     
     # --- Lógica para o Aluno (continua a mesma) ---
-
     elif current_user.role == 'aluno':
         modelos = []
         ids_concluidas = set()
@@ -1570,9 +1575,9 @@ def listar_modelos_avaliacao():
         ids_concluidas.update([r.avaliacao_id for r in resultados_finalizados_recuperacao])
         
         return render_template('app/listar_modelos_avaliacao.html',
-                               modelos=modelos,
-                               recuperacoes=recuperacoes_designadas,
-                               ids_concluidas=ids_concluidas)
+                                  modelos=modelos,
+                                  recuperacoes=recuperacoes_designadas,
+                                  ids_concluidas=ids_concluidas)
 
 @app.route('/criar-recuperacao', methods=['GET', 'POST'])
 @login_required
