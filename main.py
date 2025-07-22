@@ -1579,6 +1579,43 @@ def listar_modelos_avaliacao():
                                   recuperacoes=recuperacoes_designadas,
                                   ids_concluidas=ids_concluidas)
 
+@app.route('/modelo-avaliacao/<int:modelo_id>/detalhes')
+@login_required
+@role_required('coordenador', 'professor')
+def detalhes_modelo_avaliacao(modelo_id):
+    # 1. Busca o modelo da avaliação
+    modelo = ModeloAvaliacao.query.options(
+        joinedload(ModeloAvaliacao.serie),
+        joinedload(ModeloAvaliacao.criador)
+    ).filter_by(id=modelo_id, escola_id=current_user.escola_id).first_or_404()
+
+    # Permissão: Professor só pode ver modelos que ele criou
+    if current_user.role == 'professor' and modelo.criador_id != current_user.id:
+        flash("Você não tem permissão para gerenciar este modelo de avaliação.", "danger")
+        return redirect(url_for('listar_modelos_avaliacao'))
+
+    # 2. Busca todos os resultados associados a este modelo
+    resultados = Resultado.query.join(Avaliacao).filter(
+        Avaliacao.modelo_id == modelo_id
+    ).options(
+        joinedload(Resultado.aluno)
+    ).order_by(Resultado.nota.desc().nullslast()).all()
+    
+    # 3. Calcula estatísticas
+    num_participantes = len(resultados)
+    notas_validas = [r.nota for r in resultados if r.nota is not None]
+    soma_notas = sum(notas_validas)
+    media_turma = round(soma_notas / len(notas_validas), 2) if notas_validas else 0.0
+
+    # 4. Renderiza o template de detalhes com os dados
+    return render_template(
+        'app/detalhes_modelo_avaliacao.html', 
+        modelo=modelo, 
+        resultados=resultados,
+        num_participantes=num_participantes,
+        media_turma=media_turma
+    )
+
 @app.route('/criar-recuperacao', methods=['GET', 'POST'])
 @login_required
 @role_required('professor', 'coordenador')
