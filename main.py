@@ -1680,27 +1680,48 @@ def meus_resultados():
     soma_notas_provas = sum(r.nota for r in resultados_provas if r.nota is not None)
     media_provas = round(soma_notas_provas / total_provas, 1) if total_provas > 0 else 0.0
 
-    # --- LÓGICA PARA O GRÁFICO DE PROVAS POR DISCIPLINA ---
+    # --- LÓGICA ATUALIZADA PARA O GRÁFICO DE PROVAS POR DISCIPLINA ---
     chart_data_provas_por_disciplina = {}
     if resultados_provas:
-        labels_grafico = [r.avaliacao.nome for r in resultados_provas]
+        # CORREÇÃO 1: Cria rótulos com nome e data. Ex: "Prova de Biologia (22/07)"
+        labels_grafico = [f"{r.avaliacao.nome} ({r.data_realizacao.strftime('%d/%m')})" for r in resultados_provas]
+        
+        # Agrupa os resultados por disciplina para fácil acesso
         dados_agrupados = {}
         for r in resultados_provas:
             disciplina_nome = r.avaliacao.disciplina.nome
             if disciplina_nome not in dados_agrupados:
                 dados_agrupados[disciplina_nome] = []
-            dados_agrupados[disciplina_nome].append({'nome_avaliacao': r.avaliacao.nome, 'nota': r.nota})
+            # CORREÇÃO 2: Armazena o novo rótulo completo para a correspondência
+            rotulo_completo = f"{r.avaliacao.nome} ({r.data_realizacao.strftime('%d/%m')})"
+            dados_agrupados[disciplina_nome].append({'rotulo_completo': rotulo_completo, 'nota': r.nota})
+
         datasets = []
         cores = ['#007bff', '#dc3545', '#28a745', '#ffc107', '#6f42c1', '#fd7e14', '#20c997', '#6610f2']
+        
+        # Monta o dataset para cada disciplina
         for i, (disciplina, resultados_disciplina) in enumerate(dados_agrupados.items()):
-            notas_mapeadas = {res['nome_avaliacao']: res['nota'] for res in resultados_disciplina}
-            data_points = [notas_mapeadas.get(nome_prova, None) for nome_prova in labels_grafico]
+            # CORREÇÃO 3: Mapeia as notas usando o novo rótulo completo
+            notas_mapeadas = {res['rotulo_completo']: res['nota'] for res in resultados_disciplina}
+            
+            # A lógica de busca permanece a mesma, pois agora as chaves correspondem aos rótulos
+            data_points = [notas_mapeadas.get(nome_prova_com_data, None) for nome_prova_com_data in labels_grafico]
+            
             datasets.append({
-                'label': disciplina, 'data': data_points, 'borderColor': cores[i % len(cores)],
-                'backgroundColor': cores[i % len(cores)] + '33', 'fill': False, 'tension': 0.2, 'spanGaps': True
+                'label': disciplina,
+                'data': data_points,
+                'borderColor': cores[i % len(cores)],
+                'backgroundColor': cores[i % len(cores)] + '33', # Cor com transparência
+                'fill': False,
+                'tension': 0.2,
+                'spanGaps': True # Conecta pontos mesmo com dados nulos no meio
             })
-        chart_data_provas_por_disciplina = {'labels': labels_grafico, 'datasets': datasets}
 
+        chart_data_provas_por_disciplina = {
+            'labels': labels_grafico,
+            'datasets': datasets
+        }
+    
     # --- Lógica para os Simulados ---
     resultados_simulados = [r for r in resultados_aluno if r.avaliacao.tipo == 'simulado']
     total_simulados = len(resultados_simulados)
@@ -1739,7 +1760,6 @@ def meus_resultados():
         dados_por_disciplina=dados_por_disciplina,
         total_provas=total_provas,
         media_provas=media_provas,
-        # CORREÇÃO: Passando o objeto Python diretamente
         chart_data_provas_por_disciplina=chart_data_provas_por_disciplina,
         total_simulados=total_simulados,
         media_simulados=media_simulados,
