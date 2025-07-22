@@ -1683,8 +1683,8 @@ def meus_resultados():
     # --- LÓGICA ATUALIZADA PARA O GRÁFICO DE PROVAS POR DISCIPLINA ---
     chart_data_provas_por_disciplina = {}
     if resultados_provas:
-        # CORREÇÃO 1: Cria rótulos com nome e data. Ex: "Prova de Biologia (22/07)"
-        labels_grafico = [f"{r.avaliacao.nome} ({r.data_realizacao.strftime('%d/%m')})" for r in resultados_provas]
+        # CORREÇÃO 1: Cria rótulos com o nome da prova (removendo o nome do aluno) e a data.
+        labels_grafico = [f"{r.avaliacao.nome.split(' - ')[0].strip()} ({r.data_realizacao.strftime('%d/%m')})" for r in resultados_provas]
         
         # Agrupa os resultados por disciplina para fácil acesso
         dados_agrupados = {}
@@ -1693,7 +1693,7 @@ def meus_resultados():
             if disciplina_nome not in dados_agrupados:
                 dados_agrupados[disciplina_nome] = []
             # CORREÇÃO 2: Armazena o novo rótulo completo para a correspondência
-            rotulo_completo = f"{r.avaliacao.nome} ({r.data_realizacao.strftime('%d/%m')})"
+            rotulo_completo = f"{r.avaliacao.nome.split(' - ')[0].strip()} ({r.data_realizacao.strftime('%d/%m')})"
             dados_agrupados[disciplina_nome].append({'rotulo_completo': rotulo_completo, 'nota': r.nota})
 
         datasets = []
