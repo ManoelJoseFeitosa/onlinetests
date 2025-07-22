@@ -80,6 +80,11 @@
         {% if professores and professores[0].escola %}
             <p>{{ professores[0].escola.nome }}</p>
         {% endif %}
+        
+        {% if ano_letivo %}
+            <p style="font-size: 11pt;"><strong>Ano Letivo:</strong> {{ ano_letivo.ano }}</p>
+        {% endif %}
+
     </div>
     
     {% if professores %}

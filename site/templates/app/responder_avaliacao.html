@@ -61,12 +61,10 @@
     }
 </style>
 
-<!-- Elemento para mensagens de alerta -->
 <div id="flash-message"></div>
 
 <div class="container-fluid mt-4">
 
-    <!-- Tela de Início e Regras -->
     <div id="inicio-container" class="text-center p-5 border rounded-3 bg-light mx-auto" style="max-width: 800px;">
         <h1 class="display-5">{{ avaliacao.nome }}</h1>
         <p class="fs-5 text-muted">Disciplina: {{ avaliacao.disciplina.nome if avaliacao.disciplina else 'Simulado' }}</p>
@@ -84,16 +82,14 @@
             
             <p>Para garantir a lisura do processo, esta avaliação será realizada em <strong>modo de tela cheia</strong>. As seguintes regras se aplicam:</p>
             <ul>
-                <li>Você não poderá sair do modo de tela cheia durante a prova.</li>
-                <li>Alternar para outras abas ou aplicativos será considerado uma infração.</li>
-                <li>Tentar recarregar a página também será registrado.</li>
+                <li>Você <strong>NÃO</strong> poderá sair do modo de tela cheia durante a prova.</li>
+                <li>Alternar para outras abas, usar atalhos como ALT+TAB ou pressionar a tecla ESC será considerado uma infração.</li>
             </ul>
-            <p class="fw-bold text-danger">Após 3 infrações, a prova será bloqueada e você deverá enviá-la imediatamente.</p>
+            <p class="fw-bold text-danger">Qualquer tentativa de sair da tela resultará no BLOQUEIO IMEDIATO da prova. Após o bloqueio, você só poderá enviar as respostas já marcadas.</p>
         </div>
-        <button type="button" class="btn btn-primary btn-lg" id="btn-iniciar-prova">Estou Ciente, Iniciar Prova</button>
+        <button type="button" class="btn btn-primary btn-lg" id="btn-iniciar-prova">Estou Ciente e Pronto para Iniciar</button>
     </div>
 
-    <!-- Conteúdo da Prova (inicialmente oculto) -->
     <div id="conteudo-prova" style="display: none;">
         
         {% if avaliacao.tempo_limite and avaliacao.tempo_limite > 0 %}
@@ -109,38 +105,39 @@
             </div>
             <div class="card-body p-4 p-md-5">
                 <form id="form-responder-avaliacao" method="POST">
-                    {% for questao in avaliacao.questoes %}
-                        <div class="card mb-4">
-                            <div class="card-header">
-                                <strong>Questão {{ loop.index }}: {{ questao.disciplina.nome }}</strong>
+                    
+                    <fieldset id="questoes-fieldset">
+                        {% for questao in avaliacao.questoes %}
+                            <div class="card mb-4">
+                                <div class="card-header">
+                                    <strong>Questão {{ loop.index }}: {{ questao.disciplina.nome }}</strong>
+                                </div>
+                                <div class="card-body">
+                                    {% if questao.imagem_nome %}
+                                    <div class="text-center mb-3">
+                                        <img src="{{ url_for('static', filename='uploads/questoes/' + questao.imagem_nome) }}" 
+                                             alt="{{ questao.imagem_alt or 'Imagem da questão ' ~ loop.index }}" 
+                                             class="img-fluid rounded" 
+                                             style="max-height: 400px; border: 1px solid #dee2e6;">
+                                    </div>
+                                    {% endif %}
+                                    <div class="fs-5 mb-3">{{ questao.texto | safe }}</div>
+                                    <hr>
+                                    {% if questao.tipo == 'multipla_escolha' %}
+                                        <div class="form-check"><input class="form-check-input" type="radio" name="resposta_{{ questao.id }}" id="q{{ questao.id }}a" value="A" required><label class="form-check-label" for="q{{ questao.id }}a">A) {{ questao.opcao_a }}</label></div>
+                                        <div class="form-check"><input class="form-check-input" type="radio" name="resposta_{{ questao.id }}" id="q{{ questao.id }}b" value="B" required><label class="form-check-label" for="q{{ questao.id }}b">B) {{ questao.opcao_b }}</label></div>
+                                        <div class="form-check"><input class="form-check-input" type="radio" name="resposta_{{ questao.id }}" id="q{{ questao.id }}c" value="C" required><label class="form-check-label" for="q{{ questao.id }}c">C) {{ questao.opcao_c }}</label></div>
+                                        <div class="form-check"><input class="form-check-input" type="radio" name="resposta_{{ questao.id }}" id="q{{ questao.id }}d" value="D" required><label class="form-check-label" for="q{{ questao.id }}d">D) {{ questao.opcao_d }}</label></div>
+                                    {% elif questao.tipo == 'verdadeiro_falso' %}
+                                        <div class="form-check"><input class="form-check-input" type="radio" name="resposta_{{ questao.id }}" id="q{{ questao.id }}a" value="A" required><label class="form-check-label" for="q{{ questao.id }}a">Verdadeiro</label></div>
+                                        <div class="form-check"><input class="form-check-input" type="radio" name="resposta_{{ questao.id }}" id="q{{ questao.id }}b" value="B" required><label class="form-check-label" for="q{{ questao.id }}b">Falso</label></div>
+                                    {% elif questao.tipo == 'discursiva' %}
+                                        <textarea name="resposta_{{ questao.id }}" class="form-control" rows="5" placeholder="Digite sua resposta aqui..." required></textarea>
+                                    {% endif %}
+                                </div>
                             </div>
-                            <div class="card-body">
-                                {% if questao.imagem_nome %}
-                                <div class="text-center mb-3">
-                                    <img src="{{ url_for('static', filename='uploads/questoes/' + questao.imagem_nome) }}" 
-                                         alt="{{ questao.imagem_alt or 'Imagem da questão ' ~ loop.index }}" 
-                                         class="img-fluid rounded" 
-                                         style="max-height: 400px; border: 1px solid #dee2e6;">
-                                </div>
-                                {% endif %}
-                                <div class="fs-5 mb-3">{{ questao.texto | safe }}</div>
-                                <hr>
-                                {% if questao.tipo == 'multipla_escolha' %}
-                                    <div class="form-check"><input class="form-check-input" type="radio" name="resposta_{{ questao.id }}" id="q{{ questao.id }}a" value="A" required><label class="form-check-label" for="q{{ questao.id }}a">A) {{ questao.opcao_a }}</label></div>
-                                    <div class="form-check"><input class="form-check-input" type="radio" name="resposta_{{ questao.id }}" id="q{{ questao.id }}b" value="B" required><label class="form-check-label" for="q{{ questao.id }}b">B) {{ questao.opcao_b }}</label></div>
-                                    <div class="form-check"><input class="form-check-input" type="radio" name="resposta_{{ questao.id }}" id="q{{ questao.id }}c" value="C" required><label class="form-check-label" for="q{{ questao.id }}c">C) {{ questao.opcao_c }}</label></div>
-                                    <div class="form-check"><input class="form-check-input" type="radio" name="resposta_{{ questao.id }}" id="q{{ questao.id }}d" value="D" required><label class="form-check-label" for="q{{ questao.id }}d">D) {{ questao.opcao_d }}</label></div>
-                                {% elif questao.tipo == 'verdadeiro_falso' %}
-                                    <!-- CORREÇÃO: Os valores devem ser 'A' e 'B' para corresponder ao gabarito do backend -->
-                                    <div class="form-check"><input class="form-check-input" type="radio" name="resposta_{{ questao.id }}" id="q{{ questao.id }}a" value="A" required><label class="form-check-label" for="q{{ questao.id }}a">Verdadeiro</label></div>
-                                    <div class="form-check"><input class="form-check-input" type="radio" name="resposta_{{ questao.id }}" id="q{{ questao.id }}b" value="B" required><label class="form-check-label" for="q{{ questao.id }}b">Falso</label></div>
-                                {% elif questao.tipo == 'discursiva' %}
-                                    <textarea name="resposta_{{ questao.id }}" class="form-control" rows="5" placeholder="Digite sua resposta aqui..." required></textarea>
-                                {% endif %}
-                                </div>
-                        </div>
-                    {% endfor %}
-                    <div class="d-grid gap-2 mt-5">
+                        {% endfor %}
+                    </fieldset> <div class="d-grid gap-2 mt-5">
                         <button type="submit" id="btn-enviar-avaliacao" class="btn btn-success btn-lg">
                             <i class="bi bi-check2-circle me-2"></i>Enviar Avaliação
                         </button>
@@ -155,7 +152,7 @@
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Seleção de todos os elementos do DOM
+    // --- ELEMENTOS DO DOM ---
     const inicioContainer = document.getElementById('inicio-container');
     const conteudoProva = document.getElementById('conteudo-prova');
     const formProva = document.getElementById('form-responder-avaliacao');
@@ -163,16 +160,16 @@ document.addEventListener('DOMContentLoaded', function() {
     const flashMessage = document.getElementById('flash-message');
     const timerDisplay = document.getElementById('timer-display');
     const timerContainer = document.getElementById('timer-fixed-container');
+    const questoesFieldset = document.getElementById('questoes-fieldset'); // Nosso novo alvo
 
-    // Variáveis de estado
-    let infractionCount = 0;
-    const MAX_INFRACTIONS = 3;
+    // --- VARIÁVEIS DE ESTADO ---
     let isProvaIniciada = false;
     let isSubmitting = false;
-    let isBlocked = false;
-    let infractionTimeout = null;
+    let isBlocked = false; // Controla se a prova já foi bloqueada
 
-    // Função para exibir mensagens de alerta
+    // --- FUNÇÕES AUXILIARES ---
+
+    // Função para exibir mensagens de alerta (mantida como estava)
     function showFlashMessage(message, type = 'warning', duration = 4000) {
         flashMessage.textContent = message;
         flashMessage.className = type === 'error' ? 'error' : '';
@@ -182,39 +179,41 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Função para registrar infrações
-    function registrarInfracao(motivo) {
-        if (!isProvaIniciada || isSubmitting || isBlocked || infractionTimeout) return;
-        
-        infractionCount++;
-        infractionTimeout = setTimeout(() => { infractionTimeout = null; }, 500); // Previne registros múltiplos
+    // NOVA: Função central para bloquear a prova
+    function bloquearProva(motivo) {
+        if (isBlocked) return; // Se já bloqueou, não faz mais nada
 
-        if (infractionCount >= MAX_INFRACTIONS) {
-            isBlocked = true;
-            showFlashMessage(`Limite de infrações atingido! A prova foi bloqueada. Envie suas respostas.`, 'error', 0);
-            formProva.querySelectorAll('input, textarea').forEach(el => {
-                if(el.type !== 'submit') el.disabled = true;
-            });
-        } else {
-            showFlashMessage(`ATENÇÃO: Infração detectada (${motivo}). Infração ${infractionCount} de ${MAX_INFRACTIONS}.`);
-        }
+        isBlocked = true;
+        console.warn(`PROVA BLOQUEADA. Motivo: ${motivo}`);
+        
+        // Exibe a mensagem de erro de forma permanente
+        showFlashMessage(`PROVA BLOQUEADA: ${motivo}. Envie suas respostas agora.`, 'error', 0);
+        
+        // Desabilita o fieldset que contém todas as questões
+        questoesFieldset.disabled = true;
+
+        // Opcional: Remover os listeners para economizar recursos
+        document.removeEventListener('fullscreenchange', onFullscreenChange);
+        document.removeEventListener('visibilitychange', onVisibilityChange);
+        document.removeEventListener('keydown', onKeyDown);
     }
 
-    // Função para iniciar o cronômetro
+    // --- FUNÇÕES DE LÓGICA PRINCIPAL ---
+
     function iniciarCronometro(minutos) {
         if (!minutos || minutos <= 0) return;
 
         let tempoTotalSegundos = minutos * 60;
         const countdown = setInterval(function() {
-            if (isSubmitting) {
+            if (isSubmitting || isBlocked) {
                 clearInterval(countdown);
                 return;
             }
 
             if (tempoTotalSegundos <= 0) {
                 clearInterval(countdown);
-                showFlashMessage('O tempo acabou! Sua avaliação será enviada agora.', 'error', 0);
-                formProva.submit();
+                bloquearProva('Tempo esgotado'); // Bloqueia a prova
+                formProva.submit(); // Envia o formulário
             } else {
                 tempoTotalSegundos--;
                 const mins = Math.floor(tempoTotalSegundos / 60);
@@ -229,15 +228,32 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }, 1000);
     }
+    
+    // Funções de monitoramento que chamam o bloqueio
+    function onFullscreenChange() {
+        if (!document.fullscreenElement) {
+            bloquearProva("Saída da tela cheia");
+        }
+    }
+    function onVisibilityChange() {
+        if (document.hidden) {
+            bloquearProva("Troca de aba/aplicativo");
+        }
+    }
+    function onKeyDown(event) {
+        if (event.key === 'Escape' || event.altKey) {
+            event.preventDefault();
+            bloquearProva(`Uso de tecla de atalho (${event.key})`);
+        }
+    }
 
-    // Função para ativar o monitoramento anti-fraude
+    // Ativa todos os listeners de monitoramento
     function ativarMonitoramento() {
-        document.addEventListener('fullscreenchange', () => {
-            if (!document.fullscreenElement) registrarInfracao("saída da tela cheia");
-        });
-        document.addEventListener('visibilitychange', () => {
-            if (document.hidden) registrarInfracao("troca de aba/janela");
-        });
+        document.addEventListener('fullscreenchange', onFullscreenChange);
+        document.addEventListener('visibilitychange', onVisibilityChange);
+        document.addEventListener('keydown', onKeyDown);
+        
+        // Previne o recarregamento da página
         window.addEventListener('beforeunload', (event) => {
             if (isProvaIniciada && !isSubmitting) {
                 event.preventDefault();
@@ -245,7 +261,9 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-    
+
+    // --- EVENT LISTENERS ---
+
     // Evento de clique para iniciar a prova
     btnIniciarProva.addEventListener('click', function() {
         document.documentElement.requestFullscreen().then(() => {

@@ -1468,7 +1468,6 @@ def iniciar_avaliacao_dinamica(modelo_id):
     
     random.shuffle(questoes_selecionadas)
     
-    # --- CORREÇÃO APLICADA AQUI ---
     # Agora, o tempo_limite do modelo é copiado para a nova avaliação.
     nova_avaliacao = Avaliacao(
         nome=f"{modelo.nome} - {current_user.nome}", 
@@ -2087,8 +2086,18 @@ def relatorio_alunos_por_serie():
 @login_required
 @role_required('coordenador')
 def relatorio_professores():
+    # Busca os professores (como já fazia)
     professores = Usuario.query.filter_by(role='professor', escola_id=current_user.escola_id).order_by(Usuario.nome).all()
-    html_renderizado = render_template('app/relatorios/lista_professores.html', professores=professores, data_geracao=datetime.now())
+    
+    # Busca o ano letivo ativo para a escola do coordenador
+    ano_letivo_ativo = AnoLetivo.query.filter_by(escola_id=current_user.escola_id, status='ativo').first()
+
+    html_renderizado = render_template(
+        'app/relatorios/lista_professores.html', 
+        professores=professores, 
+        ano_letivo=ano_letivo_ativo,  # Passa o ano letivo para o template
+        data_geracao=datetime.now()
+    )
     pdf = HTML(string=html_renderizado).write_pdf()
     response = make_response(pdf)
     response.headers['Content-Type'] = 'application/pdf'
