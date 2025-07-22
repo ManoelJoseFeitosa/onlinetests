@@ -1846,13 +1846,13 @@ def correcao_lista_alunos(avaliacao_id):
 @login_required
 @role_required('professor', 'coordenador')
 def corrigir_respostas(resultado_id):
-    # Otimiza a query, removendo o joinedload da relação dinâmica 'respostas'
+    # Otimiza a query para carregar todas as informações necessárias de uma vez
     resultado = Resultado.query.options(
         joinedload(Resultado.aluno),
         joinedload(Resultado.avaliacao).joinedload(Avaliacao.questoes)
     ).filter(Resultado.id == resultado_id).first_or_404()
 
-    # --- Verificação de Segurança e Permissão (continua a mesma) ---
+    # --- Verificação de Segurança e Permissão ---
     if resultado.avaliacao.escola_id != current_user.escola_id:
         abort(403)
     if current_user.role == 'professor' and resultado.avaliacao.criador_id != current_user.id:
@@ -1860,16 +1860,19 @@ def corrigir_respostas(resultado_id):
         return redirect(url_for('listar_modelos_avaliacao'))
     if resultado.status == 'Finalizado':
         flash('Esta avaliação já foi corrigida e finalizada.', 'info')
-        return redirect(url_for('detalhes_avaliacao', avaliacao_id=resultado.avaliacao_id))
+        # Redireciona para a nova página de detalhes se a avaliação for baseada em um modelo
+        if resultado.avaliacao.modelo_id:
+            return redirect(url_for('detalhes_modelo_avaliacao', modelo_id=resultado.avaliacao.modelo_id))
+        else:
+            return redirect(url_for('detalhes_avaliacao', avaliacao_id=resultado.avaliacao_id))
 
     if request.method == 'POST':
         try:
-            # Itera apenas sobre as respostas discursivas para aplicar a correção manual
-            for resposta in resultado.respostas.all(): # .all() é necessário para relações dinâmicas
+            # Itera sobre as respostas discursivas para aplicar a correção manual
+            for resposta in resultado.respostas.all():
                 if resposta.questao.tipo == 'discursiva':
                     status = request.form.get(f'status_{resposta.id}')
                     feedback = request.form.get(f'feedback_{resposta.id}')
-                    
                     if status:
                         resposta.status_correcao = status
                         resposta.feedback_professor = feedback
@@ -1880,31 +1883,29 @@ def corrigir_respostas(resultado_id):
                         else: # 'incorreta'
                             resposta.pontos = 0.0
             
-            # Recalcula a nota final somando os pontos de TODAS as respostas
-            # Usamos .all() aqui também para garantir que a lista seja carregada
+            # Recalcula a nota final
             total_pontos = sum(r.pontos for r in resultado.respostas.all())
             total_questoes = len(resultado.avaliacao.questoes)
             nota_final = round((total_pontos / total_questoes) * 10, 2) if total_questoes > 0 else 0
             
             resultado.nota = nota_final
             resultado.status = 'Finalizado'
-            
             db.session.commit()
 
-            # --- AUDITORIA ---
             log_audit(
-                'GRADING_COMPLETED',
-                target_obj=resultado.avaliacao,
-                details={
-                    'aluno_id': resultado.aluno_id,
-                    'aluno_nome': resultado.aluno.nome,
-                    'resultado_id': resultado.id,
-                    'nota_final': nota_final
-                }
+                'GRADING_COMPLETED', target_obj=resultado.avaliacao,
+                details={'aluno_id': resultado.aluno_id, 'aluno_nome': resultado.aluno.nome, 'resultado_id': resultado.id, 'nota_final': nota_final}
             )
 
             flash(f'Correção salva com sucesso! A nota final do aluno {resultado.aluno.nome} é {nota_final}.', 'success')
-            return redirect(url_for('detalhes_avaliacao', avaliacao_id=resultado.avaliacao_id))
+            
+            # --- CORREÇÃO APLICADA AQUI ---
+            # Verifica se a avaliação veio de um modelo. Se sim, redireciona para a nova página de detalhes.
+            if resultado.avaliacao.modelo_id:
+                return redirect(url_for('detalhes_modelo_avaliacao', modelo_id=resultado.avaliacao.modelo_id))
+            else:
+                # Mantém o comportamento antigo para avaliações que não são de modelos (ex: recuperações)
+                return redirect(url_for('detalhes_avaliacao', avaliacao_id=resultado.avaliacao_id))
 
         except Exception as e:
             db.session.rollback()
@@ -1913,8 +1914,6 @@ def corrigir_respostas(resultado_id):
             return redirect(url_for('corrigir_respostas', resultado_id=resultado_id))
 
     # --- Lógica GET (carregamento da página) ---
-    # Filtra as respostas discursivas para exibir na página
-    # Adicionamos .all() para executar a query da relação dinâmica
     respostas_discursivas = [r for r in resultado.respostas.all() if r.questao.tipo == 'discursiva']
     
     return render_template('app/correcao_respostas.html', resultado=resultado, respostas=respostas_discursivas)
