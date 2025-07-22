@@ -1,0 +1,109 @@
+{% extends 'app/base.html' %}
+
+{% block title %}Detalhes: {{ modelo.nome }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4 px-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="display-6">Detalhes da Avaliação</h1>
+        <a href="{{ url_for('listar_modelos_avaliacao') }}" class="btn btn-outline-secondary">&larr; Voltar à Lista</a>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">{{ modelo.nome }}</h4>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Tipo:</strong> <span class="badge bg-primary">{{ modelo.tipo.replace('_', ' ')|capitalize }}</span></p>
+                    <p><strong>Série:</strong> {{ modelo.serie.nome }}</p>
+                    <p><strong>Criada por:</strong> {{ modelo.criador.nome }}</p>
+                </div>
+                <div class="col-md-6">
+                    {% set total_questoes = namespace(value=0) %}
+                    {% if modelo.regras_selecao and modelo.regras_selecao.disciplinas %}
+                        {% for disc in modelo.regras_selecao.disciplinas %}
+                            {% set total_questoes.value = total_questoes.value + (disc.niveis.facil or 0) + (disc.niveis.media or 0) + (disc.niveis.dificil or 0) %}
+                        {% endfor %}
+                    {% endif %}
+                    <p><strong>Nº de Questões (por aluno):</strong> {{ total_questoes.value }}</p>
+                    <p><strong>Tempo Limite:</strong> {{ modelo.tempo_limite or 'Livre' }}{% if modelo.tempo_limite %} minutos{% endif %}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Resultados e Estatísticas</h5>
+        </div>
+        <div class="card-body">
+            <div class="row text-center">
+                <div class="col-md-6 border-end">
+                    <div class="p-3">
+                        <h6>Participantes</h6>
+                        <p class="display-5 fw-bold text-primary">{{ num_participantes }}</p>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="p-3">
+                        <h6>Média da Turma</h6>
+                        <p class="display-5 fw-bold text-primary">{{ "%.2f"|format(media_turma) }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-header">
+            <h5 class="mb-0">Notas Individuais</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover table-striped mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th scope="col">Aluno(a)</th>
+                            <th scope="col">Data de Realização</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Nota Final</th>
+                            <th scope="col">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for resultado in resultados %}
+                        <tr>
+                            <td>{{ resultado.aluno.nome }}</td>
+                            <td>{{ resultado.data_realizacao.strftime('%d/%m/%Y %H:%M') }}</td>
+                            <td>
+                                {% if resultado.status == 'Finalizado' %}
+                                    <span class="badge bg-success">Finalizado</span>
+                                {% elif resultado.status == 'Pendente' %}
+                                    <span class="badge bg-warning text-dark">Pendente</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ resultado.status }}</span>
+                                {% endif %}
+                            </td>
+                            <td><strong>{{ "%.2f"|format(resultado.nota) if resultado.nota is not none else 'N/A' }}</strong></td>
+                            <td>
+                                {% if resultado.status == 'Pendente' %}
+                                    <a href="{{ url_for('corrigir_respostas', resultado_id=resultado.id) }}" class="btn btn-sm btn-primary">Corrigir</a>
+                                {% elif resultado.status == 'Finalizado' %}
+                                    <a href="#" class="btn btn-sm btn-outline-secondary disabled">Revisado</a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center text-muted py-4">Nenhum aluno respondeu a esta avaliação ainda.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
