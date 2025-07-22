@@ -9,7 +9,7 @@
 {% block content %}
 <div class="container-fluid mt-4 px-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="display-6">Meu Desempenho</h1>
+        <h1 class="display-6">Meu Desempenho 🚀</h1>
         <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">&larr; Voltar ao Painel</a>
     </div>
 
@@ -37,27 +37,29 @@
             <div class="p-4 bg-light border border-top-0 rounded-bottom">
                 {% if total_provas > 0 %}
                 <div class="row g-4">
-                    <div class="col-md-4">
+                    <div class="col-lg-4">
                         <div class="card text-center text-white bg-primary h-100">
-                            <div class="card-body">
+                            <div class="card-body d-flex flex-column justify-content-center">
                                 <h5 class="card-title">Média Geral (Provas)</h5>
-                                <p class="display-4 fw-bold">{{ media_provas }}</p>
+                                <p class="display-4 fw-bold mb-0">{{ media_provas }}</p>
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-lg-4">
                         <div class="card text-center h-100">
-                             <div class="card-body">
-                                 <h5 class="card-title">Provas Concluídas</h5>
-                                 <p class="display-4 fw-bold">{{ total_provas }}</p>
-                             </div>
+                             <div class="card-body d-flex flex-column justify-content-center">
+                                <h5 class="card-title">Provas Concluídas</h5>
+                                <p class="display-4 fw-bold mb-0">{{ total_provas }}</p>
+                            </div>
                         </div>
                     </div>
+                    <div class="col-lg-4 d-none d-lg-block"></div>
+
                     <div class="col-12 mt-4">
                         <div class="card">
-                            <div class="card-header">Evolução das Notas (Provas)</div>
+                            <div class="card-header fw-bold">Evolução das Notas por Disciplina</div>
                             <div class="card-body">
-                                <canvas id="graficoProvas"></canvas>
+                                <canvas id="graficoProvasPorDisciplina"></canvas>
                             </div>
                         </div>
                     </div>
@@ -72,25 +74,25 @@
             <div class="p-4 bg-light border border-top-0 rounded-bottom">
                  {% if total_simulados > 0 %}
                 <div class="row g-4">
-                    <div class="col-md-4">
+                    <div class="col-lg-4">
                         <div class="card text-center text-white bg-success h-100">
-                            <div class="card-body">
+                            <div class="card-body d-flex flex-column justify-content-center">
                                 <h5 class="card-title">Média Geral (Simulados)</h5>
-                                <p class="display-4 fw-bold">{{ media_simulados }}</p>
+                                <p class="display-4 fw-bold mb-0">{{ media_simulados }}</p>
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-lg-4">
                         <div class="card text-center h-100">
-                              <div class="card-body">
-                                 <h5 class="card-title">Simulados Concluídos</h5>
-                                 <p class="display-4 fw-bold">{{ total_simulados }}</p>
-                             </div>
+                              <div class="card-body d-flex flex-column justify-content-center">
+                                <h5 class="card-title">Simulados Concluídos</h5>
+                                <p class="display-4 fw-bold mb-0">{{ total_simulados }}</p>
+                            </div>
                         </div>
                     </div>
                     <div class="col-12 mt-4">
                         <div class="card">
-                            <div class="card-header">Evolução das Notas (Simulados)</div>
+                            <div class="card-header fw-bold">Evolução das Notas (Simulados)</div>
                             <div class="card-body">
                                 <canvas id="graficoSimulados"></canvas>
                             </div>
@@ -104,39 +106,39 @@
         </div>
 
         <div class="tab-pane fade" id="disciplinas-pane" role="tabpanel" aria-labelledby="disciplinas-tab" tabindex="0">
-            <div class="p-4 bg-light border border-top-0 rounded-bottom">
-                <div class="accordion" id="accordionDisciplinas">
-                    {% for nome_disciplina, dados in dados_por_disciplina.items() %}
-                    <div class="accordion-item">
-                        <h2 class="accordion-header" id="heading_{{ nome_disciplina|replace(' ', '') }}">
-                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse_{{ nome_disciplina|replace(' ', '') }}" aria-expanded="false" aria-controls="collapse_{{ nome_disciplina|replace(' ', '') }}">
-                                <div class="d-flex justify-content-between w-100 align-items-center pe-3">
-                                    <span class="fw-bold fs-5">{{ nome_disciplina }}</span>
-                                    <span class="badge bg-dark rounded-pill">Média: {{ "%.1f"|format(dados.media) }}</span>
-                                </div>
-                            </button>
-                        </h2>
-                        <div id="collapse_{{ nome_disciplina|replace(' ', '') }}" class="accordion-collapse collapse" data-bs-parent="#accordionDisciplinas">
-                            <div class="accordion-body p-0">
-                                <ul class="list-group list-group-flush">
-                                    {% for avaliacao in dados.avaliacoes %}
-                                    <a href="{{ url_for('ver_resultado_detalhado', resultado_id=avaliacao.id) }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
-                                        <div>
-                                            {{ avaliacao.nome }}
-                                            <small class="d-block text-muted">{{ avaliacao.data }}</small>
-                                        </div>
-                                        <span class="badge bg-primary rounded-pill fs-6">Nota: {{ "%.1f"|format(avaliacao.nota) }}</span>
-                                    </a>
-                                    {% endfor %}
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                    {% else %}
-                    <div class="alert alert-info text-center">Nenhum dado de desempenho por disciplina para exibir.</div>
-                    {% endfor %}
-                </div>
-            </div>
+             <div class="p-4 bg-light border border-top-0 rounded-bottom">
+                 <div class="accordion" id="accordionDisciplinas">
+                     {% for nome_disciplina, dados in dados_por_disciplina.items() %}
+                     <div class="accordion-item">
+                         <h2 class="accordion-header" id="heading_{{ nome_disciplina|replace(' ', '') }}">
+                             <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse_{{ nome_disciplina|replace(' ', '') }}" aria-expanded="false" aria-controls="collapse_{{ nome_disciplina|replace(' ', '') }}">
+                                 <div class="d-flex justify-content-between w-100 align-items-center pe-3">
+                                     <span class="fw-bold fs-5">{{ nome_disciplina }}</span>
+                                     <span class="badge bg-dark rounded-pill">Média: {{ "%.1f"|format(dados.media) }}</span>
+                                 </div>
+                             </button>
+                         </h2>
+                         <div id="collapse_{{ nome_disciplina|replace(' ', '') }}" class="accordion-collapse collapse" data-bs-parent="#accordionDisciplinas">
+                             <div class="accordion-body p-0">
+                                 <ul class="list-group list-group-flush">
+                                     {% for avaliacao in dados.avaliacoes %}
+                                     <a href="{{ url_for('ver_resultado_detalhado', resultado_id=avaliacao.id) }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                                         <div>
+                                             {{ avaliacao.nome }}
+                                             <small class="d-block text-muted">{{ avaliacao.data }}</small>
+                                         </div>
+                                         <span class="badge bg-primary rounded-pill fs-6">Nota: {{ "%.1f"|format(avaliacao.nota) }}</span>
+                                     </a>
+                                     {% endfor %}
+                                 </ul>
+                             </div>
+                         </div>
+                     </div>
+                     {% else %}
+                     <div class="alert alert-info text-center">Nenhum dado de desempenho por disciplina para exibir.</div>
+                     {% endfor %}
+                 </div>
+             </div>
         </div>
 
     </div>
@@ -144,50 +146,67 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    function criarGrafico(ctx, labels, data, label, borderColor) {
-        new Chart(ctx, {
-            type: 'line',
+    
+    // --- NOVO GRÁFICO DE PROVAS POR DISCIPLINA ---
+    try {
+        const chartDataProvas = JSON.parse('{{ chart_data_provas_por_disciplina_json | safe }}');
+        const canvasProvas = document.getElementById('graficoProvasPorDisciplina');
+
+        if (canvasProvas && chartDataProvas && chartDataProvas.datasets && chartDataProvas.datasets.length > 0) {
+            new Chart(canvasProvas.getContext('2d'), {
+                type: 'line',
+                data: chartDataProvas, // Usa diretamente a estrutura de dados do backend
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top' },
+                        title: { display: false }, // O título já está no card-header
+                        tooltip: { mode: 'index', intersect: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 10,
+                            title: { display: true, text: 'Nota' }
+                        },
+                        x: {
+                            title: { display: true, text: 'Data da Avaliação' }
+                        }
+                    }
+                }
+            });
+        } else if (canvasProvas) {
+            const container = canvasProvas.parentElement;
+            container.innerHTML = '<p class="text-center text-muted my-5">Não há dados suficientes para exibir a evolução das notas.</p>';
+        }
+    } catch (e) {
+        console.error("Erro ao renderizar o gráfico de provas:", e);
+    }
+
+    // --- GRÁFICO DE SIMULADOS (LÓGICA MANTIDA) ---
+    const canvasSimulados = document.getElementById('graficoSimulados');
+    if (canvasSimulados) {
+        new Chart(canvasSimulados.getContext('2d'), {
+            type: 'bar', // Mudado para 'bar' para diferenciar visualmente
             data: {
-                labels: labels,
+                labels: {{ chart_labels_simulados|tojson|safe }},
                 datasets: [{
-                    label: label,
-                    data: data,
-                    fill: false,
-                    borderColor: borderColor,
-                    tension: 0.1
+                    label: 'Nota do Simulado',
+                    data: {{ chart_data_simulados|tojson|safe }},
+                    backgroundColor: 'rgba(25, 135, 84, 0.6)',
+                    borderColor: 'rgba(25, 135, 84, 1)',
+                    borderWidth: 1
                 }]
             },
             options: {
                 scales: {
                     y: { beginAtZero: true, max: 10 }
                 },
-                responsive: true
+                responsive: true,
+                maintainAspectRatio: false,
             }
         });
-    }
-
-    // Cria o gráfico de Provas
-    const canvasProvas = document.getElementById('graficoProvas');
-    if (canvasProvas) {
-        criarGrafico(
-            canvasProvas.getContext('2d'), 
-            {{ chart_labels_provas|tojson|safe }}, 
-            {{ chart_data_provas|tojson|safe }}, 
-            'Nota da Prova', 
-            'rgb(0, 123, 255)'
-        );
-    }
-
-    // Cria o gráfico de Simulados
-    const canvasSimulados = document.getElementById('graficoSimulados');
-    if (canvasSimulados) {
-        criarGrafico(
-            canvasSimulados.getContext('2d'), 
-            {{ chart_labels_simulados|tojson|safe }}, 
-            {{ chart_data_simulados|tojson|safe }}, 
-            'Nota do Simulado', 
-            'rgb(25, 135, 84)'
-        );
     }
 });
 </script>

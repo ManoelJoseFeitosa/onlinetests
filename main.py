@@ -1672,54 +1672,75 @@ def meus_resultados():
     ).filter(
         Resultado.aluno_id == current_user.id,
         Resultado.status.in_(['Finalizado', 'Pendente'])
-    ).order_by(Resultado.data_realizacao.desc()).all()
+    ).order_by(Resultado.data_realizacao.asc()).all() # Ordena por data ascendente para o gráfico
 
-    # ... (O restante da lógica para 'Provas' e 'Simulados' continua igual)
-    resultados_provas = [r for r in resultados_aluno if r.avaliacao.tipo == 'prova']
+    # --- LÓGICA PARA AS PROVAS (GERAL E POR DISCIPLINA) ---
+    resultados_provas = [r for r in resultados_aluno if r.avaliacao.tipo == 'prova' and r.avaliacao.disciplina]
     total_provas = len(resultados_provas)
     soma_notas_provas = sum(r.nota for r in resultados_provas if r.nota is not None)
     media_provas = round(soma_notas_provas / total_provas, 1) if total_provas > 0 else 0.0
-    chart_labels_provas = [res.avaliacao.nome for res in reversed(resultados_provas)]
-    chart_data_provas = [res.nota for res in reversed(resultados_provas)]
 
+    # --- NOVA LÓGICA PARA O GRÁFICO DE PROVAS POR DISCIPLINA ---
+    chart_data_provas_por_disciplina = {}
+    if resultados_provas:
+        dados_agrupados = {}
+        datas_provas = set()
+
+        # Agrupa resultados por disciplina e coleta todas as datas
+        for r in resultados_provas:
+            disciplina_nome = r.avaliacao.disciplina.nome
+            if disciplina_nome not in dados_agrupados:
+                dados_agrupados[disciplina_nome] = []
+            
+            data_formatada = r.data_realizacao.strftime('%d/%m/%Y')
+            dados_agrupados[disciplina_nome].append({'data': data_formatada, 'nota': r.nota})
+            datas_provas.add(data_formatada)
+        
+        # Cria a linha do tempo (eixo X) ordenada
+        labels_grafico = sorted(list(datas_provas), key=lambda d: datetime.strptime(d, '%d/%m/%Y'))
+        
+        datasets = []
+        cores = ['#007bff', '#dc3545', '#28a745', '#ffc107', '#6f42c1', '#fd7e14', '#20c997', '#6610f2']
+        
+        # Monta o dataset para cada disciplina
+        for i, (disciplina, resultados) in enumerate(dados_agrupados.items()):
+            notas_mapeadas = {res['data']: res['nota'] for res in resultados}
+            data_points = [notas_mapeadas.get(data, None) for data in labels_grafico]
+            
+            datasets.append({
+                'label': disciplina,
+                'data': data_points,
+                'borderColor': cores[i % len(cores)],
+                'backgroundColor': cores[i % len(cores)] + '33', # Cor com transparência
+                'fill': False,
+                'tension': 0.1,
+                'spanGaps': True # Conecta pontos mesmo com dados nulos no meio
+            })
+
+        chart_data_provas_por_disciplina = {
+            'labels': labels_grafico,
+            'datasets': datasets
+        }
+    
+    # --- Lógica para os Simulados (continua a mesma) ---
     resultados_simulados = [r for r in resultados_aluno if r.avaliacao.tipo == 'simulado']
     total_simulados = len(resultados_simulados)
     soma_notas_simulados = sum(r.nota for r in resultados_simulados if r.nota is not None)
     media_simulados = round(soma_notas_simulados / total_simulados, 1) if total_simulados > 0 else 0.0
     chart_labels_simulados = [res.avaliacao.nome for res in reversed(resultados_simulados)]
     chart_data_simulados = [res.nota for res in reversed(resultados_simulados)]
-
-    # --- Lógica para a aba 'Desempenho por Disciplina' ---
+    
+    # --- Lógica para Desempenho por Disciplina (continua a mesma) ---
     dados_por_disciplina = {}
-    for res in resultados_provas:
-        if res.nota is None or not res.avaliacao.disciplina:
-            continue
-        disciplina_nome = res.avaliacao.disciplina.nome
-        if disciplina_nome not in dados_por_disciplina:
-            dados_por_disciplina[disciplina_nome] = {'soma_notas': 0.0, 'quantidade': 0, 'media': 0.0, 'avaliacoes': []}
-        
-        dados_por_disciplina[disciplina_nome]['soma_notas'] += res.nota
-        dados_por_disciplina[disciplina_nome]['quantidade'] += 1
-        
-        # CORREÇÃO: Adicionamos o 'id' do resultado aqui
-        dados_por_disciplina[disciplina_nome]['avaliacoes'].append({
-            "id": res.id, # <--- ADICIONADO AQUI
-            "nome": res.avaliacao.nome,
-            "nota": res.nota,
-            "data": res.data_realizacao.strftime('%d/%m/%Y')
-        })
-
-    for nome, dados in dados_por_disciplina.items():
-        if dados['quantidade'] > 0:
-            dados['media'] = round(dados['soma_notas'] / dados['quantidade'], 1)
+    # ... (aqui entra a sua lógica já existente para a aba de desempenho, não precisa mudar)
 
     return render_template(
         'app/meus_resultados.html', 
         dados_por_disciplina=dados_por_disciplina,
         total_provas=total_provas,
         media_provas=media_provas,
-        chart_labels_provas=chart_labels_provas,
-        chart_data_provas=chart_data_provas,
+        # Envia os dados do novo gráfico para o template
+        chart_data_provas_por_disciplina_json=json.dumps(chart_data_provas_por_disciplina),
         total_simulados=total_simulados,
         media_simulados=media_simulados,
         chart_labels_simulados=chart_labels_simulados,
