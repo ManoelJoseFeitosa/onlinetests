@@ -26,6 +26,10 @@
                     <li class="nav-item"><a class="nav-link" href="{{ url_for('pagina_inicial_vendas') }}">Início</a></li>
                     <li class="nav-item"><a class="nav-link" href="{{ url_for('funcionalidades') }}">Funcionalidades</a></li>
                     <li class="nav-item"><a class="nav-link" href="{{ url_for('planos') }}">Planos</a></li>
+                    
+                    <!-- ### ALTERAÇÃO APLICADA AQUI ### -->
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('documentos') }}">Documentos</a></li>
+                    
                     <li class="nav-item"><a class="nav-link" href="{{ url_for('contato') }}">Contato</a></li>
                 </ul>
                 
@@ -37,7 +41,7 @@
                         <a href="{{ url_for('login') }}" class="btn btn-primary">Acessar Sistema</a>
                     {% endif %}
                 </div>
-                </div>
+            </div>
         </div>
     </nav>
 
