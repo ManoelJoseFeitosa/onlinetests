@@ -34,6 +34,14 @@ UPLOAD_FOLDER = os.path.join(app.static_folder, 'uploads/questoes')
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
+UPLOAD_FOLDER_DOCS = os.path.join(app.static_folder, 'uploads/documentos')
+ALLOWED_EXTENSIONS_DOCS = {'pdf', 'doc', 'docx'} # Defina as extensões permitidas
+app.config['UPLOAD_FOLDER_DOCS'] = UPLOAD_FOLDER_DOCS
+
+def allowed_doc_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS_DOCS
+
 app.config['SECRET_KEY'] = 'uma_chave_secreta_muito_forte_e_dificil_de_adivinhar'
 
 # --- FORMA ROBUSTA DE CARREGAR A URL DO BANCO ---
@@ -359,6 +367,18 @@ class AuditLog(db.Model):
     def __repr__(self):
         return f'<AuditLog {self.timestamp} - {self.user_email} - {self.action}>'
 
+class Documento(db.Model):
+    __tablename__ = 'documento'
+    id = db.Column(db.Integer, primary_key=True)
+    titulo = db.Column(db.String(200), nullable=False)
+    descricao = db.Column(db.Text, nullable=True)
+    caminho_arquivo = db.Column(db.String(300), nullable=False)
+    data_upload = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    ativo = db.Column(db.Boolean, default=True, nullable=False)
+
+    def __repr__(self):
+        return f'<Documento {self.titulo}>'
+
 # ===================================================================
 # SEÇÃO 5: ROTAS DA APLICAÇÃO
 # ===================================================================
@@ -519,6 +539,14 @@ def contato():
         
     return render_template('contato.html')
 
+@app.route('/documentos')
+def documentos():
+    """
+    Rota pública que exibe a lista de documentos ativos para download.
+    """
+    lista_documentos = Documento.query.filter_by(ativo=True).order_by(Documento.data_upload.desc()).all()
+    return render_template('documentos.html', documentos=lista_documentos)
+
 @app.route('/superadmin/painel')
 @login_required
 @superadmin_required
@@ -657,6 +685,87 @@ def toggle_escola_status(escola_id):
     
     flash(f"Status da escola '{escola.nome}' alterado para {escola.status}.", "info")
     return redirect(url_for('superadmin_painel'))
+
+@app.route('/superadmin/gerenciar-documentos', methods=['GET', 'POST'])
+@login_required
+@superadmin_required
+def superadmin_gerenciar_documentos():
+    """
+    Rota para o Superadmin fazer upload e gerenciar documentos.
+    """
+    if request.method == 'POST':
+        try:
+            titulo = request.form.get('titulo')
+            descricao = request.form.get('descricao')
+            arquivo = request.files.get('arquivo')
+
+            if not titulo or not arquivo or not arquivo.filename:
+                flash('Título e arquivo são obrigatórios.', 'danger')
+                return redirect(url_for('superadmin_gerenciar_documentos'))
+
+            if allowed_doc_file(arquivo.filename):
+                filename = secure_filename(arquivo.filename)
+                # Garante que o diretório de upload exista
+                os.makedirs(app.config['UPLOAD_FOLDER_DOCS'], exist_ok=True)
+                caminho_salvar = os.path.join(app.config['UPLOAD_FOLDER_DOCS'], filename)
+                
+                # Evita sobrescrever arquivos com o mesmo nome
+                if os.path.exists(caminho_salvar):
+                    flash(f'Um arquivo com o nome "{filename}" já existe. Por favor, renomeie o arquivo antes de enviar.', 'danger')
+                    return redirect(url_for('superadmin_gerenciar_documentos'))
+
+                arquivo.save(caminho_salvar)
+
+                # Salva o caminho relativo para uso no template
+                caminho_relativo = os.path.join('uploads/documentos', filename).replace('\\', '/')
+
+                novo_documento = Documento(
+                    titulo=titulo,
+                    descricao=descricao,
+                    caminho_arquivo=caminho_relativo
+                )
+                db.session.add(novo_documento)
+                db.session.commit()
+                log_audit('DOCUMENT_UPLOAD', target_obj=novo_documento)
+                flash('Documento enviado com sucesso!', 'success')
+            else:
+                flash('Tipo de arquivo não permitido. Use PDF, DOC ou DOCX.', 'danger')
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Ocorreu um erro ao enviar o documento: {e}', 'danger')
+
+        return redirect(url_for('superadmin_gerenciar_documentos'))
+
+    # Método GET: Apenas exibe a página
+    documentos = Documento.query.order_by(Documento.data_upload.desc()).all()
+    return render_template('app/superadmin_documentos.html', documentos=documentos)
+
+@app.route('/superadmin/documento/<int:documento_id>/excluir', methods=['POST'])
+@login_required
+@superadmin_required
+def superadmin_excluir_documento(documento_id):
+    """
+    Rota para excluir um documento.
+    """
+    try:
+        documento = Documento.query.get_or_404(documento_id)
+        caminho_completo = os.path.join(app.static_folder, documento.caminho_arquivo)
+
+        db.session.delete(documento)
+        
+        # Tenta remover o arquivo físico do servidor
+        if os.path.exists(caminho_completo):
+            os.remove(caminho_completo)
+
+        db.session.commit()
+        log_audit('DOCUMENT_DELETE', details={'titulo': documento.titulo, 'id': documento_id})
+        flash('Documento excluído com sucesso!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao excluir o documento: {e}', 'danger')
+        
+    return redirect(url_for('superadmin_gerenciar_documentos'))
 
 # --- Rotas de Autenticação e Dashboard ---
 @app.route('/login', methods=['GET', 'POST'])

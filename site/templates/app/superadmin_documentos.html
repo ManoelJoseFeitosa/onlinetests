@@ -1,0 +1,100 @@
+{% extends 'app/base.html' %} {# Você mencionou que seu base se chama 'base.html', então mantive #}
+
+{% block title %}Gerenciar Documentos{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">Gerenciar Documentos</h2>
+    </div>
+
+    <!-- Seção de Alertas/Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- Formulário de Upload -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-upload me-2"></i>Enviar Novo Documento</h5>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('superadmin_gerenciar_documentos') }}" enctype="multipart/form-data">
+                <div class="mb-3">
+                    <label for="titulo" class="form-label">Título do Documento <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="titulo" name="titulo" required>
+                </div>
+                <div class="mb-3">
+                    <label for="descricao" class="form-label">Descrição (Opcional)</label>
+                    <textarea class="form-control" id="descricao" name="descricao" rows="2" placeholder="Ex: Manual completo para todos os perfis de usuário."></textarea>
+                </div>
+                <div class="mb-3">
+                    <label for="arquivo" class="form-label">Arquivo (PDF, DOC, DOCX) <span class="text-danger">*</span></label>
+                    <input class="form-control" type="file" id="arquivo" name="arquivo" accept=".pdf,.doc,.docx" required>
+                </div>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-cloud-arrow-up-fill me-2"></i>Enviar Documento
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tabela de Documentos Existentes -->
+    <div class="card shadow-sm">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-file-earmark-text me-2"></i>Documentos Cadastrados</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>Título</th>
+                            <th>Arquivo</th>
+                            <th>Data de Upload</th>
+                            <th class="text-center">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for doc in documentos %}
+                        <tr>
+                            <td>
+                                <strong>{{ doc.titulo }}</strong>
+                                {% if doc.descricao %}<br><small class="text-muted">{{ doc.descricao }}</small>{% endif %}
+                            </td>
+                            <td><a href="{{ url_for('static', filename=doc.caminho_arquivo) }}" target="_blank">{{ doc.caminho_arquivo.split('/')[-1] }}</a></td>
+                            <td>{{ doc.data_upload.strftime('%d/%m/%Y às %H:%M') }}</td>
+                            <td class="text-center">
+                                <form action="{{ url_for('superadmin_excluir_documento', documento_id=doc.id) }}" method="POST" onsubmit="return confirm('Tem certeza que deseja excluir este documento? Esta ação não pode ser desfeita.');">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir Documento">
+                                        <i class="bi bi-trash-fill"></i> Excluir
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="4" class="text-center text-muted py-4">Nenhum documento cadastrado.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+```
+
+### **Próximo Passo**
+
+Agora, para que você possa acessar essa nova página, precisamos adicionar um link no seu menu lateral.
+
+**Por favor, me envie o código do seu arquivo `app/base.html`** para que eu possa lhe mostrar exatamente onde adicionar o link "Gerenciar Documentos" no menu do Super Administrad

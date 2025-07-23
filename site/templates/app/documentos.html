@@ -1,0 +1,43 @@
+{% extends "base_home.html" %} {# Assumindo que seu layout base público se chama base_home.html, ajuste se necessário #}
+
+{% block title %}Documentos - OnlineTests{% endblock %}
+
+{% block content %}
+<section class="py-5">
+    <div class="container px-5">
+        <div class="bg-light rounded-3 py-5 px-4 px-md-5 mb-5">
+            <div class="text-center mb-5">
+                <div class="feature bg-primary bg-gradient text-white rounded-3 mb-3"><i class="bi bi-file-earmark-text"></i></div>
+                <h1 class="fw-bolder">Central de Documentos</h1>
+                <p class="lead fw-normal text-muted mb-0">Encontre aqui todos os manuais, guias e documentos oficiais da plataforma OnlineTests.</p>
+            </div>
+            <div class="row gx-5 justify-content-center">
+                <div class="col-lg-10 col-xl-8">
+                    
+                    {% if documentos %}
+                        <div class="list-group">
+                            {% for doc in documentos %}
+                            <a href="{{ url_for('static', filename=doc.caminho_arquivo) }}" class="list-group-item list-group-item-action flex-column align-items-start mb-3" download>
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h5 class="mb-1"><i class="bi bi-file-pdf-fill text-danger me-2"></i> {{ doc.titulo }}</h5>
+                                    <small>Publicado em: {{ doc.data_upload.strftime('%d/%m/%Y') }}</small>
+                                </div>
+                                {% if doc.descricao %}
+                                <p class="mb-1">{{ doc.descricao }}</p>
+                                {% endif %}
+                                <small class="text-primary">Clique para baixar.</small>
+                            </a>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info text-center" role="alert">
+                            Nenhum documento disponível no momento.
+                        </div>
+                    {% endif %}
+
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

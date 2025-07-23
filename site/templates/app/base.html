@@ -54,13 +54,19 @@
                             </li>
                             {% endif %}
 
+                            <!-- ### ALTERAÇÃO APLICADA AQUI ### -->
                             {% if current_user.is_superadmin %}
-                                <li class="nav-item">
-                                    <a class="nav-link text-warning fw-bold" href="{{ url_for('superadmin_painel') }}">
+                                <li class="nav-item dropdown">
+                                    <a class="nav-link dropdown-toggle text-warning fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                         <i class="bi bi-shield-lock-fill me-1"></i>Super Admin
                                     </a>
+                                    <ul class="dropdown-menu dropdown-menu-dark">
+                                        <li><a class="dropdown-item" href="{{ url_for('superadmin_painel') }}">Painel de Escolas</a></li>
+                                        <li><a class="dropdown-item" href="{{ url_for('superadmin_gerenciar_documentos') }}">Gerenciar Documentos</a></li>
+                                    </ul>
                                 </li>
                             {% endif %}
+                            <!-- ### FIM DA ALTERAÇÃO ### -->
 
                             <li class="nav-item">
                                 <a class="nav-link" href="{{ url_for('dashboard') }}"><i class="bi bi-grid-fill me-1"></i>Painel</a>
@@ -86,7 +92,6 @@
                                 <a class="nav-link" href="{{ url_for('logout') }}"><i class="bi bi-box-arrow-right me-1"></i>Sair</a>
                             </li>
                         {% else %}
-                            <!-- *** CORREÇÃO APLICADA AQUI *** -->
                             <li class="nav-item">
                                 <a class="nav-link" href="{{ url_for('pagina_inicial_vendas') }}">
                                     <i class="bi bi-house-door-fill me-1"></i>Site
