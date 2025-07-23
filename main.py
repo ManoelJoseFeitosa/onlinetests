@@ -34,6 +34,7 @@ UPLOAD_FOLDER = os.path.join(app.static_folder, 'uploads/questoes')
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
+# Pasta para upload dos documentos (manuais, etc.)
 UPLOAD_FOLDER_DOCS = os.path.join(app.static_folder, 'uploads/documentos')
 ALLOWED_EXTENSIONS_DOCS = {'pdf', 'doc', 'docx'} # Defina as extensões permitidas
 app.config['UPLOAD_FOLDER_DOCS'] = UPLOAD_FOLDER_DOCS
