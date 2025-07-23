@@ -44,74 +44,72 @@
                 </button>
                 <div class="collapse navbar-collapse" id="navbarNav">
                     <ul class="navbar-nav ms-auto align-items-center">
-                        {% if current_user.is_authenticated %}
-                            
-                            {% if current_user.escola %}
-                            <li class="nav-item">
-                                <span class="nav-link text-info fw-bold">
-                                    <i class="bi bi-building me-1"></i>{{ current_user.escola.nome }}
-                                </span>
-                            </li>
-                            {% endif %}
+    {% if current_user.is_authenticated %}
+        
+        {% if current_user.escola %}
+        <li class="nav-item">
+            <span class="nav-link text-info fw-bold">
+                <i class="bi bi-building me-1"></i>{{ current_user.escola.nome }}
+            </span>
+        </li>
+        {% endif %}
 
-                            <!-- ### INÍCIO DO MENU CORRIGIDO PARA SUPER ADMIN ### -->
-                            {% if current_user.is_superadmin %}
-                                <li class="nav-item dropdown">
-                                    <a class="nav-link dropdown-toggle text-warning fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                        <i class="bi bi-shield-lock-fill me-1"></i>Super Admin
-                                    </a>
-                                    <ul class="dropdown-menu dropdown-menu-dark">
-                                        <li><a class="dropdown-item" href="{{ url_for('superadmin_painel') }}">Painel de Escolas</a></li>
-                                        <li><a class="dropdown-item" href="{{ url_for('superadmin_gerenciar_documentos') }}">Gerenciar Documentos</a></li>
-                                        <li><hr class="dropdown-divider"></li>
-                                        <li><a class="dropdown-item" href="{{ url_for('painel_relatorios') }}">Relatórios Gerenciais</a></li>
-                                        <li><a class="dropdown-item" href="{{ url_for('painel_auditoria') }}">Auditoria do Sistema</a></li>
-                                    </ul>
-                                </li>
-                            {% endif %}
-                            <!-- ### FIM DO MENU SUPER ADMIN ### -->
+        <!-- Menu do Super Admin -->
+        {% if current_user.is_superadmin %}
+            <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle text-warning fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-shield-lock-fill me-1"></i>Super Admin
+                </a>
+                <ul class="dropdown-menu dropdown-menu-dark">
+                    <li><a class="dropdown-item" href="{{ url_for('superadmin_painel') }}">Painel de Escolas</a></li>
+                    <li><a class="dropdown-item" href="{{ url_for('superadmin_gerenciar_documentos') }}">Gerenciar Documentos</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="{{ url_for('painel_relatorios') }}">Relatórios Gerenciais</a></li>
+                    <li><a class="dropdown-item" href="{{ url_for('painel_auditoria') }}">Auditoria do Sistema</a></li>
+                </ul>
+            </li>
+        {% endif %}
 
-                            <li class="nav-item">
-                                <a class="nav-link" href="{{ url_for('dashboard') }}"><i class="bi bi-grid-fill me-1"></i>Painel</a>
-                            </li>
+        <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('dashboard') }}"><i class="bi bi-grid-fill me-1"></i>Painel</a>
+        </li>
 
-                            <!-- ### INÍCIO DO MENU CORRIGIDO PARA COORDENADOR (NÃO SUPER ADMIN) ### -->
-                            {% if current_user.role == 'coordenador' and not current_user.is_superadmin %}
-                            <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                    <i class="bi bi-file-earmark-check me-1"></i>Avaliações
-                                </a>
-                                <ul class="dropdown-menu dropdown-menu-dark">
-                                    <li><a class="dropdown-item" href="{{ url_for('listar_modelos_avaliacao') }}">Ver Modelos de Avaliação</a></li>
-                                    <li><a class="dropdown-item" href="{{ url_for('criar_modelo_avaliacao') }}">Criar Novo Modelo</a></li>
-                                </ul>
-                            </li>
-                            <li class="nav-item">
-                               <a class="nav-link" href="{{ url_for('painel_relatorios') }}"><i class="bi bi-graph-up me-1"></i>Relatórios</a>
-                            </li>
-                            {% elif current_user.role == 'aluno' %}
-                            <li class="nav-item">
-                                <a class="nav-link" href="{{ url_for('listar_modelos_avaliacao') }}"><i class="bi bi-card-checklist me-1"></i>Ver Avaliações</a>
-                            </li>
-                            {% endif %}
-                             <!-- ### FIM DO MENU COORDENADOR ### -->
-                            
-                            <li class="nav-item">
-                                <a class="nav-link" href="{{ url_for('logout') }}"><i class="bi bi-box-arrow-right me-1"></i>Sair</a>
-                            </li>
-                        {% else %}
-                            <li class="nav-item">
-                                <a class="nav-link" href="{{ url_for('pagina_inicial_vendas') }}">
-                                    <i class="bi bi-house-door-fill me-1"></i>Site
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link active" aria-current="page" href="{{ url_for('login') }}">
-                                    <i class="bi bi-box-arrow-in-right me-1"></i>Login
-                                </a>
-                            </li>
-                        {% endif %}
-                    </ul>
+        <!-- Menus para Coordenador (que NÃO é Super Admin) -->
+        {% if current_user.role == 'coordenador' and not current_user.is_superadmin %}
+        <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="bi bi-file-earmark-check me-1"></i>Avaliações
+            </a>
+            <ul class="dropdown-menu dropdown-menu-dark">
+                <li><a class="dropdown-item" href="{{ url_for('listar_modelos_avaliacao') }}">Ver Modelos de Avaliação</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('criar_modelo_avaliacao') }}">Criar Novo Modelo</a></li>
+            </ul>
+        </li>
+        <li class="nav-item">
+           <a class="nav-link" href="{{ url_for('painel_relatorios') }}"><i class="bi bi-graph-up me-1"></i>Relatórios</a>
+        </li>
+        {% elif current_user.role == 'aluno' %}
+        <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('listar_modelos_avaliacao') }}"><i class="bi bi-card-checklist me-1"></i>Ver Avaliações</a>
+        </li>
+        {% endif %}
+        
+        <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('logout') }}"><i class="bi bi-box-arrow-right me-1"></i>Sair</a>
+        </li>
+    {% else %}
+        <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('pagina_inicial_vendas') }}">
+                <i class="bi bi-house-door-fill me-1"></i>Site
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link active" aria-current="page" href="{{ url_for('login') }}">
+                <i class="bi bi-box-arrow-in-right me-1"></i>Login
+            </a>
+        </li>
+    {% endif %}
+</ul>
                 </div>
             </div>
         </nav>

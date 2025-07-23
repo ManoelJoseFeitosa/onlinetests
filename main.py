@@ -441,7 +441,7 @@ def unauthorized_callback():
 @app.before_request
 def before_request_handler():
     if current_user.is_authenticated and current_user.precisa_trocar_senha:
-        public_endpoints = ['login', 'logout', 'static', 'pagina_inicial_vendas', 'funcionalidades', 'planos', 'contato', 'setup_inicial']
+        public_endpoints = ['login', 'logout', 'static', 'pagina_inicial_vendas', 'funcionalidades', 'planos', 'contato', 'setup_inicial', 'documentos']
         if request.endpoint and request.endpoint not in public_endpoints and request.endpoint != 'trocar_senha':
             return redirect(url_for('trocar_senha'))
 
