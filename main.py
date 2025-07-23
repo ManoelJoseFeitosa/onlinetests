@@ -27,7 +27,7 @@ import json
 # SEÇÃO 2: CONFIGURAÇÃO DO APLICATIVO E EXTENSÕES
 # ===================================================================
 app = Flask(__name__,
-            template_folder='site/templates',
+            template_folder='templates',
             static_folder='site/static')
 
 UPLOAD_FOLDER = os.path.join(app.static_folder, 'uploads/questoes')
