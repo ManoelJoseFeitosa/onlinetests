@@ -2,7 +2,7 @@
 # SEÇÃO 1: IMPORTS
 # ===================================================================
 import os
-from jinja2 import ChoiceLoader
+from jinja2 import ChoiceLoader, FileSystemLoader
 from dotenv import load_dotenv
 load_dotenv()
 import resend
