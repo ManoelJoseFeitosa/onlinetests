@@ -551,9 +551,10 @@ def contato():
     return render_template('contato.html')
 
 @app.route('/documentos')
-def documentos():
+def listar_documentos_publicos():
     """
     Rota pública que exibe a lista de documentos ativos para download.
+    Acessível por todos, logados ou não.
     """
     lista_documentos = Documento.query.filter_by(ativo=True).order_by(Documento.data_upload.desc()).all()
     return render_template('documentos.html', documentos=lista_documentos)
