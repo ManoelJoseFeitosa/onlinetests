@@ -312,6 +312,7 @@ class Usuario(db.Model, UserMixin):
     password = db.Column(db.String(256), nullable=False)
     role = db.Column(db.String(50), nullable=False, default='aluno')
     precisa_trocar_senha = db.Column(db.Boolean, default=True, nullable=False)
+    data_aceite_termos = db.Column(db.DateTime, nullable=True)
     escola_id = db.Column(db.Integer, db.ForeignKey('escola.id'), nullable=True)
     is_superadmin = db.Column(db.Boolean, default=False, nullable=False)
     avaliacoes_criadas = db.relationship('Avaliacao', backref='criador', lazy=True, foreign_keys=[Avaliacao.criador_id])
@@ -855,11 +856,29 @@ def dashboard():
 def trocar_senha():
     form = TrocarSenhaForm()
     if form.validate_on_submit():
+        # ### LÓGICA DE ACEITE DE TERMOS ADICIONADA AQUI ###
+        aceite_termos = request.form.get('aceite_termos')
+
+        if not aceite_termos:
+            flash('Você deve ler e aceitar os Termos de Uso para continuar.', 'danger')
+            # Re-renderiza a página com o erro, mantendo o formulário.
+            return render_template('app/trocar_senha.html', form=form)
+
+        # Se chegou aqui, o usuário marcou o checkbox.
+        # Atualiza os dados do usuário
         current_user.password = generate_password_hash(form.password.data, method='pbkdf2:sha256')
         current_user.precisa_trocar_senha = False
+        current_user.data_aceite_termos = datetime.utcnow() # Salva o timestamp do aceite
+
         db.session.commit()
+
+        # Auditoria do aceite e da troca de senha
+        log_audit('TERMS_ACCEPTED', target_obj=current_user)
+        log_audit('PASSWORD_CHANGED_FIRST_TIME', target_obj=current_user)
+
         flash('Sua senha foi atualizada com sucesso!', 'success')
         return redirect(url_for('dashboard'))
+
     return render_template('app/trocar_senha.html', form=form)
 
 # --- Rotas de Administração do Coordenador ---
