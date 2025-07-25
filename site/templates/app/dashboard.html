@@ -12,98 +12,178 @@
     Bem-vindo(a) de volta, {{ current_user.nome }}!
 </div>
 
-<!-- Mensagem para criar Ano Letivo -->
+<!-- Mensagem para criar Ano Letivo (apenas para coordenador) -->
 {% if not ano_letivo_ativo and current_user.role == 'coordenador' %}
 <div class="alert alert-warning">
     <strong>Atenção:</strong> Não há um ano letivo ativo. Algumas funcionalidades podem não estar disponíveis.
-    <!-- CORREÇÃO APLICADA AQUI -->
     <a href="{{ url_for('main_routes.gerenciar_ciclo') }}" class="alert-link">Clique aqui para gerenciar os ciclos.</a>
 </div>
 {% endif %}
 
-<!-- Cards de Acesso Rápido -->
+<!-- =================================================================== -->
+<!-- PAINEL DO COORDENADOR -->
+<!-- =================================================================== -->
+{% if current_user.role == 'coordenador' and not current_user.is_superadmin %}
 <div class="row">
-
-    <!-- Acesso para Coordenador -->
-    {% if current_user.role == 'coordenador' and not current_user.is_superadmin %}
-    <div class="col-xl-3 col-md-6 mb-4">
-        <div class="card border-left-primary shadow h-100 py-2">
-            <div class="card-body d-flex flex-column">
-                <div class="row no-gutters align-items-center">
-                    <div class="col mr-2">
-                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Administração</div>
-                        <div class="h5 mb-0 font-weight-bold text-gray-800">Gerenciar Usuários</div>
-                    </div>
-                    <div class="col-auto">
-                        <i class="fas fa-users fa-2x text-gray-300"></i>
-                    </div>
-                </div>
-                <!-- CORREÇÃO APLICADA AQUI -->
-                <a href="{{ url_for('main_routes.gerenciar_usuarios') }}" class="btn btn-primary mt-auto">Acessar</a>
+    <!-- Gerenciar Usuários -->
+    <div class="col-lg-4 col-md-6 mb-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body text-center d-flex flex-column">
+                <div class="display-4 text-danger mb-2"><i class="bi bi-people-fill"></i></div>
+                <h5 class="card-title">Gerenciar Usuários</h5>
+                <p class="card-text text-muted small flex-grow-1">Cadastre, edite e gerencie o ciclo de vida de alunos e professores.</p>
+                <a href="{{ url_for('main_routes.gerenciar_usuarios') }}" class="btn btn-danger mt-auto">Acessar</a>
             </div>
         </div>
     </div>
-
-    <div class="col-xl-3 col-md-6 mb-4">
-        <div class="card border-left-success shadow h-100 py-2">
-            <div class="card-body d-flex flex-column">
-                <div class="row no-gutters align-items-center">
-                    <div class="col mr-2">
-                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Acadêmico</div>
-                        <div class="h5 mb-0 font-weight-bold text-gray-800">Séries e Disciplinas</div>
-                    </div>
-                    <div class="col-auto">
-                        <i class="fas fa-book fa-2x text-gray-300"></i>
-                    </div>
-                </div>
-                <!-- CORREÇÃO APLICADA AQUI -->
-                <a href="{{ url_for('main_routes.gerenciar_academico') }}" class="btn btn-success mt-auto">Acessar</a>
+    <!-- Gerenciamento Acadêmico -->
+    <div class="col-lg-4 col-md-6 mb-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body text-center d-flex flex-column">
+                <div class="display-4 text-warning mb-2"><i class="bi bi-journal-bookmark-fill"></i></div>
+                <h5 class="card-title">Gerenciamento Acadêmico</h5>
+                <p class="card-text text-muted small flex-grow-1">Crie e visualize séries, disciplinas e o ciclo letivo da sua escola.</p>
+                <a href="{{ url_for('main_routes.gerenciar_academico') }}" class="btn btn-warning mt-auto">Organizar</a>
             </div>
         </div>
     </div>
-    {% endif %}
-
-    <!-- Acesso para Professor e Coordenador -->
-    {% if current_user.role in ['professor', 'coordenador'] %}
-    <div class="col-xl-3 col-md-6 mb-4">
-        <div class="card border-left-info shadow h-100 py-2">
-            <div class="card-body d-flex flex-column">
-                <div class="row no-gutters align-items-center">
-                    <div class="col mr-2">
-                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Conteúdo</div>
-                        <div class="h5 mb-0 font-weight-bold text-gray-800">Banco de Questões</div>
-                    </div>
-                    <div class="col-auto">
-                        <i class="fas fa-database fa-2x text-gray-300"></i>
-                    </div>
-                </div>
-                <!-- CORREÇÃO APLICADA AQUI -->
-                <a href="{{ url_for('main_routes.banco_questoes') }}" class="btn btn-info mt-auto">Acessar</a>
+    <!-- Criar Modelo de Avaliação -->
+    <div class="col-lg-4 col-md-6 mb-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body text-center d-flex flex-column">
+                <div class="display-4 text-success mb-2"><i class="bi bi-file-earmark-plus-fill"></i></div>
+                <h5 class="card-title">Criar Modelo de Avaliação</h5>
+                <p class="card-text text-muted small flex-grow-1">Defina as regras para gerar provas e simulados dinâmicos.</p>
+                <a href="{{ url_for('main_routes.criar_modelo_avaliacao') }}" class="btn btn-success mt-auto">Criar Modelo</a>
             </div>
         </div>
     </div>
-    {% endif %}
-
-    <!-- Acesso para Aluno -->
-    {% if current_user.role == 'aluno' %}
-    <div class="col-xl-3 col-md-6 mb-4">
-        <div class="card border-left-warning shadow h-100 py-2">
-            <div class="card-body d-flex flex-column">
-                <div class="row no-gutters align-items-center">
-                    <div class="col mr-2">
-                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Desempenho</div>
-                        <div class="h5 mb-0 font-weight-bold text-gray-800">Meus Resultados</div>
-                    </div>
-                    <div class="col-auto">
-                        <i class="fas fa-chart-line fa-2x text-gray-300"></i>
-                    </div>
-                </div>
-                <!-- CORREÇÃO APLICADA AQUI -->
-                <a href="{{ url_for('main_routes.meus_resultados') }}" class="btn btn-warning mt-auto">Acessar</a>
+    <!-- Visualizar Avaliações -->
+    <div class="col-lg-4 col-md-6 mb-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body text-center d-flex flex-column">
+                <div class="display-4 text-primary mb-2"><i class="bi bi-card-checklist"></i></div>
+                <h5 class="card-title">Visualizar Avaliações</h5>
+                <p class="card-text text-muted small flex-grow-1">Acompanhe todos os modelos e avaliações criadas no sistema.</p>
+                <a href="{{ url_for('main_routes.listar_modelos_avaliacao') }}" class="btn btn-primary mt-auto">Ver Lista</a>
             </div>
         </div>
     </div>
-    {% endif %}
-
+    <!-- Criar Recuperação -->
+    <div class="col-lg-4 col-md-6 mb-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body text-center d-flex flex-column">
+                <div class="display-4 text-info mb-2"><i class="bi bi-arrow-clockwise"></i></div>
+                <h5 class="card-title">Criar Recuperação</h5>
+                <p class="card-text text-muted small flex-grow-1">Crie provas específicas para um grupo selecionado de alunos.</p>
+                <a href="{{ url_for('main_routes.criar_recuperacao') }}" class="btn btn-info mt-auto">Criar Recuperação</a>
+            </div>
+        </div>
+    </div>
+    <!-- Central de Relatórios -->
+    <div class="col-lg-4 col-md-6 mb-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body text-center d-flex flex-column">
+                <div class="display-4 text-secondary mb-2"><i class="bi bi-file-earmark-bar-graph-fill"></i></div>
+                <h5 class="card-title">Central de Relatórios</h5>
+                <p class="card-text text-muted small flex-grow-1">Gere relatórios em PDF para análise e acompanhamento acadêmico.</p>
+                <a href="{{ url_for('main_routes.painel_relatorios') }}" class="btn btn-secondary mt-auto">Gerar Relatórios</a>
+            </div>
+        </div>
+    </div>
+    <!-- Painel de Auditoria -->
+    <div class="col-lg-4 col-md-6 mb-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body text-center d-flex flex-column">
+                <div class="display-4 text-dark mb-2"><i class="bi bi-shield-lock-fill"></i></div>
+                <h5 class="card-title">Painel de Auditoria</h5>
+                <p class="card-text text-muted small flex-grow-1">Monitore ações críticas e visualize o histórico de atividades no sistema.</p>
+                <a href="{{ url_for('main_routes.painel_auditoria') }}" class="btn btn-dark mt-auto">Acessar Auditoria</a>
+            </div>
+        </div>
+    </div>
 </div>
+{% endif %}
+
+<!-- =================================================================== -->
+<!-- PAINEL DO PROFESSOR -->
+<!-- =================================================================== -->
+{% if current_user.role == 'professor' %}
+<div class="row">
+    <!-- Meu Banco de Questões -->
+    <div class="col-lg-4 col-md-6 mb-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body text-center d-flex flex-column">
+                <div class="display-4 text-dark mb-2"><i class="bi bi-journal-richtext"></i></div>
+                <h5 class="card-title">Meu Banco de Questões</h5>
+                <p class="card-text text-muted small flex-grow-1">Crie, visualize e edite todas as suas questões em um único lugar.</p>
+                <a href="{{ url_for('main_routes.banco_questoes') }}" class="btn btn-dark mt-auto">Acessar Banco</a>
+            </div>
+        </div>
+    </div>
+    <!-- Criar Modelo de Avaliação -->
+    <div class="col-lg-4 col-md-6 mb-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body text-center d-flex flex-column">
+                <div class="display-4 text-success mb-2"><i class="bi bi-file-earmark-plus-fill"></i></div>
+                <h5 class="card-title">Criar Modelo de Avaliação</h5>
+                <p class="card-text text-muted small flex-grow-1">Defina as regras para gerar provas e simulados para suas turmas.</p>
+                <a href="{{ url_for('main_routes.criar_modelo_avaliacao') }}" class="btn btn-success mt-auto">Criar Modelo</a>
+            </div>
+        </div>
+    </div>
+    <!-- Criar Recuperação -->
+    <div class="col-lg-4 col-md-6 mb-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body text-center d-flex flex-column">
+                <div class="display-4 text-info mb-2"><i class="bi bi-arrow-clockwise"></i></div>
+                <h5 class="card-title">Criar Recuperação</h5>
+                <p class="card-text text-muted small flex-grow-1">Crie provas específicas para um grupo selecionado de alunos.</p>
+                <a href="{{ url_for('main_routes.criar_recuperacao') }}" class="btn btn-info mt-auto">Criar Recuperação</a>
+            </div>
+        </div>
+    </div>
+    <!-- Ver Minhas Avaliações -->
+    <div class="col-lg-4 col-md-6 mb-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body text-center d-flex flex-column">
+                <div class="display-4 text-primary mb-2"><i class="bi bi-card-checklist"></i></div>
+                <h5 class="card-title">Ver Minhas Avaliações</h5>
+                <p class="card-text text-muted small flex-grow-1">Acompanhe o desempenho dos alunos nas avaliações que você criou.</p>
+                <a href="{{ url_for('main_routes.listar_modelos_avaliacao') }}" class="btn btn-primary mt-auto">Ver Lista</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+
+<!-- =================================================================== -->
+<!-- PAINEL DO ALUNO -->
+<!-- =================================================================== -->
+{% if current_user.role == 'aluno' %}
+<div class="row">
+    <div class="col-lg-4 col-md-6 mb-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body text-center d-flex flex-column">
+                <div class="display-4 text-primary mb-2"><i class="bi bi-file-earmark-text-fill"></i></div>
+                <h5 class="card-title">Avaliações Disponíveis</h5>
+                <p class="card-text text-muted small flex-grow-1">Veja a lista de provas e simulados que você precisa responder.</p>
+                <a href="{{ url_for('main_routes.listar_modelos_avaliacao') }}" class="btn btn-primary mt-auto">Ver Avaliações</a>
+            </div>
+        </div>
+    </div>
+     <div class="col-lg-4 col-md-6 mb-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body text-center d-flex flex-column">
+                <div class="display-4 text-success mb-2"><i class="bi bi-graph-up-arrow"></i></div>
+                <h5 class="card-title">Meus Resultados</h5>
+                <p class="card-text text-muted small flex-grow-1">Consulte suas notas e o histórico do seu desempenho no sistema.</p>
+                <a href="{{ url_for('main_routes.meus_resultados') }}" class="btn btn-success mt-auto">Ver Notas</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 {% endblock %}
