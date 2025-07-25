@@ -14,7 +14,8 @@
 
     <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm sticky-top">
         <div class="container">
-            <a class="navbar-brand fw-bold" href="{{ url_for('pagina_inicial_vendas') }}">
+            <!-- CORREÇÃO APLICADA AQUI -->
+            <a class="navbar-brand fw-bold" href="{{ url_for('main_routes.pagina_inicial_vendas') }}">
                 <i class="bi bi-pencil-square"></i>
                 OnlineTests
             </a>
@@ -23,22 +24,22 @@
             </button>
             <div class="collapse navbar-collapse" id="main-nav">
                 <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
-                    <li class="nav-item"><a class="nav-link" href="{{ url_for('pagina_inicial_vendas') }}">Início</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{{ url_for('funcionalidades') }}">Funcionalidades</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{{ url_for('planos') }}">Planos</a></li>
-                    
-                    <!-- ### ALTERAÇÃO APLICADA AQUI ### -->
-                    <li class="nav-item"><a class="nav-link" href="{{ url_for('listar_documentos_publicos') }}">Documentos</a></li>
-                    
-                    <li class="nav-item"><a class="nav-link" href="{{ url_for('contato') }}">Contato</a></li>
+                    <!-- CORREÇÃO APLICADA AQUI -->
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('main_routes.pagina_inicial_vendas') }}">Início</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('main_routes.funcionalidades') }}">Funcionalidades</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('main_routes.planos') }}">Planos</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('main_routes.listar_documentos_publicos') }}">Documentos</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('main_routes.contato') }}">Contato</a></li>
                 </ul>
                 
                 <div class="ms-lg-3">
                     {% if current_user.is_authenticated %}
-                        <a href="{{ url_for('dashboard') }}" class="btn btn-outline-primary me-2">Painel</a>
-                        <a href="{{ url_for('logout') }}" class="btn btn-danger">Sair</a>
+                        <!-- CORREÇÃO APLICADA AQUI -->
+                        <a href="{{ url_for('main_routes.dashboard') }}" class="btn btn-outline-primary me-2">Painel</a>
+                        <a href="{{ url_for('main_routes.logout') }}" class="btn btn-danger">Sair</a>
                     {% else %}
-                        <a href="{{ url_for('login') }}" class="btn btn-primary">Acessar Sistema</a>
+                        <!-- CORREÇÃO APLICADA AQUI -->
+                        <a href="{{ url_for('main_routes.login') }}" class="btn btn-primary">Acessar Sistema</a>
                     {% endif %}
                 </div>
             </div>
@@ -58,11 +59,11 @@
                 </div>
                 <div class="col-md-2 col-lg-2 col-xl-2 mx-auto mt-3">
                     <h5 class="text-uppercase mb-4 fw-bold">Navegação</h5>
-                    <p><a href="{{ url_for('funcionalidades') }}" class="text-white" style="text-decoration: none;">Funcionalidades</a></p>
-                    <p><a href="{{ url_for('planos') }}" class="text-white" style="text-decoration: none;">Planos</a></p>
-                    <p><a href="{{ url_for('contato') }}" class="text-white" style="text-decoration: none;">Contato</a></p>
-                    <!-- ### LINHA ADICIONADA AQUI ### -->
-                    <p><a href="{{ url_for('listar_documentos_publicos') }}" class="text-white" style="text-decoration: none;">Documentos</a></p>
+                    <!-- CORREÇÃO APLICADA AQUI -->
+                    <p><a href="{{ url_for('main_routes.funcionalidades') }}" class="text-white" style="text-decoration: none;">Funcionalidades</a></p>
+                    <p><a href="{{ url_for('main_routes.planos') }}" class="text-white" style="text-decoration: none;">Planos</a></p>
+                    <p><a href="{{ url_for('main_routes.contato') }}" class="text-white" style="text-decoration: none;">Contato</a></p>
+                    <p><a href="{{ url_for('main_routes.listar_documentos_publicos') }}" class="text-white" style="text-decoration: none;">Documentos</a></p>
                 </div>
                 <div class="col-md-4 col-lg-3 col-xl-3 mx-auto mt-3">
                     <h5 class="text-uppercase mb-4 fw-bold">Contato</h5>
