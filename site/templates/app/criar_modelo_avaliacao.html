@@ -5,14 +5,17 @@
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2>Criar Modelo de Avaliação</h2>
-        <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">&larr; Voltar ao Painel</a>
+        <!-- CORREÇÃO APLICADA AQUI -->
+        <a href="{{ url_for('main_routes.dashboard') }}" class="btn btn-outline-secondary">&larr; Voltar ao Painel</a>
     </div>
     <p class="text-muted">Crie um modelo com regras para gerar provas e simulados dinâmicos para cada aluno.</p>
     <hr>
 
+    <!-- CORREÇÃO APLICADA AQUI nos data-* attributes -->
     <form id="modelo-form" method="POST" 
-          data-disciplinas='{{ disciplinas_json|safe }}' data-api-assuntos-url="{{ url_for('get_assuntos_por_disciplina_e_serie') }}"
-          data-api-simulado-url-base="/api/conteudo_simulado/">
+          data-disciplinas='{{ disciplinas_json|safe }}' 
+          data-api-assuntos-url="{{ url_for('main_routes.get_assuntos_por_disciplina_e_serie') }}"
+          data-api-simulado-url-base="{{ url_for('main_routes.get_conteudo_simulado_por_serie', serie_id=0) }}">
 
         <div class="card shadow-sm mb-4">
             <div class="card-header"><h5 class="mb-0">1. Informações Gerais</h5></div>
@@ -52,6 +55,7 @@
 {% endblock %}
 
 {% block scripts %}
+{{ super() }}
 <script>
 (function() {
     document.addEventListener('DOMContentLoaded', function() {
@@ -62,7 +66,7 @@
         const allDisciplinas = JSON.parse(form.dataset.disciplinas);
         const assuntosApiUrl = form.dataset.apiAssuntosUrl;
         const simuladoApiUrlBase = form.dataset.apiSimuladoUrlBase;
-        // ... (resto do seu script que já estava funcionando) ...
+
         function renderizarRegrasProva() {
             const disciplinaOptions = allDisciplinas.map(d => `<option value="${d.id}">${d.nome}</option>`).join('');
             const provaHTML = `
@@ -97,6 +101,7 @@
             regrasContainer.innerHTML = provaHTML;
             document.getElementById('disciplina_id').addEventListener('change', fetchAssuntos);
         }
+
         function renderizarRegrasSimulado(disciplinasDoSimulado) {
             const simuladoHTML = disciplinasDoSimulado.map(disciplina => `
                 <div class="card mb-3">
@@ -130,13 +135,15 @@
                     <div class="card-body">${simuladoHTML}</div>
                 </div>`;
         }
+
         function fetchAssuntos() {
             const disciplinaId = document.getElementById('disciplina_id').value;
             const assuntosSelect = document.getElementById('assuntos');
             const serieId = serieSelect.value;
             if (!disciplinaId || !serieId) return;
             assuntosSelect.innerHTML = '<option disabled>Carregando...</option>';
-            fetch(`${assuntosApiUrl}?disciplina_id=${disciplinaId}&serie_id=${serieId}`)
+            const url = `${assuntosApiUrl}?disciplina_id=${disciplinaId}&serie_id=${serieId}`;
+            fetch(url)
                 .then(response => response.ok ? response.json() : Promise.reject('Erro de rede'))
                 .then(data => {
                     assuntosSelect.innerHTML = '';
@@ -153,11 +160,13 @@
                     assuntosSelect.innerHTML = '<option disabled>Erro ao carregar assuntos</option>';
                 });
         }
+
         function fetchConteudoSimulado() {
             const serieId = serieSelect.value;
             if (!serieId) return;
             regrasContainer.innerHTML = '<p class="text-center text-muted p-4">Carregando disciplinas para o simulado...</p>';
-            const url = simuladoApiUrlBase + serieId;
+            // CORREÇÃO APLICADA AQUI: Usa a URL base do data attribute e substitui o placeholder
+            const url = simuladoApiUrlBase.replace('0', serieId);
             fetch(url)
                 .then(response => response.ok ? response.json() : Promise.reject('Erro de rede'))
                 .then(data => {
@@ -172,6 +181,7 @@
                     regrasContainer.innerHTML = '<div class="alert alert-danger">Não foi possível carregar os dados para o simulado. Tente novamente.</div>';
                 });
         }
+
         function atualizarUI() {
             const tipo = tipoSelect.value;
             const serieId = serieSelect.value;
@@ -186,6 +196,7 @@
                 fetchConteudoSimulado();
             }
         }
+
         tipoSelect.addEventListener('change', atualizarUI);
         serieSelect.addEventListener('change', atualizarUI);
         atualizarUI();

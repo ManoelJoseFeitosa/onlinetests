@@ -104,7 +104,8 @@
                 <h2 class="card-title mb-0">{{ avaliacao.nome }}</h2>
             </div>
             <div class="card-body p-4 p-md-5">
-                <form id="form-responder-avaliacao" method="POST">
+                <!-- CORREÇÃO APLICADA AQUI -->
+                <form id="form-responder-avaliacao" method="POST" action="{{ url_for('main_routes.responder_avaliacao', avaliacao_id=avaliacao.id) }}">
                     
                     <fieldset id="questoes-fieldset">
                         {% for questao in avaliacao.questoes %}
@@ -137,7 +138,8 @@
                                 </div>
                             </div>
                         {% endfor %}
-                    </fieldset> <div class="d-grid gap-2 mt-5">
+                    </fieldset> 
+                    <div class="d-grid gap-2 mt-5">
                         <button type="submit" id="btn-enviar-avaliacao" class="btn btn-success btn-lg">
                             <i class="bi bi-check2-circle me-2"></i>Enviar Avaliação
                         </button>
@@ -150,6 +152,7 @@
 {% endblock %}
 
 {% block scripts %}
+{{ super() }}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // --- ELEMENTOS DO DOM ---
@@ -160,16 +163,14 @@ document.addEventListener('DOMContentLoaded', function() {
     const flashMessage = document.getElementById('flash-message');
     const timerDisplay = document.getElementById('timer-display');
     const timerContainer = document.getElementById('timer-fixed-container');
-    const questoesFieldset = document.getElementById('questoes-fieldset'); // Nosso novo alvo
+    const questoesFieldset = document.getElementById('questoes-fieldset');
 
     // --- VARIÁVEIS DE ESTADO ---
     let isProvaIniciada = false;
     let isSubmitting = false;
-    let isBlocked = false; // Controla se a prova já foi bloqueada
+    let isBlocked = false;
 
     // --- FUNÇÕES AUXILIARES ---
-
-    // Função para exibir mensagens de alerta (mantida como estava)
     function showFlashMessage(message, type = 'warning', duration = 4000) {
         flashMessage.textContent = message;
         flashMessage.className = type === 'error' ? 'error' : '';
@@ -179,47 +180,35 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // NOVA: Função central para bloquear a prova
     function bloquearProva(motivo) {
-        if (isBlocked) return; // Se já bloqueou, não faz mais nada
-
+        if (isBlocked) return;
         isBlocked = true;
         console.warn(`PROVA BLOQUEADA. Motivo: ${motivo}`);
-        
-        // Exibe a mensagem de erro de forma permanente
         showFlashMessage(`PROVA BLOQUEADA: ${motivo}. Envie suas respostas agora.`, 'error', 0);
-        
-        // Desabilita o fieldset que contém todas as questões
         questoesFieldset.disabled = true;
-
-        // Opcional: Remover os listeners para economizar recursos
         document.removeEventListener('fullscreenchange', onFullscreenChange);
         document.removeEventListener('visibilitychange', onVisibilityChange);
         document.removeEventListener('keydown', onKeyDown);
     }
 
     // --- FUNÇÕES DE LÓGICA PRINCIPAL ---
-
     function iniciarCronometro(minutos) {
         if (!minutos || minutos <= 0) return;
-
         let tempoTotalSegundos = minutos * 60;
         const countdown = setInterval(function() {
             if (isSubmitting || isBlocked) {
                 clearInterval(countdown);
                 return;
             }
-
             if (tempoTotalSegundos <= 0) {
                 clearInterval(countdown);
-                bloquearProva('Tempo esgotado'); // Bloqueia a prova
-                formProva.submit(); // Envia o formulário
+                bloquearProva('Tempo esgotado');
+                formProva.submit();
             } else {
                 tempoTotalSegundos--;
                 const mins = Math.floor(tempoTotalSegundos / 60);
                 const secs = tempoTotalSegundos % 60;
                 timerDisplay.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-
                 if (tempoTotalSegundos <= 60) {
                     timerContainer.className = 'timer-critico';
                 } else if (tempoTotalSegundos <= 300) {
@@ -229,7 +218,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 1000);
     }
     
-    // Funções de monitoramento que chamam o bloqueio
     function onFullscreenChange() {
         if (!document.fullscreenElement) {
             bloquearProva("Saída da tela cheia");
@@ -247,13 +235,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Ativa todos os listeners de monitoramento
     function ativarMonitoramento() {
         document.addEventListener('fullscreenchange', onFullscreenChange);
         document.addEventListener('visibilitychange', onVisibilityChange);
         document.addEventListener('keydown', onKeyDown);
-        
-        // Previne o recarregamento da página
         window.addEventListener('beforeunload', (event) => {
             if (isProvaIniciada && !isSubmitting) {
                 event.preventDefault();
@@ -263,8 +248,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // --- EVENT LISTENERS ---
-
-    // Evento de clique para iniciar a prova
     btnIniciarProva.addEventListener('click', function() {
         document.documentElement.requestFullscreen().then(() => {
             isProvaIniciada = true;
@@ -277,7 +260,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Evento para marcar que o formulário está sendo enviado
     formProva.addEventListener('submit', () => {
         isSubmitting = true;
     });

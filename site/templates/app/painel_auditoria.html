@@ -8,7 +8,8 @@
     <!-- Cabeçalho -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h3 mb-0 text-gray-800">Painel de Auditoria</h1>
-        <a href="{{ url_for('dashboard') }}" class="btn btn-sm btn-outline-secondary">
+        <!-- CORREÇÃO APLICADA AQUI -->
+        <a href="{{ url_for('main_routes.dashboard') }}" class="btn btn-sm btn-outline-secondary">
             <i class="bi bi-arrow-left me-1"></i>Voltar ao Painel
         </a>
     </div>
@@ -19,7 +20,8 @@
             <h6 class="m-0 fw-bold text-primary">Filtrar Registros</h6>
         </div>
         <div class="card-body">
-            <form method="GET" action="{{ url_for('painel_auditoria') }}" class="row g-3 align-items-end">
+            <!-- CORREÇÃO APLICADA AQUI -->
+            <form method="GET" action="{{ url_for('main_routes.painel_auditoria') }}" class="row g-3 align-items-end">
                 <div class="col-md-5">
                     <label for="user" class="form-label">Usuário (Email)</label>
                     <input type="text" id="user" name="user" class="form-control" value="{{ user_filter or '' }}" placeholder="parte.do.email@exemplo.com">
@@ -80,19 +82,22 @@
             <nav aria-label="Paginação da auditoria" class="mt-4">
                 <ul class="pagination justify-content-center">
                     <li class="page-item {% if not logs.has_prev %}disabled{% endif %}">
-                        <a class="page-link" href="{{ url_for('painel_auditoria', page=logs.prev_num, action=action_filter, user=user_filter) }}">Anterior</a>
+                        <!-- CORREÇÃO APLICADA AQUI -->
+                        <a class="page-link" href="{{ url_for('main_routes.painel_auditoria', page=logs.prev_num, action=action_filter, user=user_filter) }}">Anterior</a>
                     </li>
                     {% for page_num in logs.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
                         {% if page_num %}
                             <li class="page-item {% if logs.page == page_num %}active{% endif %}">
-                                <a class="page-link" href="{{ url_for('painel_auditoria', page=page_num, action=action_filter, user=user_filter) }}">{{ page_num }}</a>
+                                <!-- CORREÇÃO APLICADA AQUI -->
+                                <a class="page-link" href="{{ url_for('main_routes.painel_auditoria', page=page_num, action=action_filter, user=user_filter) }}">{{ page_num }}</a>
                             </li>
                         {% else %}
                             <li class="page-item disabled"><span class="page-link">...</span></li>
                         {% endif %}
                     {% endfor %}
                     <li class="page-item {% if not logs.has_next %}disabled{% endif %}">
-                        <a class="page-link" href="{{ url_for('painel_auditoria', page=logs.next_num, action=action_filter, user=user_filter) }}">Próxima</a>
+                        <!-- CORREÇÃO APLICADA AQUI -->
+                        <a class="page-link" href="{{ url_for('main_routes.painel_auditoria', page=logs.next_num, action=action_filter, user=user_filter) }}">Próxima</a>
                     </li>
                 </ul>
             </nav>

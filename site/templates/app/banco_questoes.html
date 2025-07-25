@@ -7,10 +7,12 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="mb-0">Meu Banco de Questões</h2>
         <div>
-            <a href="{{ url_for('criar_questao') }}" class="btn btn-primary">
+            <!-- CORREÇÃO APLICADA AQUI -->
+            <a href="{{ url_for('main_routes.criar_questao') }}" class="btn btn-primary">
                 <i class="bi bi-plus-circle-fill me-2"></i>Adicionar Nova Questão
             </a>
-            <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">&larr; Voltar ao Painel</a>
+            <!-- CORREÇÃO APLICADA AQUI -->
+            <a href="{{ url_for('main_routes.dashboard') }}" class="btn btn-outline-secondary">&larr; Voltar ao Painel</a>
         </div>
     </div>
     <p class="text-muted">Visualize, edite ou remova as questões que você criou.</p>
@@ -48,7 +50,8 @@
                                 </span>
                             </td>
                             <td class="text-center">
-                                <a href="{{ url_for('editar_questao', questao_id=questao.id) }}" class="btn btn-sm btn-outline-primary">
+                                <!-- CORREÇÃO APLICADA AQUI -->
+                                <a href="{{ url_for('main_routes.editar_questao', questao_id=questao.id) }}" class="btn btn-sm btn-outline-primary">
                                     <i class="bi bi-pencil-fill"></i> Editar
                                 </a>
                                 <!-- Futuramente, pode-se adicionar um botão de apagar aqui -->

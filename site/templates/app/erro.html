@@ -1,12 +1,26 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Erro</title>
-    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
-</head>
-<body>
-    <h1>Erro</h1>
-    <p>{{ mensagem }}</p>
-    <p><a href="{{ url_for('index') }}">Voltar para a página inicial</a></p>
-</body>
-</html>
+{% extends 'app/base.html' %}
+
+{% block title %}Ocorreu um Erro{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 text-center">
+            <div class="card shadow-sm">
+                <div class="card-body p-5">
+                    <i class="bi bi-exclamation-triangle-fill text-danger" style="font-size: 4rem;"></i>
+                    <h1 class="display-5 fw-bold mt-3">Ocorreu um Erro</h1>
+                    <p class="lead text-muted">
+                        {{ mensagem or "Não foi possível completar sua solicitação. Por favor, tente novamente mais tarde." }}
+                    </p>
+                    <hr class="my-4">
+                    <!-- CORREÇÃO APLICADA AQUI -->
+                    <a href="{{ url_for('main_routes.dashboard') }}" class="btn btn-primary btn-lg">
+                        Voltar para o Painel Principal
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

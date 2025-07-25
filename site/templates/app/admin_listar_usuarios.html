@@ -1,37 +1,91 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Gerenciar Usuários</title>
-    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
-</head>
-<body>
-    <h2>Gerenciar Usuários</h2>
-    <table>
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Nome de Usuário</th>
-                <th>Email</th>
-                <th>Role</th>
-                <th>Ações</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for usuario in usuarios %}
-            <tr>
-                <td>{{ usuario[0] }}</td>
-                <td>{{ usuario[1] }}</td>
-                <td>{{ usuario[2] }}</td>
-                <td>{{ usuario[3] }}</td>
-                <td>
-                    <a href="{{ url_for('editar_usuario_admin', user_id=usuario[0]) }}">Editar</a>
-                    <a href="{{ url_for('excluir_usuario_admin', user_id=usuario[0]) }}">Excluir</a>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    <p><a href="{{ url_for('criar_usuario_admin') }}">Criar Novo Usuário</a></p>
-    <p><a href="{{ url_for('index') }}">Voltar para a página inicial</a></p>
-</body>
-</html>
+{% extends 'app/base.html' %}
+
+{% block title %}Gerenciar Usuários{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Gerenciar Usuários</h2>
+        <!-- O formulário de criação agora está nesta página, então o botão de "novo" não é mais necessário -->
+        <a href="{{ url_for('main_routes.dashboard') }}" class="btn btn-outline-secondary">&larr; Voltar ao Painel</a>
+    </div>
+
+    <!-- Seção de Cadastro (pode ser movida para um modal se preferir) -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Cadastrar Novo Usuário</h5>
+        </div>
+        <div class="card-body">
+            <!-- A lógica do formulário de criação de usuário já está na sua rota 'gerenciar_usuarios' -->
+            <form method="POST">
+                <!-- Adicione aqui os campos do seu formulário de criação de usuário -->
+                <!-- Exemplo simplificado: -->
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="nome" class="form-label">Nome</label>
+                        <input type="text" name="nome" class="form-control" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="email" name="email" class="form-control" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="senha" class="form-label">Senha Provisória</label>
+                        <input type="password" name="senha" class="form-control" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="role" class="form-label">Perfil</label>
+                        <select name="role" class="form-select">
+                            <option value="aluno">Aluno</option>
+                            <option value="professor">Professor</option>
+                            <option value="coordenador">Coordenador</option>
+                        </select>
+                    </div>
+                </div>
+                <!-- Adicione campos para série e disciplinas se o perfil for aluno/professor -->
+                <button type="submit" name="submit_cadastro" value="1" class="btn btn-primary">Cadastrar Usuário</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Seção da Lista de Usuários -->
+    <div class="card shadow-sm">
+        <div class="card-header">
+            <h5 class="mb-0">Usuários Cadastrados</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>ID</th>
+                            <th>Nome</th>
+                            <th>Email</th>
+                            <th>Perfil</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for usuario in usuarios %}
+                        <tr>
+                            <td>{{ usuario.id }}</td>
+                            <td>{{ usuario.nome }}</td>
+                            <td>{{ usuario.email }}</td>
+                            <td>{{ usuario.role.capitalize() }}</td>
+                            <td>
+                                <!-- CORREÇÃO APLICADA AQUI -->
+                                <a href="{{ url_for('main_routes.editar_usuario', user_id=usuario.id) }}" class="btn btn-warning btn-sm">
+                                    <i class="bi bi-pencil-fill"></i> Editar
+                                </a>
+                                <!-- A rota de exclusão precisaria ser criada no main.py -->
+                                <!-- <a href="{{ url_for('main_routes.excluir_usuario', user_id=usuario.id) }}" class="btn btn-danger btn-sm">Excluir</a> -->
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

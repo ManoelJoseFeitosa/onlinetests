@@ -13,7 +13,8 @@
             <p class="lead mb-0">Pesquise, edite ou cadastre novos usuários no sistema.</p>
         </div>
         <div>
-            <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
+            <!-- CORREÇÃO APLICADA AQUI -->
+            <a href="{{ url_for('main_routes.dashboard') }}" class="btn btn-outline-secondary">
                 &larr; Voltar ao Painel
             </a>
         </div>
@@ -158,7 +159,8 @@
                                     <td class="text-center"><span class="badge bg-secondary">{{ usuario.role|capitalize }}</span></td>
                                     <td>{{ usuario.serie_atual.nome if usuario.serie_atual else '<span class="text-danger small">Sem matrícula ativa</span>'|safe }}</td>
                                     <td class="text-center">
-                                        <a href="{{ url_for('editar_usuario', user_id=usuario.id) }}" class="btn btn-sm btn-outline-primary" title="Editar {{ usuario.nome }}"><i class="bi bi-pencil-fill"></i> Editar</a>
+                                        <!-- CORREÇÃO APLICADA AQUI -->
+                                        <a href="{{ url_for('main_routes.editar_usuario', user_id=usuario.id) }}" class="btn btn-sm btn-outline-primary" title="Editar {{ usuario.nome }}"><i class="bi bi-pencil-fill"></i> Editar</a>
                                     </td>
                                 </tr>
                             {% endif %}
@@ -202,7 +204,8 @@
                                         {% endif %}
                                     </td>
                                     <td class="text-center">
-                                        <a href="{{ url_for('editar_usuario', user_id=usuario.id) }}" class="btn btn-sm btn-outline-primary" title="Editar {{ usuario.nome }}"><i class="bi bi-pencil-fill"></i> Editar</a>
+                                        <!-- CORREÇÃO APLICADA AQUI -->
+                                        <a href="{{ url_for('main_routes.editar_usuario', user_id=usuario.id) }}" class="btn btn-sm btn-outline-primary" title="Editar {{ usuario.nome }}"><i class="bi bi-pencil-fill"></i> Editar</a>
                                     </td>
                                 </tr>
                             {% endif %}
@@ -236,7 +239,8 @@
                                     <td>{{ usuario.email }}</td>
                                     <td class="text-center"><span class="badge bg-primary">{{ usuario.role|capitalize }}</span></td>
                                     <td class="text-center">
-                                        <a href="{{ url_for('editar_usuario', user_id=usuario.id) }}" class="btn btn-sm btn-outline-primary" title="Editar {{ usuario.nome }}"><i class="bi bi-pencil-fill"></i> Editar</a>
+                                        <!-- CORREÇÃO APLICADA AQUI -->
+                                        <a href="{{ url_for('main_routes.editar_usuario', user_id=usuario.id) }}" class="btn btn-sm btn-outline-primary" title="Editar {{ usuario.nome }}"><i class="bi bi-pencil-fill"></i> Editar</a>
                                     </td>
                                 </tr>
                             {% endif %}
@@ -250,7 +254,10 @@
         </div>
     </div>
     </div>
+{% endblock %}
 
+{% block scripts %}
+{{ super() }}
 <script>
 // Script para os campos dinâmicos do formulário de cadastro
 document.addEventListener('DOMContentLoaded', function() {

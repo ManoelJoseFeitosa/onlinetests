@@ -6,7 +6,8 @@
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2>Criar Nova Questão</h2>
-        <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">&larr; Voltar ao Painel</a>
+        <!-- CORREÇÃO APLICADA AQUI -->
+        <a href="{{ url_for('main_routes.dashboard') }}" class="btn btn-outline-secondary">&larr; Voltar ao Painel</a>
     </div>
 
     {% if not disciplinas and current_user.role == 'professor' %}
@@ -14,114 +15,122 @@
             Você ainda não foi associado a nenhuma disciplina. Por favor, contate o coordenador para poder cadastrar questões.
         </div>
     {% else %}
-    <form method="POST" action="{{ url_for('criar_questao') }}" enctype="multipart/form-data">
-        <div class="row">
-            <div class="col-md-6 mb-3">
-                <label for="disciplina_id" class="form-label">1. Disciplina</label>
-                <select id="disciplina_id" name="disciplina_id" class="form-select" required>
-                    <option value="" disabled selected>-- Selecione a Disciplina --</option>
-                    {% for disciplina in disciplinas %}
-                        <option value="{{ disciplina.id }}">{{ disciplina.nome }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-6 mb-3">
-                <label for="serie_id" class="form-label">2. Série de Aplicação</label>
-                <select id="serie_id" name="serie_id" class="form-select" required>
-                    <option value="" disabled selected>-- Selecione a Série --</option>
-                    {% for serie in series %}
-                        <option value="{{ serie.id }}">{{ serie.nome }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-        </div>
+    <!-- CORREÇÃO APLICADA AQUI -->
+    <form method="POST" action="{{ url_for('main_routes.criar_questao') }}" enctype="multipart/form-data">
+        <div class="card shadow-sm">
+            <div class="card-body p-4">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="disciplina_id" class="form-label">1. Disciplina</label>
+                        <select id="disciplina_id" name="disciplina_id" class="form-select" required>
+                            <option value="" disabled selected>-- Selecione a Disciplina --</option>
+                            {% for disciplina in disciplinas %}
+                                <option value="{{ disciplina.id }}">{{ disciplina.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="serie_id" class="form-label">2. Série de Aplicação</label>
+                        <select id="serie_id" name="serie_id" class="form-select" required>
+                            <option value="" disabled selected>-- Selecione a Série --</option>
+                            {% for serie in series %}
+                                <option value="{{ serie.id }}">{{ serie.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
 
-        <div class="mb-3">
-            <label for="assunto" class="form-label">3. Assunto</label>
-            <input type="text" id="assunto" name="assunto" class="form-control" placeholder="Ex: Análise Sintática, Álgebra, Renascimento" required>
-        </div>
+                <div class="mb-3">
+                    <label for="assunto" class="form-label">3. Assunto</label>
+                    <input type="text" id="assunto" name="assunto" class="form-control" placeholder="Ex: Análise Sintática, Álgebra, Renascimento" required>
+                </div>
 
-        <div class="row">
-            <div class="col-md-6 mb-3">
-                <label for="tipo" class="form-label">4. Tipo de Questão</label>
-                <select id="tipo" name="tipo" class="form-select" required>
-                    <option value="multipla_escolha" selected>Múltipla Escolha</option>
-                    <option value="verdadeiro_falso">Verdadeiro ou Falso</option>
-                    <option value="discursiva">Discursiva</option>
-                </select>
-            </div>
-            <div class="col-md-6 mb-3">
-                <label for="nivel" class="form-label">5. Nível de Dificuldade</label>
-                <select id="nivel" name="nivel" class="form-select" required>
-                    <option value="" disabled>-- Selecione o Nível --</option>
-                    <option value="facil">Fácil</option>
-                    <option value="media" selected>Média</option>
-                    <option value="dificil">Difícil</option>
-                </select>
-            </div>
-        </div>
-        <div class="mb-3">
-             <label for="texto" class="form-label">6. Enunciado da Questão</label>
-            <textarea id="texto" name="texto" rows="4" class="form-control" required></textarea>
-        </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="tipo" class="form-label">4. Tipo de Questão</label>
+                        <select id="tipo" name="tipo" class="form-select" required>
+                            <option value="multipla_escolha" selected>Múltipla Escolha</option>
+                            <option value="verdadeiro_falso">Verdadeiro ou Falso</option>
+                            <option value="discursiva">Discursiva</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="nivel" class="form-label">5. Nível de Dificuldade</label>
+                        <select id="nivel" name="nivel" class="form-select" required>
+                            <option value="" disabled>-- Selecione o Nível --</option>
+                            <option value="facil">Fácil</option>
+                            <option value="media" selected>Média</option>
+                            <option value="dificil">Difícil</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mb-3">
+                     <label for="texto" class="form-label">6. Enunciado da Questão</label>
+                    <textarea id="texto" name="texto" rows="4" class="form-control" required></textarea>
+                </div>
 
-        <div class="border rounded p-3 mb-4 bg-light">
-            <div class="mb-3">
-                 <label for="imagem_questao" class="form-label fw-bold">7. Imagem da Questão (Opcional)</label>
-                <input class="form-control" type="file" id="imagem_questao" name="imagem_questao" accept="image/png, image/jpeg, image/gif">
-                <small class="form-text text-muted">Envie uma imagem para complementar o enunciado. Formatos permitidos: PNG, JPG, GIF.</small>
-            </div>
-            
-            <div class="mb-2">
-                <label for="imagem_alt" class="form-label">Descrição da Imagem (para acessibilidade)</label>
-                <input type="text" id="imagem_alt" name="imagem_alt" class="form-control" placeholder="Descreva a imagem para quem não pode vê-la">
-                <small class="form-text text-muted">Ex: "Mapa do Brasil destacando a Região Nordeste." ou "Gráfico de barras crescente."</small>
-            </div>
-        </div>
-        <div id="multipla_escolha_fields">
-            <h6>Opções de Resposta (Múltipla Escolha)</h6>
-            <div class="input-group mb-2">
-                <span class="input-group-text">A</span>
-                <input type="text" name="opcao_a" class="form-control" required>
-            </div>
-            <div class="input-group mb-2">
-                <span class="input-group-text">B</span>
-                <input type="text" name="opcao_b" class="form-control" required>
-            </div>
-            <div class="input-group mb-2">
-                <span class="input-group-text">C</span>
-                <input type="text" name="opcao_c" class="form-control" required>
-            </div>
-            <div class="input-group mb-2">
-                <span class="input-group-text">D</span>
-                <input type="text" name="opcao_d" class="form-control" required>
-            </div>
-            <div class="form-group mt-2">
-                <label for="gabarito_multipla">Gabarito (A, B, C ou D):</label>
-                <input type="text" id="gabarito_multipla" name="gabarito_multipla" class="form-control" style="width: 80px;" required>
-            </div>
-        </div>
+                <div class="border rounded p-3 mb-4 bg-light">
+                    <div class="mb-3">
+                         <label for="imagem_questao" class="form-label fw-bold">7. Imagem da Questão (Opcional)</label>
+                        <input class="form-control" type="file" id="imagem_questao" name="imagem_questao" accept="image/png, image/jpeg, image/gif">
+                        <small class="form-text text-muted">Envie uma imagem para complementar o enunciado. Formatos permitidos: PNG, JPG, GIF.</small>
+                    </div>
+                    
+                    <div class="mb-2">
+                        <label for="imagem_alt" class="form-label">Descrição da Imagem (para acessibilidade)</label>
+                        <input type="text" id="imagem_alt" name="imagem_alt" class="form-control" placeholder="Descreva a imagem para quem não pode vê-la">
+                        <small class="form-text text-muted">Ex: "Mapa do Brasil destacando a Região Nordeste." ou "Gráfico de barras crescente."</small>
+                    </div>
+                </div>
+                <div id="multipla_escolha_fields">
+                    <h6>Opções de Resposta (Múltipla Escolha)</h6>
+                    <div class="input-group mb-2">
+                        <span class="input-group-text">A</span>
+                        <input type="text" name="opcao_a" class="form-control" required>
+                    </div>
+                    <div class="input-group mb-2">
+                        <span class="input-group-text">B</span>
+                        <input type="text" name="opcao_b" class="form-control" required>
+                    </div>
+                    <div class="input-group mb-2">
+                        <span class="input-group-text">C</span>
+                        <input type="text" name="opcao_c" class="form-control" required>
+                    </div>
+                    <div class="input-group mb-2">
+                        <span class="input-group-text">D</span>
+                        <input type="text" name="opcao_d" class="form-control" required>
+                    </div>
+                    <div class="form-group mt-2">
+                        <label for="gabarito_multipla">Gabarito (A, B, C ou D):</label>
+                        <input type="text" id="gabarito_multipla" name="gabarito_multipla" class="form-control" style="width: 80px;" required>
+                    </div>
+                </div>
 
-        <div id="vf_fields" style="display: none;">
-            <h6>Gabarito (Verdadeiro ou Falso)</h6>
-            <select name="gabarito_vf" class="form-select" style="width: 200px;">
-                <option value="A">Verdadeiro</option>
-                <option value="B">Falso</option>
-            </select>
-        </div>
+                <div id="vf_fields" style="display: none;">
+                    <h6>Gabarito (Verdadeiro ou Falso)</h6>
+                    <select name="gabarito_vf" class="form-select" style="width: 200px;">
+                        <option value="A">Verdadeiro</option>
+                        <option value="B">Falso</option>
+                    </select>
+                </div>
 
-        <div class="mt-4">
-            <label for="justificativa_gabarito" class="form-label">Justificativa do Gabarito (Opcional)</label>
-            <textarea name="justificativa_gabarito" id="justificativa_gabarito" class="form-control" rows="3"></textarea>
-        </div>
+                <div class="mt-4">
+                    <label for="justificativa_gabarito" class="form-label">Justificativa do Gabarito (Opcional)</label>
+                    <textarea name="justificativa_gabarito" id="justificativa_gabarito" class="form-control" rows="3"></textarea>
+                </div>
 
-        <div class="text-center mt-4">
-            <button type="submit" class="btn btn-primary btn-lg">Salvar Questão</button>
+                <div class="text-center mt-4">
+                    <button type="submit" class="btn btn-primary btn-lg">Salvar Questão</button>
+                </div>
+            </div>
         </div>
     </form>
     {% endif %}
 </div>
+{% endblock %}
 
+{% block scripts %}
+{{ super() }}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const tipoQuestaoSelect = document.getElementById('tipo');

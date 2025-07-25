@@ -6,7 +6,8 @@
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="mb-0">Central de Relatórios</h2>
-        <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">&larr; Voltar ao Painel</a>
+        <!-- CORREÇÃO APLICADA AQUI -->
+        <a href="{{ url_for('main_routes.dashboard') }}" class="btn btn-outline-secondary">&larr; Voltar ao Painel</a>
     </div>
     <p class="text-muted">Gere relatórios em PDF para análise e acompanhamento acadêmico.</p>
     <hr>
@@ -16,7 +17,8 @@
             <div class="card h-100 shadow-sm">
                 <div class="card-header"><h5 class="mb-0"><i class="bi bi-people-fill me-2"></i>Alunos por Série</h5></div>
                 <div class="card-body d-flex flex-column">
-                    <form action="{{ url_for('relatorio_alunos_por_serie') }}" method="POST" target="_blank" class="d-flex flex-column flex-grow-1">
+                    <!-- CORREÇÃO APLICADA AQUI -->
+                    <form action="{{ url_for('main_routes.relatorio_alunos_por_serie') }}" method="POST" target="_blank" class="d-flex flex-column flex-grow-1">
                         <div class="mb-3">
                             <label for="ano_letivo_alunos" class="form-label">Ano Letivo</label>
                             <select class="form-select" name="ano_letivo_id" id="ano_letivo_alunos" required>
@@ -40,7 +42,8 @@
             <div class="card h-100 shadow-sm">
                 <div class="card-header"><h5 class="mb-0"><i class="bi bi-file-earmark-text-fill me-2"></i>Boletim por Turma</h5></div>
                 <div class="card-body d-flex flex-column">
-                    <form action="{{ url_for('relatorio_boletim_aluno') }}" method="POST" target="_blank" class="d-flex flex-column flex-grow-1">
+                    <!-- CORREÇÃO APLICADA AQUI -->
+                    <form action="{{ url_for('main_routes.relatorio_boletim_aluno') }}" method="POST" target="_blank" class="d-flex flex-column flex-grow-1">
                         <div class="mb-3">
                             <label for="ano_letivo_boletim" class="form-label">Ano Letivo</label>
                             <select class="form-select" name="ano_letivo_id" id="ano_letivo_boletim" required>
@@ -63,7 +66,8 @@
             <div class="card h-100 shadow-sm">
                 <div class="card-header"><h5 class="mb-0"><i class="bi bi-bar-chart-line-fill me-2"></i>Desempenho por Assunto</h5></div>
                 <div class="card-body d-flex flex-column">
-                    <form action="{{ url_for('relatorio_desempenho_por_assunto') }}" method="POST" target="_blank" class="d-flex flex-column flex-grow-1">
+                    <!-- CORREÇÃO APLICADA AQUI -->
+                    <form action="{{ url_for('main_routes.relatorio_desempenho_por_assunto') }}" method="POST" target="_blank" class="d-flex flex-column flex-grow-1">
                         <div class="mb-3">
                             <label for="serie_id_assunto" class="form-label">Série</label>
                             <select name="serie_id" id="serie_id_assunto" class="form-select" required>
@@ -89,7 +93,8 @@
                 <div class="card-header"><h5 class="mb-0"><i class="bi bi-search me-2"></i>Análise de Itens (Questões)</h5></div>
                 <div class="card-body d-flex flex-column">
                     <p class="small text-muted">Avalie a qualidade de cada questão em uma prova ou simulado.</p>
-                    <form action="{{ url_for('relatorio_analise_de_itens') }}" method="POST" target="_blank" class="mt-auto">
+                    <!-- CORREÇÃO APLICADA AQUI -->
+                    <form action="{{ url_for('main_routes.relatorio_analise_de_itens') }}" method="POST" target="_blank" class="mt-auto">
                         <div class="mb-3">
                             <label for="avaliacao_id_analise" class="form-label">Avaliação</label>
                             <select name="avaliacao_id" id="avaliacao_id_analise" class="form-select" required>
@@ -108,7 +113,8 @@
                 <div class="card-header"><h5 class="mb-0"><i class="bi bi-layers-fill me-2"></i>Desempenho por Nível</h5></div>
                 <div class="card-body d-flex flex-column">
                     <p class="small text-muted">Analise a performance da turma ou de um aluno por dificuldade.</p>
-                    <form action="{{ url_for('relatorio_desempenho_por_nivel') }}" method="POST" target="_blank" class="d-flex flex-column flex-grow-1">
+                    <!-- CORREÇÃO APLICADA AQUI -->
+                    <form action="{{ url_for('main_routes.relatorio_desempenho_por_nivel') }}" method="POST" target="_blank" class="d-flex flex-column flex-grow-1">
                         <div class="mb-3">
                             <label for="serie_id_nivel" class="form-label">Série</label>
                             <select name="serie_id" id="serie_id_nivel" class="form-select" required>
@@ -133,7 +139,8 @@
                 <div class="card-header"><h5 class="mb-0"><i class="bi bi-diagram-3-fill me-2"></i>Comparativo entre Turmas</h5></div>
                 <div class="card-body d-flex flex-column">
                     <p class="small text-muted">Compare o desempenho de diferentes turmas na mesma avaliação.</p>
-                    <form action="{{ url_for('relatorio_comparativo_turmas') }}" method="POST" target="_blank" class="mt-auto">
+                    <!-- CORREÇÃO APLICADA AQUI -->
+                    <form action="{{ url_for('main_routes.relatorio_comparativo_turmas') }}" method="POST" target="_blank" class="mt-auto">
                         <div class="mb-3">
                             <label for="avaliacao_id_comparativo" class="form-label">Avaliação</label>
                             <select name="avaliacao_id" id="avaliacao_id_comparativo" class="form-select" required>
@@ -155,7 +162,8 @@
                 <div class="card-header"><h5 class="mb-0"><i class="bi bi-clipboard-data-fill me-2"></i>Saúde do Banco de Questões</h5></div>
                 <div class="card-body d-flex flex-column">
                     <p class="small text-muted">Obtenha uma visão geral de todas as questões cadastradas na escola.</p>
-                    <a href="{{ url_for('relatorio_saude_banco_questoes') }}" target="_blank" class="btn btn-secondary w-100 mt-auto">Gerar Relatório</a>
+                    <!-- CORREÇÃO APLICADA AQUI -->
+                    <a href="{{ url_for('main_routes.relatorio_saude_banco_questoes') }}" target="_blank" class="btn btn-secondary w-100 mt-auto">Gerar Relatório</a>
                 </div>
             </div>
         </div>
@@ -165,7 +173,8 @@
                 <div class="card-header"><h5 class="mb-0"><i class="bi bi-person-video3 me-2"></i>Lista de Professores</h5></div>
                 <div class="card-body d-flex flex-column">
                     <p>Gera uma lista com todos os professores cadastrados na escola.</p>
-                    <a href="{{ url_for('relatorio_professores') }}" target="_blank" class="btn btn-secondary w-100 mt-auto">Gerar PDF</a>
+                    <!-- CORREÇÃO APLICADA AQUI -->
+                    <a href="{{ url_for('main_routes.relatorio_professores') }}" target="_blank" class="btn btn-secondary w-100 mt-auto">Gerar PDF</a>
                 </div>
             </div>
         </div>
@@ -174,7 +183,8 @@
             <div class="card h-100 shadow-sm">
                 <div class="card-header"><h5 class="mb-0"><i class="bi bi-graph-up-arrow me-2"></i>Resultados de Simulado</h5></div>
                 <div class="card-body d-flex flex-column">
-                    <form action="{{ url_for('relatorio_resultado_simulado') }}" method="POST" target="_blank" class="mt-auto">
+                    <!-- CORREÇÃO APLICADA AQUI -->
+                    <form action="{{ url_for('main_routes.relatorio_resultado_simulado') }}" method="POST" target="_blank" class="mt-auto">
                         <div class="mb-3">
                             <label for="avaliacao_id_simulado" class="form-label">Selecione o Simulado</label>
                             <select class="form-select" name="avaliacao_id" id="avaliacao_id_simulado" required>
@@ -192,6 +202,7 @@
 {% endblock %}
 
 {% block scripts %}
+{{ super() }}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const serieSelectNivel = document.getElementById('serie_id_nivel');
@@ -207,7 +218,10 @@
                     return;
                 }
 
-                fetch(`/api/alunos_por_serie/${serieId}`)
+                // CORREÇÃO APLICADA AQUI
+                const url = `{{ url_for('main_routes.api_alunos_por_serie', serie_id=0) }}`.replace('0', serieId);
+
+                fetch(url)
                     .then(response => response.json())
                     .then(data => {
                         alunoSelectNivel.innerHTML = '<option value="0">Todos os Alunos da Série</option>';

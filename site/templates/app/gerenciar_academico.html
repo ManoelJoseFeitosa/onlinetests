@@ -6,7 +6,8 @@
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h2">Gerenciamento Acadêmico</h1>
-        <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">&larr; Voltar ao Painel</a>
+        <!-- CORREÇÃO APLICADA AQUI -->
+        <a href="{{ url_for('main_routes.dashboard') }}" class="btn btn-outline-secondary">&larr; Voltar ao Painel</a>
     </div>
 
     <div class="row">
@@ -16,7 +17,8 @@
                     <h5>1. Cadastrar Nova Série</h5>
                 </div>
                 <div class="card-body">
-                    <form method="POST" action="{{ url_for('gerenciar_academico') }}">
+                    <!-- CORREÇÃO APLICADA AQUI -->
+                    <form method="POST" action="{{ url_for('main_routes.gerenciar_academico') }}">
                         <input type="hidden" name="submit_serie" value="1">
                         <div class="form-group">
                             <label for="nome_serie" class="form-label">Nome da Série</label>
@@ -32,7 +34,8 @@
                     <h5>2. Cadastrar Nova Disciplina</h5>
                 </div>
                 <div class="card-body">
-                    <form method="POST" action="{{ url_for('gerenciar_academico') }}">
+                    <!-- CORREÇÃO APLICADA AQUI -->
+                    <form method="POST" action="{{ url_for('main_routes.gerenciar_academico') }}">
                         <input type="hidden" name="submit_disciplina" value="1">
                         <div class="form-group">
                             <label for="nome_disciplina" class="form-label">Nome da Disciplina</label>
@@ -51,7 +54,8 @@
                 </div>
                 <div class="card-body">
                     <p class="text-muted">Selecione uma série para definir quais disciplinas são oferecidas nela.</p>
-                    <form method="POST" action="{{ url_for('gerenciar_academico') }}" id="form-associacao">
+                    <!-- CORREÇÃO APLICADA AQUI -->
+                    <form method="POST" action="{{ url_for('main_routes.gerenciar_academico') }}" id="form-associacao">
                         <input type="hidden" name="submit_associacao" value="1">
                         
                         <div class="form-group mb-4">
@@ -85,7 +89,10 @@
         </div>
     </div>
 </div>
+{% endblock %}
 
+{% block scripts %}
+{{ super() }}
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const serieSelect = document.getElementById('serie_id_assoc');

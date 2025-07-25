@@ -6,21 +6,27 @@
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="display-6">Criar Novo Simulado</h2>
-        <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">&larr; Voltar ao Painel</a>
+        <!-- CORREÇÃO APLICADA AQUI -->
+        <a href="{{ url_for('main_routes.dashboard') }}" class="btn btn-outline-secondary">&larr; Voltar ao Painel</a>
     </div>
 
     <p class="text-muted">Crie uma avaliação que abrange múltiplas disciplinas, ideal para preparar os alunos de forma completa.</p>
 
-    <form method="POST" action="{{ url_for('criar_simulado') }}" id="form-criar-simulado">
+    <!-- CORREÇÃO APLICADA AQUI -->
+    <form method="POST" action="{{ url_for('main_routes.criar_modelo_avaliacao') }}" id="form-criar-simulado" 
+          data-api-url-base="{{ url_for('main_routes.get_conteudo_simulado_por_serie', serie_id=0) }}">
         
+        <!-- Adicionado um campo hidden para identificar o tipo como 'simulado' -->
+        <input type="hidden" name="tipo_modelo" value="simulado">
+
         <div class="card shadow-sm mb-4">
             <div class="card-header bg-primary text-white">
                 <h4 class="h6 mb-0">1. Informações Gerais do Simulado</h4>
             </div>
             <div class="card-body">
                 <div class="mb-3">
-                    <label for="nome_simulado" class="form-label fw-bold">Nome do Simulado</label>
-                    <input type="text" class="form-control" id="nome_simulado" name="nome_simulado" required placeholder="Ex: Simulado Nacional - 1º Semestre">
+                    <label for="nome_modelo" class="form-label fw-bold">Nome do Simulado</label>
+                    <input type="text" class="form-control" id="nome_modelo" name="nome_modelo" required placeholder="Ex: Simulado Nacional - 1º Semestre">
                 </div>
                 <div class="mb-3">
                     <label for="tempo_limite" class="form-label fw-bold">Tempo Limite (em minutos)</label>
@@ -35,8 +41,8 @@
             </div>
             <div class="card-body">
                 <div class="mb-3">
-                    <label for="serie_id_simulado" class="form-label fw-bold">Selecione a Série para buscar as disciplinas:</label>
-                    <select class="form-select" id="serie_id_simulado" name="serie_id_simulado" required>
+                    <label for="serie_id" class="form-label fw-bold">Selecione a Série para buscar as disciplinas:</label>
+                    <select class="form-select" id="serie_id" name="serie_id" required>
                         <option value="" selected disabled>-- Escolha uma Série --</option>
                         {% for serie in series %}
                         <option value="{{ serie.id }}">{{ serie.nome }}</option>
@@ -52,7 +58,8 @@
         </div>
 
         <div class="text-end mt-4">
-            <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Cancelar</a>
+            <!-- CORREÇÃO APLICADA AQUI -->
+            <a href="{{ url_for('main_routes.dashboard') }}" class="btn btn-secondary">Cancelar</a>
             <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Criar Simulado</button>
         </div>
     </form>
@@ -60,11 +67,14 @@
 {% endblock %}
 
 {% block scripts %}
+{{ super() }}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const serieSelect = document.getElementById('serie_id_simulado');
+    const serieSelect = document.getElementById('serie_id');
     const disciplinasContainer = document.getElementById('disciplinas-container');
     const feedbackContainer = document.getElementById('feedback-container');
+    const form = document.getElementById('form-criar-simulado');
+    const apiUrlBase = form.dataset.apiUrlBase;
 
     serieSelect.addEventListener('change', function() {
         const serieId = this.value;
@@ -79,7 +89,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
         feedbackContainer.innerHTML = `<div class="alert alert-info">Carregando disciplinas e assuntos...</div>`;
 
-        fetch(`/api/conteudo_simulado_por_serie/${serieId}`)
+        // CORREÇÃO APLICADA AQUI
+        const url = apiUrlBase.replace('0', serieId);
+
+        fetch(url)
             .then(response => {
                 if (!response.ok) {
                     throw new Error('Erro de rede ao buscar o conteúdo.');
@@ -106,15 +119,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (disciplina.assuntos.length > 0) {
                         assuntosHTML = disciplina.assuntos.map(assunto => `
                             <div class="form-check form-check-inline">
-                                <input class="form-check-input" type="checkbox" name="assuntos_disciplina_${disciplina.id}" value="${assunto}" id="assunto-${disciplina.id}-${assunto.replace(/\s+/g, '')}">
-                                <label class="form-check-label" for="assunto-${disciplina.id}-${assunto.replace(/\s+/g, '')}">${assunto}</label>
+                                <input class="form-check-input" type="checkbox" name="assuntos_disciplina_${disciplina.id}" value="${assunto.id}" id="assunto-${disciplina.id}-${assunto.id.replace(/\s+/g, '')}">
+                                <label class="form-check-label" for="assunto-${disciplina.id}-${assunto.id.replace(/\s+/g, '')}">${assunto.nome}</label>
                             </div>
                         `).join('');
                     }
 
-                    // ===================================================================
-                    // ALTERAÇÃO PRINCIPAL AQUI: Mudança na estrutura do card-body
-                    // ===================================================================
                     card.innerHTML = `
                         <div class="card-header bg-light">
                             <div class="form-check">
@@ -130,7 +140,6 @@ document.addEventListener('DOMContentLoaded', function() {
                                     <p class="small fw-bold mb-2">Selecione os Assuntos:</p>
                                     ${assuntosHTML}
                                 </div>
-
                                 <div class="col-lg-5">
                                     <p class="small fw-bold mb-2">Definir Quantidade de Questões por Nível:</p>
                                     <div class="row">
@@ -151,10 +160,6 @@ document.addEventListener('DOMContentLoaded', function() {
                             </div>
                         </div>
                     `;
-                    // ===================================================================
-                    // FIM DA ALTERAÇÃO
-                    // ===================================================================
-
                     disciplinasContainer.appendChild(card);
                 });
             })

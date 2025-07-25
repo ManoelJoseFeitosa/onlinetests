@@ -6,7 +6,8 @@
 <div class="container-fluid mt-4 px-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="display-6">Avaliações Geradas</h1>
-        <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">&larr; Voltar ao Painel</a>
+        <!-- CORREÇÃO APLICADA AQUI -->
+        <a href="{{ url_for('main_routes.dashboard') }}" class="btn btn-outline-secondary">&larr; Voltar ao Painel</a>
     </div>
     <p class="text-muted">Gerencie as avaliações que já foram iniciadas pelos alunos. Clique em "Gerenciar" para ver os resultados, notas e fazer correções.</p>
 
@@ -28,7 +29,6 @@
                             <p class="card-text small text-muted mb-3">
                                 <strong>Série:</strong> {{ item.serie.nome }} <br>
                                 {% set total_questoes = namespace(value=0) %}
-                                <!-- CORREÇÃO APLICADA AQUI: Verifica se 'regras_selecao' existe -->
                                 {% if item.regras_selecao and item.regras_selecao.disciplinas %}
                                     {% for disc in item.regras_selecao.disciplinas %}
                                         {% set total_questoes.value = total_questoes.value + (disc.niveis.facil or 0) + (disc.niveis.media or 0) + (disc.niveis.dificil or 0) %}
@@ -38,7 +38,8 @@
                                 <strong>Tempo:</strong> {{ item.tempo_limite or 'Livre' }}{% if item.tempo_limite %} minutos{% endif %}
                             </p>
                             <div class="mt-auto">
-                                <a href="{{ url_for('detalhes_modelo_avaliacao', modelo_id=item.id) }}" class="btn btn-dark w-100">
+                                <!-- CORREÇÃO APLICADA AQUI -->
+                                <a href="{{ url_for('main_routes.detalhes_modelo_avaliacao', modelo_id=item.id) }}" class="btn btn-dark w-100">
                                     <i class="bi bi-gear-fill me-1"></i> Gerenciar Avaliação
                                 </a>
                             </div>
@@ -53,15 +54,16 @@
                                 <strong>Tempo:</strong> {{ item.tempo_limite or 'Livre' }}{% if item.tempo_limite %} minutos{% endif %}
                             </p>
                             <div class="mt-auto">
-                                <a href="{{ url_for('detalhes_avaliacao', avaliacao_id=item.id) }}" class="btn btn-dark w-100">
+                                <!-- CORREÇÃO APLICADA AQUI -->
+                                <a href="{{ url_for('main_routes.detalhes_avaliacao', avaliacao_id=item.id) }}" class="btn btn-dark w-100">
                                     <i class="bi bi-gear-fill me-1"></i> Gerenciar Avaliação
                                 </a>
                             </div>
                         {% endif %}
                         
                         <div class="card-footer bg-transparent border-0 text-muted small text-center pt-3">
-                           Criada por: {{ item.criador.nome if item.criador else 'N/A' }}
-                       </div>
+                            Criada por: {{ item.criador.nome if item.criador else 'N/A' }}
+                        </div>
                     </div>
                 </div>
             </div>

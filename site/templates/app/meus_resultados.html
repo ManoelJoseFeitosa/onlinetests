@@ -3,6 +3,7 @@
 {% block title %}Meu Desempenho{% endblock %}
 
 {% block scripts %}
+{{ super() }}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 {% endblock %}
 
@@ -10,7 +11,8 @@
 <div class="container-fluid mt-4 px-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="display-6">Meu Desempenho 🚀</h1>
-        <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">&larr; Voltar ao Painel</a>
+        <!-- CORREÇÃO APLICADA AQUI -->
+        <a href="{{ url_for('main_routes.dashboard') }}" class="btn btn-outline-secondary">&larr; Voltar ao Painel</a>
     </div>
 
     <ul class="nav nav-tabs" id="desempenhoTab" role="tablist">
@@ -172,7 +174,8 @@
                              <div class="accordion-body p-0">
                                  <ul class="list-group list-group-flush">
                                      {% for avaliacao in dados.avaliacoes %}
-                                     <a href="{{ url_for('ver_resultado_detalhado', resultado_id=avaliacao.id) }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                                     <!-- CORREÇÃO APLICADA AQUI -->
+                                     <a href="{{ url_for('main_routes.ver_resultado_detalhado', resultado_id=avaliacao.id) }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
                                          <div>
                                              {{ avaliacao.nome }}
                                              <small class="d-block text-muted">{{ avaliacao.data }}</small>
@@ -193,13 +196,12 @@
     </div>
 </div>
 
-<!-- ======================= SCRIPT DOS GRÁFICOS (CORRIGIDO) ======================= -->
+<!-- ======================= SCRIPT DOS GRÁFICOS ======================= -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     
     // --- GRÁFICO DE PROVAS POR DISCIPLINA ---
     try {
-        // CORREÇÃO: Lê o objeto diretamente usando o filtro 'tojson' do Jinja2
         const chartDataProvas = {{ chart_data_provas_por_disciplina | tojson | safe }};
         const canvasProvas = document.getElementById('graficoProvasPorDisciplina');
 

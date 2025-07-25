@@ -15,8 +15,8 @@
     <hr class="mb-5">
     <div class="row justify-content-center">
         <div class="col-lg-8">
-            <!-- Garantindo que o formulário envia os dados com POST -->
-            <form method="POST" action="{{ url_for('contato') }}">
+            <!-- CORREÇÃO APLICADA AQUI -->
+            <form method="POST" action="{{ url_for('main_routes.contato') }}">
                 <div class="mb-3">
                     <label for="nome" class="form-label">Seu Nome</label>
                     <input type="text" class="form-control" id="nome" name="nome" required>

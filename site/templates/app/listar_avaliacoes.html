@@ -6,59 +6,59 @@
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="mb-0">Avaliações Disponíveis</h2>
-        <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">&larr; Voltar ao Painel</a>
+        <!-- CORREÇÃO APLICADA AQUI -->
+        <a href="{{ url_for('main_routes.dashboard') }}" class="btn btn-outline-secondary">&larr; Voltar ao Painel</a>
     </div>
     
     <hr class="mt-0">
     
-    {% if avaliacoes %}
-        <div class="row">
-            {% for avaliacao in avaliacoes %}
-            <div class="col-md-6 col-lg-4 mb-4">
+    <!-- A variável foi renomeada para 'modelos' para corresponder à rota -->
+    {% if modelos %}
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+            {% for item in modelos %}
+            <div class="col">
                 <div class="card h-100 shadow-sm">
                     <div class="card-body d-flex flex-column">
-                        <h5 class="card-title">{{ avaliacao.nome }}</h5>
+                        <h5 class="card-title">{{ item.nome }}</h5>
                         <div class="mb-3">
-                            {% if avaliacao.tipo == 'simulado' %}
-                                <span class="badge bg-info">Simulado</span>
-                                <span class="text-muted small">
-                                    Série: {{ avaliacao.serie.nome if avaliacao.serie else 'N/A' }}
-                                </span>
-                            {% else %}
-                                <span class="badge bg-secondary">Prova</span>
-                                <span class="text-muted small">
-                                    <!-- INÍCIO DA CORREÇÃO: Corrigido o nome do relacionamento -->
-                                    Disciplina: {{ avaliacao.disciplina.nome if avaliacao.disciplina else 'N/A' }}
-                                    <!-- FIM DA CORREÇÃO -->
-                                </span>
+                            <!-- Lógica para exibir o tipo de avaliação -->
+                            {% if item.tipo == 'simulado' %}
+                                <span class="badge bg-success">Simulado</span>
+                            {% elif item.tipo == 'prova' %}
+                                <span class="badge bg-primary">Prova</span>
+                            {% elif item.tipo == 'recuperacao' %}
+                                <span class="badge bg-warning text-dark">Recuperação</span>
                             {% endif %}
                         </div>
-                        <p class="card-text">
-                            <strong>Questões:</strong> {{ avaliacao.questoes|length }} <br>
-                            <strong>Tempo:</strong> {{ avaliacao.tempo_limite or "Livre" }}
-                            {% if avaliacao.tempo_limite %} minutos{% endif %}
+                        <p class="card-text small text-muted">
+                            <strong>Série:</strong> {{ item.serie.nome if item.serie else 'N/A' }} <br>
+                            <strong>Tempo:</strong> {{ item.tempo_limite or "Livre" }}{% if item.tempo_limite %} minutos{% endif %}
                         </p>
 
                         <div class="mt-auto text-center">
-                            {% if current_user.role == 'aluno' %}
-                                {% if avaliacao.id in ids_concluidas %}
-                                    <a href="{{ url_for('meus_resultados') }}" class="btn btn-success disabled">
-                                        <i class="bi bi-check-circle-fill"></i> Concluída
+                            {% if item.id in ids_concluidas %}
+                                <!-- CORREÇÃO APLICADA AQUI -->
+                                <a href="{{ url_for('main_routes.meus_resultados') }}" class="btn btn-success disabled w-100">
+                                    <i class="bi bi-check-circle-fill"></i> Concluída
+                                </a>
+                            {% else %}
+                                <!-- Lógica para direcionar para a rota correta -->
+                                {% if item.__class__.__name__ == 'ModeloAvaliacao' %}
+                                    <!-- Se for um modelo, inicia uma avaliação dinâmica -->
+                                    <a href="{{ url_for('main_routes.iniciar_avaliacao_dinamica', modelo_id=item.id) }}" class="btn btn-primary w-100">
+                                        <i class="bi bi-play-circle-fill"></i> Iniciar Agora
                                     </a>
                                 {% else %}
-                                    <a href="{{ url_for('responder_avaliacao', avaliacao_id=avaliacao.id) }}" class="btn btn-primary">
+                                    <!-- Se for uma avaliação estática (recuperação), vai direto para responder -->
+                                    <a href="{{ url_for('main_routes.responder_avaliacao', avaliacao_id=item.id) }}" class="btn btn-primary w-100">
                                         <i class="bi bi-pencil-square"></i> Responder Agora
                                     </a>
                                 {% endif %}
-                            {% else %} {# Professor ou Coordenador #}
-                                <a href="{{ url_for('detalhes_avaliacao', avaliacao_id=avaliacao.id) }}" class="btn btn-outline-primary">
-                                    <i class="bi bi-graph-up"></i> Ver Detalhes e Resultados
-                                </a>
                             {% endif %}
                         </div>
                     </div>
-                    <div class="card-footer text-muted small">
-                        Criada por: {{ avaliacao.criador.nome }}
+                    <div class="card-footer text-muted small text-center">
+                        Criada por: {{ item.criador.nome if item.criador else 'N/A' }}
                     </div>
                 </div>
             </div>

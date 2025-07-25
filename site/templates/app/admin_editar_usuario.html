@@ -1,34 +1,52 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Editar Usuário</title>
-    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
-</head>
-<body>
-    <h2>Editar Usuário</h2>
-    <form method="POST">
-        <div>
-            <label for="username">Nome de Usuário:</label>
-            <input type="text" id="username" name="username" value="{{ usuario[1] }}" required>
+{% extends 'app/base.html' %}
+
+{% block title %}Editar Usuário - {{ usuario.nome }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-7">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h4 class="mb-0">Editar Usuário</h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label for="nome" class="form-label">Nome de Usuário:</label>
+                            <input type="text" id="nome" name="nome" class="form-control" value="{{ usuario.nome }}" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email:</label>
+                            <input type="email" id="email" name="email" class="form-control" value="{{ usuario.email }}" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="role" class="form-label">Perfil de Acesso:</label>
+                            <select id="role" name="role" class="form-select" disabled>
+                                <!-- O perfil não pode ser alterado na edição para manter a consistência dos dados -->
+                                <option value="aluno" {% if usuario.role == 'aluno' %}selected{% endif %}>Aluno</option>
+                                <option value="professor" {% if usuario.role == 'professor' %}selected{% endif %}>Professor</option>
+                                <option value="coordenador" {% if usuario.role == 'coordenador' %}selected{% endif %}>Coordenador</option>
+                            </select>
+                            <small class="form-text text-muted">O perfil de um usuário não pode ser alterado após a criação.</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Nova Senha:</label>
+                            <input type="password" id="password" name="password" class="form-control" placeholder="Deixe em branco para não alterar">
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                            <!-- CORREÇÃO APLICADA AQUI -->
+                            <a href="{{ url_for('main_routes.gerenciar_usuarios') }}" class="btn btn-secondary me-md-2">Voltar</a>
+                            <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
-        <div>
-            <label for="email">Email:</label>
-            <input type="email" id="email" name="email" value="{{ usuario[2] }}" required>
-        </div>
-        <div>
-            <label for="role">Role:</label>
-            <select id="role" name="role">
-                <option value="student" {% if usuario[3] == 'student' %}selected{% endif %}>Aluno</option>
-                <option value="teacher" {% if usuario[3] == 'teacher' %}selected{% endif %}>Professor</option>
-                <option value="admin" {% if usuario[3] == 'admin' %}selected{% endif %}>Administrador</option>
-            </select>
-        </div>
-        <div>
-            <label for="password">Nova Senha (deixe em branco para manter a atual):</label>
-            <input type="password" id="password" name="password">
-        </div>
-        <button type="submit" class="btn btn-custom-green btn-lg">Salvar Alteração</button>
-    </form>
-    <p><a href="{{ url_for('listar_usuarios_admin') }}">Voltar para Gerenciar Usuários</a></p>
-</body>
-</html>
+    </div>
+</div>
+{% endblock %}

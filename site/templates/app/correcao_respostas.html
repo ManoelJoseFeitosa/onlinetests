@@ -2,15 +2,16 @@
 {% block title %}Corrigindo: {{ resultado.aluno.nome }}{% endblock %}
 {% block content %}
 <div class="container mt-4">
-    <h1>Corrigindo Avaliação</h1>
-    <h4><strong>Aluno:</strong> {{ resultado.aluno.nome }}</h4>
-    <h5><strong>Avaliação:</strong> {{ resultado.avaliacao.nome }}</h5>
-    <hr>
+    <div class="mb-4">
+        <h2 class="mb-1">Corrigindo Avaliação</h2>
+        <p class="text-muted mb-0"><strong>Aluno:</strong> {{ resultado.aluno.nome }} | <strong>Avaliação:</strong> {{ resultado.avaliacao.nome }}</p>
+    </div>
+    
     <form method="POST">
         {% for resposta in respostas %}
-            <div class="card mb-4">
+            <div class="card shadow-sm mb-4">
                 <div class="card-header bg-light">
-                    <strong>Questão:</strong>
+                    <strong>Questão {{ loop.index }}:</strong>
                     
                     {% if resposta.questao.imagem_nome %}
                         <div class="my-3 text-center">
@@ -20,7 +21,7 @@
                                  style="max-height: 350px;">
                         </div>
                     {% endif %}
-                    <span style="white-space: pre-wrap;">{{ resposta.questao.texto | safe }}</span>
+                    <div style="white-space: pre-wrap;">{{ resposta.questao.texto | safe }}</div>
                 </div>
                 <div class="card-body">
                     <h6 class="card-subtitle mb-2 text-muted">Resposta do Aluno:</h6>
@@ -28,7 +29,7 @@
                 </div>
                 <div class="card-footer">
                     <div class="form-group">
-                        <label><strong>Avaliar Resposta:</strong></label>
+                        <label class="mb-2"><strong>Avaliar Resposta:</strong></label>
                         <div class="form-check"><input class="form-check-input" type="radio" name="status_{{ resposta.id }}" value="correta" required><label class="form-check-label text-success">Correta (Nota máxima)</label></div>
                         <div class="form-check"><input class="form-check-input" type="radio" name="status_{{ resposta.id }}" value="parcial"><label class="form-check-label text-warning">Parcialmente Correta (Metade da nota)</label></div>
                         <div class="form-check"><input class="form-check-input" type="radio" name="status_{{ resposta.id }}" value="incorreta"><label class="form-check-label text-danger">Incorreta (Zero)</label></div>
@@ -40,8 +41,11 @@
                 </div>
             </div>
         {% endfor %}
-        <button type="submit" class="btn btn-success btn-lg">Salvar Correção e Finalizar Nota</button>
-        <a href="{{ url_for('correcao_lista_alunos', avaliacao_id=resultado.avaliacao_id) }}" class="btn btn-secondary btn-lg">Cancelar</a>
+        <div class="d-flex justify-content-end mt-4">
+            <!-- CORREÇÃO APLICADA AQUI -->
+            <a href="{{ url_for('main_routes.correcao_lista_alunos', avaliacao_id=resultado.avaliacao_id) }}" class="btn btn-secondary btn-lg me-2">Cancelar</a>
+            <button type="submit" class="btn btn-success btn-lg">Salvar Correção e Finalizar Nota</button>
+        </div>
     </form>
 </div>
 {% endblock %}

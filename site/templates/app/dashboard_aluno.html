@@ -1,8 +1,57 @@
 {% extends 'app/base.html' %}
-{% block title %}Meu Painel{% endblock %}
+
+{% block title %}Painel do Aluno{% endblock %}
+
 {% block content %}
-    <h1>Bem-vindo, {{ current_user.nome }}!</h1>
-    <p>Aqui estão as avaliações disponíveis para você responder.</p>
-    
-    <a href="{{ url_for('listar_avaliacoes_aluno') }}" class="action-button">Ver Minhas Avaliações</a>
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">Painel do Aluno</h1>
+</div>
+
+<!-- Mensagem de Boas-Vindas -->
+<div class="alert alert-success">
+    Bem-vindo(a), {{ current_user.nome.split()[0] }}!
+</div>
+
+<p>Aqui estão os atalhos para suas atividades.</p>
+
+<!-- Cards de Acesso Rápido para Aluno -->
+<div class="row">
+
+    <div class="col-xl-4 col-md-6 mb-4">
+        <div class="card border-left-warning shadow h-100 py-2">
+            <div class="card-body d-flex flex-column">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Avaliações</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">Minhas Avaliações</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-file-alt fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+                <!-- CORREÇÃO APLICADA AQUI -->
+                <a href="{{ url_for('main_routes.listar_modelos_avaliacao') }}" class="btn btn-warning mt-auto">Acessar</a>
+            </div>
+        </div>
+    </div>
+
+     <div class="col-xl-4 col-md-6 mb-4">
+        <div class="card border-left-success shadow h-100 py-2">
+            <div class="card-body d-flex flex-column">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Desempenho</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">Meus Resultados</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-chart-line fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+                <!-- CORREÇÃO APLICADA AQUI -->
+                <a href="{{ url_for('main_routes.meus_resultados') }}" class="btn btn-success mt-auto">Acessar</a>
+            </div>
+        </div>
+    </div>
+
+</div>
 {% endblock %}

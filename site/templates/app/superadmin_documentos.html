@@ -1,4 +1,4 @@
-{% extends 'app/base.html' %} {# Você mencionou que seu base se chama 'base.html', então mantive #}
+{% extends 'app/base.html' %}
 
 {% block title %}Gerenciar Documentos{% endblock %}
 
@@ -8,25 +8,14 @@
         <h2 class="mb-0">Gerenciar Documentos</h2>
     </div>
 
-    <!-- Seção de Alertas/Flash Messages -->
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                    {{ message }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
-
     <!-- Formulário de Upload -->
     <div class="card shadow-sm mb-4">
         <div class="card-header">
             <h5 class="mb-0"><i class="bi bi-upload me-2"></i>Enviar Novo Documento</h5>
         </div>
         <div class="card-body">
-            <form method="POST" action="{{ url_for('superadmin_gerenciar_documentos') }}" enctype="multipart/form-data">
+            <!-- CORREÇÃO APLICADA AQUI -->
+            <form method="POST" action="{{ url_for('main_routes.superadmin_gerenciar_documentos') }}" enctype="multipart/form-data">
                 <div class="mb-3">
                     <label for="titulo" class="form-label">Título do Documento <span class="text-danger">*</span></label>
                     <input type="text" class="form-control" id="titulo" name="titulo" required>
@@ -72,7 +61,8 @@
                             <td><a href="{{ url_for('static', filename=doc.caminho_arquivo) }}" target="_blank">{{ doc.caminho_arquivo.split('/')[-1] }}</a></td>
                             <td>{{ doc.data_upload.strftime('%d/%m/%Y às %H:%M') }}</td>
                             <td class="text-center">
-                                <form action="{{ url_for('superadmin_excluir_documento', documento_id=doc.id) }}" method="POST" onsubmit="return confirm('Tem certeza que deseja excluir este documento? Esta ação não pode ser desfeita.');">
+                                <!-- CORREÇÃO APLICADA AQUI -->
+                                <form action="{{ url_for('main_routes.superadmin_excluir_documento', documento_id=doc.id) }}" method="POST" onsubmit="return confirm('Tem certeza que deseja excluir este documento? Esta ação não pode ser desfeita.');">
                                     <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir Documento">
                                         <i class="bi bi-trash-fill"></i> Excluir
                                     </button>
@@ -91,10 +81,3 @@
     </div>
 </div>
 {% endblock %}
-```
-
-### **Próximo Passo**
-
-Agora, para que você possa acessar essa nova página, precisamos adicionar um link no seu menu lateral.
-
-**Por favor, me envie o código do seu arquivo `app/base.html`** para que eu possa lhe mostrar exatamente onde adicionar o link "Gerenciar Documentos" no menu do Super Administrad
