@@ -940,15 +940,125 @@ def detalhes_modelo_avaliacao(modelo_id):
     # ... Lógica de detalhes ...
     return render_template('app/detalhes_modelo_avaliacao.html') # Simplificado
 
+@main_routes.route('/api/buscar-questoes')
+@login_required
+@role_required('professor', 'coordenador')
+def buscar_questoes():
+    """
+    Endpoint de API para buscar questões no banco de dados com base em filtros.
+    Retorna os resultados em formato JSON para serem usados com JavaScript.
+    """
+    try:
+        disciplina_id = request.args.get('disciplina_id', type=int)
+        assunto = request.args.get('assunto', '', type=str)
+        nivel = request.args.get('nivel', '', type=str)
+        
+        if not disciplina_id:
+            return jsonify({'error': 'O ID da disciplina é obrigatório.'}), 400
+
+        # Constrói a query base
+        query = Questao.query.join(Disciplina).filter(
+            Disciplina.escola_id == current_user.escola_id,
+            Questao.disciplina_id == disciplina_id
+        )
+
+        # Aplica filtros adicionais se eles foram fornecidos
+        if assunto:
+            query = query.filter(Questao.assunto.ilike(f'%{assunto}%'))
+        if nivel:
+            query = query.filter(Questao.nivel == nivel)
+
+        questoes_encontradas = query.order_by(Questao.assunto).limit(50).all()
+
+        # Formata os resultados para JSON
+        resultados = []
+        for q in questoes_encontradas:
+            # Pega os 150 primeiros caracteres do texto para preview
+            texto_preview = (q.texto[:150] + '...') if len(q.texto) > 150 else q.texto
+            resultados.append({
+                'id': q.id,
+                'assunto': q.assunto,
+                'nivel': q.nivel.capitalize(),
+                'texto_preview': texto_preview
+            })
+            
+        return jsonify(resultados)
+
+    except Exception as e:
+        print(f"ERRO AO BUSCAR QUESTÕES: {e}")
+        return jsonify({'error': 'Ocorreu um erro interno no servidor.'}), 500
+
 @main_routes.route('/criar-recuperacao', methods=['GET', 'POST'])
 @login_required
 @role_required('professor', 'coordenador')
 def criar_recuperacao():
+    ano_letivo_ativo = AnoLetivo.query.filter_by(escola_id=current_user.escola_id, status='ativo').first()
+    if not ano_letivo_ativo:
+        flash('Não é possível criar avaliações sem um ano letivo ativo.', 'warning')
+        return redirect(url_for('main_routes.dashboard'))
+
     if request.method == 'POST':
-        # ... Lógica de criar recuperação ...
-        return redirect(url_for('main_routes.listar_modelos_avaliacao'))
-    # ... Lógica GET ...
-    return render_template('app/criar_recuperacao.html') # Simplificado
+        try:
+            nome_avaliacao = request.form.get('nome_avaliacao')
+            disciplina_id = request.form.get('disciplina_id', type=int)
+            serie_id = request.form.get('serie_id', type=int)
+            alunos_ids = request.form.getlist('alunos_ids', type=int)
+            tempo_limite_str = request.form.get('tempo_limite')
+            tempo_limite = int(tempo_limite_str) if tempo_limite_str and tempo_limite_str.isdigit() else None
+            
+            # ### ALTERAÇÃO PRINCIPAL AQUI ###
+            # Captura a lista de IDs das questões selecionadas no formulário
+            questoes_ids = request.form.getlist('questoes_ids', type=int)
+
+            if not all([nome_avaliacao, disciplina_id, serie_id, alunos_ids]):
+                flash('Nome, disciplina, série e ao menos um aluno são obrigatórios.', 'danger')
+                return redirect(url_for('main_routes.criar_recuperacao'))
+            
+            # Valida e busca os objetos do banco de dados
+            alunos_selecionados = Usuario.query.filter(Usuario.id.in_(alunos_ids)).all()
+            # Garante que as questões selecionadas pertencem à escola do usuário
+            questoes_selecionadas = Questao.query.join(Disciplina).filter(
+                Questao.id.in_(questoes_ids),
+                Disciplina.escola_id == current_user.escola_id
+            ).all()
+
+            # Garante que o número de questões encontradas é o mesmo que o de IDs enviados
+            if len(questoes_selecionadas) != len(questoes_ids):
+                flash('Uma ou mais questões selecionadas são inválidas. Tente novamente.', 'danger')
+                return redirect(url_for('main_routes.criar_recuperacao'))
+
+            nova_recuperacao = Avaliacao(
+                nome=nome_avaliacao, 
+                tipo='recuperacao', 
+                tempo_limite=tempo_limite,
+                disciplina_id=disciplina_id, 
+                serie_id=serie_id, 
+                criador_id=current_user.id, 
+                escola_id=current_user.escola_id, 
+                ano_letivo_id=ano_letivo_ativo.id, 
+                is_dinamica=False
+            )
+            
+            nova_recuperacao.questoes = questoes_selecionadas
+            nova_recuperacao.alunos_designados = alunos_selecionados
+            
+            db.session.add(nova_recuperacao)
+            db.session.commit()
+            
+            log_audit('RECOVERY_ASSESSMENT_CREATED', target_obj=nova_recuperacao, details={'num_questoes': len(questoes_ids)})
+            flash(f'Prova de recuperação "{nome_avaliacao}" criada e designada com sucesso!', 'success')
+            return redirect(url_for('main_routes.listar_modelos_avaliacao'))
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Ocorreu um erro ao criar a prova de recuperação: {e}', 'danger')
+            return redirect(url_for('main_routes.criar_recuperacao'))
+
+    # Lógica para o método GET
+    series = Serie.query.filter_by(escola_id=current_user.escola_id).order_by(Serie.nome).all()
+    disciplinas = Disciplina.query.filter_by(escola_id=current_user.escola_id).order_by(Disciplina.nome).all()
+    
+    return render_template('app/criar_recuperacao.html', series=series, disciplinas=disciplinas)
 
 @main_routes.route('/avaliacoes')
 @login_required

@@ -1,66 +1,74 @@
-{% extends 'app/base.html' %}
+{% extends "app/base.html" %}
+
 {% block title %}Criar Prova de Recuperação{% endblock %}
 
 {% block content %}
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2>Criar Prova de Recuperação</h2>
-        <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">&larr; Voltar ao Painel</a>
+        <a href="{{ url_for('main_routes.listar_modelos_avaliacao') }}" class="btn btn-outline-secondary">&larr; Voltar</a>
     </div>
-    <p class="text-muted">Gere uma avaliação específica para um grupo de alunos.</p>
+    <p class="text-muted">Gere uma avaliação específica para um grupo de alunos, selecionando questões do seu banco.</p>
     <hr>
 
-    <form method="POST">
-        <!-- Card para Seleção de Alunos -->
+    <form method="POST" action="{{ url_for('main_routes.criar_recuperacao') }}" id="form-recuperacao">
+        
+        <!-- Card para Seleção de Alunos e Detalhes -->
         <div class="card shadow-sm mb-4">
-            <div class="card-header"><h5 class="mb-0">1. Seleção de Alunos</h5></div>
+            <div class="card-header"><h5 class="mb-0">1. Detalhes e Alunos Designados</h5></div>
             <div class="card-body">
-                <div class="mb-3">
-                    <label for="serie_id_alunos" class="form-label">Selecione a Série para listar os alunos</label>
-                    <!-- Este select agora tem um nome diferente para não conflitar, ele serve apenas para o filtro -->
-                    <select id="serie_id_alunos" class="form-select" required>
-                        <option value="" selected disabled>-- Selecione uma Série --</option>
-                        {% for serie in series %}<option value="{{ serie.id }}">{{ serie.nome }}</option>{% endfor %}
-                    </select>
-                </div>
-                <div id="lista_alunos_container" class="border p-3 rounded" style="display:none;">
-                    <label class="form-label fw-bold">Alunos para Recuperação (marque todos que precisar)</label>
-                    <div id="checkbox_alunos" class="mt-2" style="max-height: 200px; overflow-y: auto;">
-                        <!-- Alunos serão inseridos aqui pelo JavaScript -->
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label for="nome_avaliacao" class="form-label">Nome da Avaliação</label>
+                            <input type="text" name="nome_avaliacao" id="nome_avaliacao" class="form-control" required placeholder="Ex: Recuperação Final - Biologia">
+                        </div>
+                        <div class="form-group mb-3">
+                            <label for="tempo_limite" class="form-label">Tempo Limite (em minutos)</label>
+                            <input type="number" class="form-control" id="tempo_limite" name="tempo_limite" placeholder="Opcional">
+                        </div>
+                        <div class="form-group mb-3">
+                            <label for="disciplina_id" class="form-label">Disciplina da Recuperação</label>
+                            <select class="form-control" id="disciplina_id" name="disciplina_id" required>
+                                <option value="" selected disabled>-- Selecione uma Disciplina --</option>
+                                {% for disciplina in disciplinas %}
+                                <option value="{{ disciplina.id }}">{{ disciplina.nome }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group mb-3">
+                            <label for="serie_id" class="form-label">Selecione a Série para listar os alunos</label>
+                            <select id="serie_id" name="serie_id" class="form-control" required>
+                                <option value="" selected disabled>-- Selecione uma Série --</option>
+                                {% for serie in series %}<option value="{{ serie.id }}">{{ serie.nome }}</option>{% endfor %}
+                            </select>
+                        </div>
+                        <div id="lista_alunos_container" class="border p-3 rounded" style="display:none;">
+                            <label class="form-label fw-bold">Alunos para Recuperação</label>
+                            <div id="checkbox_alunos" class="mt-2" style="max-height: 200px; overflow-y: auto;">
+                                <!-- Alunos serão inseridos aqui pelo JavaScript -->
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Card para Detalhes da Prova -->
-        <div class="card shadow-sm">
-            <div class="card-header"><h5 class="mb-0">2. Detalhes e Questões da Prova</h5></div>
+        <!-- Card para Questões da Prova -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">2. Questões da Prova</h5>
+                <button type="button" class="btn btn-sm btn-success" data-toggle="modal" data-target="#modalBuscarQuestoes" id="btn-abrir-modal" disabled>
+                    <i class="fas fa-plus"></i> Adicionar Questão do Banco
+                </button>
+            </div>
             <div class="card-body">
-                <div class="row">
-                    <div class="col-md-8 mb-3">
-                        <label for="nome_avaliacao" class="form-label">Nome da Avaliação</label>
-                        <input type="text" name="nome_avaliacao" id="nome_avaliacao" class="form-control" required placeholder="Ex: Recuperação Final - Biologia">
-                    </div>
-                    <!-- CAMPO DE TEMPO LIMITE ADICIONADO -->
-                    <div class="col-md-4 mb-3">
-                        <label for="tempo_limite" class="form-label">Tempo Limite (em minutos)</label>
-                        <input type="number" class="form-control" id="tempo_limite" name="tempo_limite" placeholder="Opcional">
-                    </div>
-                </div>
-                <!-- CAMPO DE DISCIPLINA ADICIONADO -->
-                <div class="mb-3">
-                     <label for="disciplina_id" class="form-label">Disciplina da Recuperação</label>
-                     <select class="form-select" id="disciplina_id" name="disciplina_id" required>
-                         <option value="" selected disabled>-- Selecione uma Disciplina --</option>
-                          {% for disciplina in disciplinas %}
-                             <option value="{{ disciplina.id }}">{{ disciplina.nome }}</option>
-                         {% endfor %}
-                     </select>
-                </div>
-                 <!-- AVISO SOBRE QUESTÕES -->
-                <div class="alert alert-info mt-3">
-                    <strong>Atenção:</strong> A funcionalidade para adicionar questões específicas a esta prova de recuperação será implementada em uma futura atualização. Por enquanto, a prova será criada sem questões.
-                </div>
+                <p id="aviso-questoes">Selecione uma disciplina para poder adicionar questões.</p>
+                <ul class="list-group" id="lista-questoes-selecionadas">
+                    <!-- Questões selecionadas aparecerão aqui -->
+                </ul>
             </div>
         </div>
 
@@ -70,57 +78,172 @@
         </div>
     </form>
 </div>
+
+<!-- Modal de Busca de Questões -->
+<div class="modal fade" id="modalBuscarQuestoes" tabindex="-1" role="dialog" aria-labelledby="modalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalLabel">Buscar Questões no Banco</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <!-- Filtros de Busca -->
+                <div class="row mb-3">
+                    <div class="col-md-8">
+                        <label for="filtro-assunto">Assunto</label>
+                        <input type="text" id="filtro-assunto" class="form-control" placeholder="Digite para filtrar por assunto...">
+                    </div>
+                    <div class="col-md-4">
+                        <label for="filtro-nivel">Nível</label>
+                        <select id="filtro-nivel" class="form-control">
+                            <option value="">Todos</option>
+                            <option value="facil">Fácil</option>
+                            <option value="media">Média</option>
+                            <option value="dificil">Difícil</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-info mb-3" id="btn-buscar-questoes">Buscar</button>
+                <hr>
+                <!-- Resultados da Busca -->
+                <div id="container-resultados-busca" style="max-height: 400px; overflow-y: auto;">
+                    <p>Nenhuma busca realizada.</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
+{{ super() }}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const serieSelect = document.getElementById('serie_id_alunos');
-    const containerAlunos = document.getElementById('lista_alunos_container');
-    const checkboxContainer = document.getElementById('checkbox_alunos');
+$(document).ready(function() {
+    let questoesSelecionadasIds = new Set();
 
-    // Adiciona um campo hidden para armazenar o serie_id para o formulário
-    const hiddenSerieIdInput = document.createElement('input');
-    hiddenSerieIdInput.type = 'hidden';
-    hiddenSerieIdInput.name = 'serie_id';
-    document.querySelector('form').appendChild(hiddenSerieIdInput);
+    // Habilita o botão de adicionar questões apenas quando uma disciplina é selecionada
+    $('#disciplina_id').on('change', function() {
+        const disciplinaId = $(this).val();
+        if (disciplinaId) {
+            $('#btn-abrir-modal').prop('disabled', false);
+            $('#aviso-questoes').hide();
+        } else {
+            $('#btn-abrir-modal').prop('disabled', true);
+            $('#aviso-questoes').show();
+        }
+    });
 
-    serieSelect.addEventListener('change', function() {
-        const serieId = this.value;
-        hiddenSerieIdInput.value = serieId; // Atualiza o valor do campo hidden
+    // Carrega alunos quando a série muda
+    $('#serie_id').on('change', function() {
+        const serieId = $(this).val();
+        const containerAlunos = $('#lista_alunos_container');
+        const checkboxContainer = $('#checkbox_alunos');
+        
+        checkboxContainer.html(''); // Limpa a lista anterior
 
         if (!serieId) {
-            containerAlunos.style.display = 'none';
+            containerAlunos.hide();
             return;
         }
         
-        checkboxContainer.innerHTML = '<p>Carregando alunos...</p>';
-        containerAlunos.style.display = 'block';
+        checkboxContainer.html('<p>Carregando alunos...</p>');
+        containerAlunos.show();
 
-        fetch(`/api/alunos_por_serie/${serieId}`)
-            .then(response => response.ok ? response.json() : Promise.reject('Erro de rede'))
-            .then(data => {
-                checkboxContainer.innerHTML = '';
-                if (data.alunos && data.alunos.length > 0) {
-                    data.alunos.forEach(aluno => {
-                        const div = document.createElement('div');
-                        div.classList.add('form-check');
-                        div.innerHTML = `
+        // Usamos a rota de API que já existe
+        $.get(`{{ url_for('main_routes.api_alunos_por_serie', serie_id=0) }}`.replace('0', serieId), function(data) {
+            checkboxContainer.empty();
+            if (data.alunos && data.alunos.length > 0) {
+                data.alunos.forEach(function(aluno) {
+                    const checkboxHtml = `
+                        <div class="form-check">
                             <input class="form-check-input" type="checkbox" name="alunos_ids" value="${aluno.id}" id="aluno_${aluno.id}">
                             <label class="form-check-label" for="aluno_${aluno.id}">
                                 ${aluno.nome}
                             </label>
-                        `;
-                        checkboxContainer.appendChild(div);
-                    });
-                } else {
-                    checkboxContainer.innerHTML = '<p class="text-danger">Nenhum aluno encontrado nesta série.</p>';
-                }
-            })
-            .catch(error => {
-                console.error("Erro ao buscar alunos:", error);
-                checkboxContainer.innerHTML = '<p class="text-danger">Ocorreu um erro ao carregar os alunos.</p>';
-            });
+                        </div>
+                    `;
+                    checkboxContainer.append(checkboxHtml);
+                });
+            } else {
+                checkboxContainer.html('<p class="text-danger">Nenhum aluno encontrado nesta série.</p>');
+            }
+        }).fail(function() {
+            checkboxContainer.html('<p class="text-danger">Ocorreu um erro ao carregar os alunos.</p>');
+        });
+    });
+
+    // Lógica de busca de questões no modal
+    $('#btn-buscar-questoes').on('click', function() {
+        const disciplinaId = $('#disciplina_id').val();
+        const assunto = $('#filtro-assunto').val();
+        const nivel = $('#filtro-nivel').val();
+        const containerResultados = $('#container-resultados-busca');
+        
+        containerResultados.html('<p>Buscando...</p>');
+
+        $.get('{{ url_for("main_routes.buscar_questoes") }}', { disciplina_id: disciplinaId, assunto: assunto, nivel: nivel }, function(data) {
+            containerResultados.empty();
+            if (data.error) {
+                containerResultados.html(`<p class="text-danger">${data.error}</p>`);
+                return;
+            }
+            if (data.length > 0) {
+                const table = $('<table class="table table-hover"></table>');
+                table.append('<thead><tr><th>Assunto</th><th>Nível</th><th>Início do Enunciado</th><th>Ação</th></tr></thead>');
+                const tbody = $('<tbody></tbody>');
+                data.forEach(function(q) {
+                    const isAdded = questoesSelecionadasIds.has(q.id);
+                    const btnHtml = `<button type="button" class="btn btn-sm btn-primary btn-adicionar-questao" data-id="${q.id}" ${isAdded ? 'disabled' : ''}>${isAdded ? 'Adicionada' : 'Adicionar'}</button>`;
+                    tbody.append(`<tr><td>${q.assunto}</td><td>${q.nivel}</td><td>${q.texto_preview}</td><td>${btnHtml}</td></tr>`);
+                });
+                table.append(tbody);
+                containerResultados.append(table);
+            } else {
+                containerResultados.html('<p>Nenhuma questão encontrada com os filtros informados.</p>');
+            }
+        });
+    });
+
+    // Adicionar questão à lista principal
+    $(document).on('click', '.btn-adicionar-questao', function() {
+        const btn = $(this);
+        const questaoId = btn.data('id');
+        
+        questoesSelecionadasIds.add(questaoId);
+        btn.prop('disabled', true).text('Adicionada');
+
+        const questaoTexto = btn.closest('tr').find('td:nth-child(3)').text();
+        const questaoAssunto = btn.closest('tr').find('td:first').text();
+        const listItem = `
+            <li class="list-group-item d-flex justify-content-between align-items-center" id="q-item-${questaoId}">
+                <div>
+                    <strong>${questaoAssunto}</strong><br>
+                    <small>${questaoTexto}</small>
+                </div>
+                <button type="button" class="btn btn-sm btn-danger btn-remover-questao" data-id="${questaoId}">&times;</button>
+            </li>
+        `;
+        $('#lista-questoes-selecionadas').append(listItem);
+
+        $('#form-recuperacao').append(`<input type="hidden" name="questoes_ids" value="${questaoId}" id="q-input-${questaoId}">`);
+    });
+
+    // Remover questão da lista principal
+    $(document).on('click', '.btn-remover-questao', function() {
+        const questaoId = $(this).data('id');
+
+        questoesSelecionadasIds.delete(questaoId);
+
+        $(`#q-item-${questaoId}`).remove();
+        $(`#q-input-${questaoId}`).remove();
+
+        $(`.btn-adicionar-questao[data-id="${questaoId}"]`).prop('disabled', false).text('Adicionar');
     });
 });
 </script>
