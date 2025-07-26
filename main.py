@@ -2132,23 +2132,6 @@ def relatorio_saude_banco_questoes():
         flash("Ocorreu um erro inesperado ao gerar o relatório. Tente novamente.", "danger")
         return redirect(url_for('main_routes.painel_relatorios'))
 
-Ok, próxima rota. O relatório "Comparativo entre Turmas" é muito útil para gestores, pois permite comparar o desempenho de diferentes séries/turmas em uma mesma avaliação padronizada (um mesmo modelo).
-
-A lógica será focada em agregar os resultados por turma:
-
-Receber os filtros do formulário (o modelo_id da avaliação e o ano_letivo_id).
-
-Executar uma consulta ao banco que agrupe os resultados por Serie (turma).
-
-Para cada turma, a consulta irá calcular estatísticas-chave: número de participantes, nota média, maior nota, menor nota e desvio padrão.
-
-Renderizar um template HTML que apresente esses dados em uma tabela comparativa.
-
-Converter o HTML em PDF e retorná-lo.
-
-Rota Corrigida: relatorio_comparativo_turmas
-Python
-
 @main_routes.route('/admin/relatorios/comparativo_turmas', methods=['POST'])
 @login_required
 @role_required('coordenador')
