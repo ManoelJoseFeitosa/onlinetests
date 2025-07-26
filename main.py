@@ -2307,20 +2307,6 @@ def relatorio_professores():
         flash("Ocorreu um erro inesperado ao gerar o relatório. Tente novamente.", "danger")
         return redirect(url_for('main_routes.painel_relatorios'))
 
-Ok, próxima rota. Um relatório de "Resultado de Simulado" é um dos mais importantes para a escola, pois geralmente mostra um ranking de todos os alunos que participaram de uma avaliação padronizada.
-
-O fluxo de trabalho será:
-
-Receber os filtros do formulário (o modelo_id do simulado e o ano_letivo_id).
-
-Buscar no banco todos os resultados dos alunos para esse simulado, ordenando pela nota em ordem decrescente para criar o ranking.
-
-Renderizar um template HTML formatado como uma lista de classificação.
-
-Converter o HTML em PDF e retorná-lo.
-
-Rota Corrigida: relatorio_resultado_simulado
-Python
 
 @main_routes.route('/admin/relatorios/resultado_simulado', methods=['POST'])
 @login_required
