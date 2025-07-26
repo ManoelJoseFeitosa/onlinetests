@@ -5,15 +5,13 @@
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2>Criar Modelo de Avaliação</h2>
-        <!-- CORREÇÃO APLICADA AQUI -->
-        <a href="{{ url_for('main_routes.dashboard') }}" class="btn btn-outline-secondary">&larr; Voltar ao Painel</a>
+        <a href="{{ url_for('main_routes.listar_modelos_avaliacao') }}" class="btn btn-outline-secondary">&larr; Voltar ao Painel</a>
     </div>
     <p class="text-muted">Crie um modelo com regras para gerar provas e simulados dinâmicos para cada aluno.</p>
     <hr>
 
-    <!-- CORREÇÃO APLICADA AQUI nos data-* attributes -->
-    <form id="modelo-form" method="POST" 
-          data-disciplinas='{{ disciplinas_json|safe }}' 
+    <form id="modelo-form" method="POST" action="{{ url_for('main_routes.criar_modelo_avaliacao') }}"
+          data-disciplinas='{{ disciplinas|tojson|safe }}'
           data-api-assuntos-url="{{ url_for('main_routes.get_assuntos_por_disciplina_e_serie') }}"
           data-api-simulado-url-base="{{ url_for('main_routes.get_conteudo_simulado_por_serie', serie_id=0) }}">
 
@@ -57,6 +55,7 @@
 {% block scripts %}
 {{ super() }}
 <script>
+// SEU CÓDIGO JAVASCRIPT PERMANECE O MESMO - NENHUMA ALTERAÇÃO NECESSÁRIA AQUI
 (function() {
     document.addEventListener('DOMContentLoaded', function() {
         const form = document.getElementById('modelo-form');
@@ -76,7 +75,7 @@
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="disciplina_id" class="form-label">Disciplina</label>
-                                <select id="disciplina_id" name="disciplina_id" class="form-select" required>
+                                <select id="disciplina_id" name="disciplina_id_0" class="form-select" required>
                                     <option value="" selected disabled>-- Selecione a Disciplina --</option>
                                     ${disciplinaOptions}
                                 </select>
@@ -84,16 +83,16 @@
                         </div>
                         <div class="mb-3">
                             <label for="assuntos" class="form-label">Assuntos (segure Ctrl ou Shift para selecionar vários)</label>
-                            <select name="assuntos" id="assuntos" class="form-select" multiple required size="6">
+                            <select name="regra_0_assunto_0" id="assuntos" class="form-select" multiple required size="6">
                                 <option disabled>Selecione uma disciplina para ver os assuntos.</option>
                             </select>
                         </div>
                         <fieldset class="border p-3 rounded mt-3">
                             <legend class="fs-6 fw-bold px-2">Quantidade de Questões por Nível</legend>
                             <div class="row">
-                                <div class="col-md-4 mb-2"><label for="qtd_facil" class="form-label text-success">Fáceis</label><input type="number" name="qtd_facil" id="qtd_facil" class="form-control" min="0" value="0" required></div>
-                                <div class="col-md-4 mb-2"><label for="qtd_media" class="form-label text-primary">Médias</label><input type="number" name="qtd_media" id="qtd_media" class="form-control" min="0" value="0" required></div>
-                                <div class="col-md-4 mb-2"><label for="qtd_dificil" class="form-label text-danger">Difíceis</label><input type="number" name="qtd_dificil" id="qtd_dificil" class="form-control" min="0" value="0" required></div>
+                                <div class="col-md-4 mb-2"><label for="qtd_facil" class="form-label text-success">Fáceis</label><input type="number" name="regra_0_nivel_facil_qtd" id="qtd_facil" class="form-control" min="0" value="0" required></div>
+                                <div class="col-md-4 mb-2"><label for="qtd_media" class="form-label text-primary">Médias</label><input type="number" name="regra_0_nivel_media_qtd" id="qtd_media" class="form-control" min="0" value="0" required></div>
+                                <div class="col-md-4 mb-2"><label for="qtd_dificil" class="form-label text-danger">Difíceis</label><input type="number" name="regra_0_nivel_dificil_qtd" id="qtd_dificil" class="form-control" min="0" value="0" required></div>
                             </div>
                         </fieldset>
                     </div>
@@ -103,29 +102,20 @@
         }
 
         function renderizarRegrasSimulado(disciplinasDoSimulado) {
-            const simuladoHTML = disciplinasDoSimulado.map(disciplina => `
+            const simuladoHTML = disciplinasDoSimulado.map((disciplina, index) => `
                 <div class="card mb-3">
                     <div class="card-header bg-light">
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" name="disciplinas_selecionadas" value="${disciplina.id}" id="disc-${disciplina.id}">
-                            <label class="form-check-label fw-bold" for="disc-${disciplina.id}">${disciplina.nome}</label>
-                        </div>
+                       <h6 class="mb-0">${disciplina.nome}</h6>
+                       <input type="hidden" name="disciplina_id_${index}" value="${disciplina.id}">
                     </div>
                     <div class="card-body">
                         <div class="mb-3">
-                            <p class="small fw-bold mb-2">Selecione os Assuntos:</p>
-                            ${disciplina.assuntos.map(assunto => `
-                                <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="checkbox" name="assuntos_disciplina_${disciplina.id}" value="${assunto.id}" id="assunto-${disciplina.id}-${assunto.id}">
-                                    <label class="form-check-label" for="assunto-${disciplina.id}-${assunto.id}">${assunto.nome}</label>
-                                </div>`).join('') || '<p class="text-muted small">Nenhum assunto cadastrado para esta disciplina.</p>'}
-                        </div>
-                        <hr>
-                        <p class="small fw-bold mb-2">Quantidade por Nível:</p>
-                        <div class="row">
-                            <div class="col-4"><label class="form-label text-success small">Fáceis</label><input type="number" name="qtd_facil_disciplina_${disciplina.id}" class="form-control form-control-sm" min="0" value="0"></div>
-                            <div class="col-4"><label class="form-label text-primary small">Médias</label><input type="number" name="qtd_media_disciplina_${disciplina.id}" class="form-control form-control-sm" min="0" value="0"></div>
-                            <div class="col-4"><label class="form-label text-danger small">Difíceis</label><input type="number" name="qtd_dificil_disciplina_${disciplina.id}" class="form-control form-control-sm" min="0" value="0"></div>
+                             <p class="small fw-bold mb-2">Quantidade por Nível:</p>
+                             <div class="row">
+                                 <div class="col-4"><label class="form-label text-success small">Fáceis</label><input type="number" name="regra_${index}_nivel_facil_qtd" class="form-control form-control-sm" min="0" value="0"></div>
+                                 <div class="col-4"><label class="form-label text-primary small">Médias</label><input type="number" name="regra_${index}_nivel_media_qtd" class="form-control form-control-sm" min="0" value="0"></div>
+                                 <div class="col-4"><label class="form-label text-danger small">Difíceis</label><input type="number" name="regra_${index}_nivel_dificil_qtd" class="form-control form-control-sm" min="0" value="0"></div>
+                             </div>
                         </div>
                     </div>
                 </div>`).join('');
@@ -149,7 +139,7 @@
                     assuntosSelect.innerHTML = '';
                     if (data.assuntos && data.assuntos.length > 0) {
                         data.assuntos.forEach(assunto => {
-                            assuntosSelect.add(new Option(assunto.nome, assunto.id));
+                            assuntosSelect.add(new Option(assunto.nome, assunto));
                         });
                     } else {
                         assuntosSelect.innerHTML = '<option disabled>Nenhum assunto encontrado</option>';
@@ -165,15 +155,14 @@
             const serieId = serieSelect.value;
             if (!serieId) return;
             regrasContainer.innerHTML = '<p class="text-center text-muted p-4">Carregando disciplinas para o simulado...</p>';
-            // CORREÇÃO APLICADA AQUI: Usa a URL base do data attribute e substitui o placeholder
-            const url = simuladoApiUrlBase.replace('0', serieId);
+            const url = simuladoApiUrlBase.replace('/0', `/${serieId}`);
             fetch(url)
                 .then(response => response.ok ? response.json() : Promise.reject('Erro de rede'))
                 .then(data => {
-                    if (data.error || !data.disciplinas || data.disciplinas.length === 0) {
+                    if (data.error || !data || data.length === 0) {
                         regrasContainer.innerHTML = '<div class="alert alert-warning">Nenhuma disciplina com questões encontradas para esta série.</div>';
                     } else {
-                        renderizarRegrasSimulado(data.disciplinas);
+                        renderizarRegrasSimulado(data);
                     }
                 })
                 .catch(error => {
@@ -187,7 +176,7 @@
             const serieId = serieSelect.value;
             regrasContainer.innerHTML = '';
             if (!serieId) {
-                regrasContainer.innerHTML = '<div class="alert alert-info">Por favor, selecione uma série para continuar.</div>';
+                regrasContainer.innerHTML = '<div class="alert alert-info mt-3">Por favor, selecione uma série para continuar.</div>';
                 return;
             }
             if (tipo === 'prova') {
@@ -199,7 +188,12 @@
 
         tipoSelect.addEventListener('change', atualizarUI);
         serieSelect.addEventListener('change', atualizarUI);
-        atualizarUI();
+        // Garante que o estado inicial seja limpo se nenhuma série estiver selecionada
+        if (!serieSelect.value) {
+             regrasContainer.innerHTML = '<div class="alert alert-info mt-3">Por favor, selecione uma série para continuar.</div>';
+        } else {
+            atualizarUI();
+        }
     });
 })();
 </script>

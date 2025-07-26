@@ -2,134 +2,76 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Relatório de Professores</title>
+    <title>Lista de Professores</title>
     <style>
-        @page {
-            size: A4;
-            margin: 1.5cm;
-        }
-        body {
-            font-family: 'Helvetica', 'Arial', sans-serif;
-            font-size: 10pt;
-            color: #333;
-        }
-        .header {
-            text-align: center;
-            border-bottom: 2px solid #000;
-            padding-bottom: 10px;
-            margin-bottom: 25px;
-        }
-        .header h1 {
-            margin: 0;
-            font-size: 18pt;
-        }
-        .header p {
-            margin: 5px 0 0;
-            font-size: 12pt;
-            color: #555;
-        }
-        .footer {
-            position: fixed;
-            bottom: -1cm;
-            left: 0;
-            right: 0;
-            text-align: center;
-            font-size: 8pt;
-            color: #777;
-        }
-        .page-number:after {
-            content: counter(page);
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-        th, td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: left;
-            vertical-align: top;
-        }
-        th {
-            background-color: #e9ecef;
-            font-weight: bold;
-        }
-        ul {
-            margin: 0;
-            padding-left: 18px;
-        }
-        li {
-            margin-bottom: 3px;
-        }
-        .no-data {
-            text-align: center;
-            color: #888;
-            padding: 20px;
-        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; margin: 1.5cm; color: #333; }
+        header { text-align: center; margin-bottom: 20px; }
+        h1 { border-bottom: 2px solid #eee; padding-bottom: 10px; font-size: 24px; }
+        .header-info { background-color: #f8f9fa; padding: 15px; border: 1px solid #dee2e6; border-radius: 5px; margin-bottom: 25px; font-size: 14px; text-align: center;}
+        .header-info p { margin: 5px 0; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 12px; }
+        th, td { border: 1px solid #dee2e6; padding: 10px; text-align: left; vertical-align: top; }
+        th { background-color: #e9ecef; font-weight: 600; }
+        tbody tr:nth-child(even) { background-color: #f8f9fa; }
+        ul { margin: 0; padding-left: 18px; }
+        li { margin-bottom: 4px; }
+        footer { text-align: center; font-size: 12px; color: #6c757d; margin-top: 40px; border-top: 1px solid #eee; padding-top: 15px; }
     </style>
 </head>
 <body>
+    <header>
+        <h1>Lista de Professores</h1>
+    </header>
 
-    <div class="footer">
-        Gerado em: {{ data_geracao.strftime('%d/%m/%Y %H:%M') }} - Página <span class="page-number"></span>
+    <div class="header-info">
+        <p><strong>Escola:</strong> {{ escola_nome }}</p>
+        <p><strong>Total de Professores:</strong> {{ professores|length }}</p>
+        <p><strong>Data de Geração:</strong> {{ data_geracao.strftime('%d/%m/%Y às %H:%M') }}</p>
     </div>
 
-    <div class="header">
-        <h1>Relatório de Professores</h1>
-        {% if professores and professores[0].escola %}
-            <p>{{ professores[0].escola.nome }}</p>
-        {% endif %}
-        
-        {% if ano_letivo %}
-            <p style="font-size: 11pt;"><strong>Ano Letivo:</strong> {{ ano_letivo.ano }}</p>
-        {% endif %}
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 25%;">Professor</th>
+                <th style="width: 25%;">E-mail</th>
+                <th style="width: 25%;">Disciplinas Lecionadas</th>
+                <th style="width: 25%;">Turmas Atendidas</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for professor in professores %}
+            <tr>
+                <td>{{ professor.nome }}</td>
+                <td>{{ professor.email }}</td>
+                <td>
+                    {% if professor.disciplinas_lecionadas %}
+                        <ul>
+                            {% for disciplina in professor.disciplinas_lecionadas|sort(attribute='nome') %}
+                                <li>{{ disciplina.nome }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        Nenhuma
+                    {% endif %}
+                </td>
+                <td>
+                    {% if professor.series_lecionadas %}
+                        <ul>
+                            {% for serie in professor.series_lecionadas|sort(attribute='nome') %}
+                                <li>{{ serie.nome }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        Nenhuma
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
 
-    </div>
-    
-    {% if professores %}
-        <table>
-            <thead>
-                <tr>
-                    <th>Nome do Professor</th>
-                    <th>E-mail</th>
-                    <th>Disciplinas Lecionadas</th>
-                    <th>Turmas Lecionadas</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for professor in professores %}
-                <tr>
-                    <td>{{ professor.nome }}</td>
-                    <td>{{ professor.email }}</td>
-                    <td>
-                        {% if professor.disciplinas_lecionadas %}
-                            <ul>
-                                {% for disciplina in professor.disciplinas_lecionadas %}
-                                    <li>{{ disciplina.nome }}</li>
-                                {% endfor %}
-                            </ul>
-                        {% else %}
-                            Nenhuma
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if professor.series_lecionadas %}
-                            <ul>
-                                {% for serie in professor.series_lecionadas %}
-                                    <li>{{ serie.nome }}</li>
-                                {% endfor %}
-                            </ul>
-                        {% else %}
-                            Nenhuma
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    {% else %}
-        <p class="no-data">Nenhum professor cadastrado no sistema.</p>
-    {% endif %}
+    <footer>
+        <p>OnlineTests - Relatório gerado automaticamente.</p>
+    </footer>
 </body>
 </html>

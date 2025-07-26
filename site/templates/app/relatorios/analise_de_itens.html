@@ -1,25 +1,22 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF--8">
     <title>Relatório de Análise de Itens</title>
     <style>
         @page { size: A4; margin: 1.5cm; }
-        body { font-family: sans-serif; color: #333; }
-        h1 { text-align: center; border-bottom: 2px solid #ccc; padding-bottom: 10px; }
-        .header-info { background-color: #f2f2f2; padding: 15px; border-radius: 5px; margin-bottom: 20px; font-size: 0.9em; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; color: #333; }
+        header h1 { text-align: center; border-bottom: 2px solid #eee; padding-bottom: 10px; font-size: 24px; }
+        .header-info { background-color: #f8f9fa; padding: 15px; border: 1px solid #dee2e6; border-radius: 5px; margin-bottom: 25px; font-size: 14px; }
         .header-info p { margin: 5px 0; }
-        .questao-card { border: 1px solid #ddd; border-radius: 5px; margin-bottom: 20px; page-break-inside: avoid; }
-        .questao-header { background-color: #e8e8e8; padding: 10px; font-weight: bold; }
-        .questao-body { padding: 15px; }
-        .questao-texto { white-space: pre-wrap; margin-bottom: 15px; }
-        .distrator-tabela { width: 100%; font-size: 0.9em; }
-        .distrator-tabela td { padding: 5px; }
-        .bar-container { background-color: #eee; border-radius: 3px; width: 150px; display: inline-block; vertical-align: middle; }
-        .bar { height: 16px; background-color: #76a1d0; border-radius: 3px; }
-        .bar.correct { background-color: #4cae4c; }
-        .stats { margin-top: 10px; font-weight: bold; }
-        footer { text-align: center; font-size: 0.8em; color: #777; position: fixed; bottom: -20px; left: 0; right: 0; }
+        .item-card { border: 1px solid #ccc; border-radius: 5px; margin-bottom: 20px; padding: 15px; page-break-inside: avoid; }
+        .item-header { display: flex; justify-content: space-between; font-weight: bold; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 10px; }
+        .item-texto { background-color: #f8f9fa; padding: 10px; border-radius: 4px; margin-bottom: 15px; }
+        .distrator-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .distrator-table th, .distrator-table td { border: 1px solid #e0e0e0; padding: 8px; text-align: center; }
+        .distrator-table th { background-color: #e9ecef; }
+        .gabarito { background-color: #d1e7dd; font-weight: bold; } /* Verde claro para o gabarito */
+        footer { text-align: center; font-size: 12px; color: #6c757d; margin-top: 40px; }
     </style>
 </head>
 <body>
@@ -28,54 +25,64 @@
     </header>
 
     <div class="header-info">
-        <p><strong>Avaliação:</strong> {{ avaliacao.nome }}</p>
-        <p><strong>Tipo:</strong> {{ avaliacao.tipo|capitalize }}</p>
-        <p><strong>Data de Geração:</strong> {{ data_geracao.strftime('%d/%m/%Y %H:%M') }}</p>
+        <p><strong>Modelo de Avaliação:</strong> {{ modelo.nome }}</p>
+        <p><strong>Série:</strong> {{ modelo.serie.nome }}</p>
+        <p><strong>Ano Letivo:</strong> {{ ano_letivo.ano }}</p>
+        <p><strong>Data de Geração:</strong> {{ data_geracao.strftime('%d/%m/%Y às %H:%M') }}</p>
     </div>
 
-    {% for questao_id, dados in analise_dados.items() %}
-        <div class="questao-card">
-            <div class="questao-header">
-                Questão {{ loop.index }} (ID: {{ questao_id }}) - Nível: {{ dados.questao_obj.nivel|capitalize }}
+    {% for item in analise_data|sort(attribute='questao.id') %}
+        <div class="item-card">
+            <div class="item-header">
+                <span>Questão ID: {{ item.questao.id }} | Assunto: {{ item.questao.assunto }}</span>
+                <span>Gabarito: {{ item.questao.gabarito }}</span>
             </div>
-            <div class="questao-body">
-                <div class="questao-texto">{{ dados.questao_obj.texto }}</div>
-                
-                {% if dados.total_respostas > 0 %}
-                    <div class="stats">
-                        Índice de Acerto: {{ "%.1f"|format((dados.acertos / dados.total_respostas) * 100) }}%
-                        ({{ dados.acertos }} de {{ dados.total_respostas }} alunos)
-                    </div>
+            
+            <div class="item-texto">
+                <p><strong>Enunciado:</strong> {{ item.questao.texto|striptags }}</p>
+            </div>
 
-                    {% if dados.questao_obj.tipo == 'multipla_escolha' %}
-                    <h4 style="margin-top: 15px; font-size: 1em; font-weight: bold;">Análise dos Distratores:</h4>
-                    <table class="distrator-tabela">
-                        {% for opcao, contagem in dados.distratores.items() %}
-                            {% if opcao in ['A', 'B', 'C', 'D'] %}
-                                <tr>
-                                    <td style="width: 15%;">
-                                        <strong>Opção {{ opcao }}:</strong> 
-                                        {% if dados.questao_obj.gabarito == opcao %}<span style="color: #4cae4c;">(Gabarito)</span>{% endif %}
-                                    </td>
-                                    <td style="width: 20%;">
-                                        {{ "%.1f"|format((contagem / dados.total_respostas) * 100) }}% ({{ contagem }} resp.)
-                                    </td>
-                                    <td>
-                                        <div class="bar-container">
-                                            <div class="bar {% if dados.questao_obj.gabarito == opcao %}correct{% endif %}" 
-                                                 style="width: {{ (contagem / dados.total_respostas) * 100 }}%;">
-                                            </div>
-                                        </div>
-                                    </td>
-                                </tr>
-                            {% endif %}
+            <p>
+                <strong>Índice de Dificuldade (P-Value):</strong> 
+                {% set p_value = (item.total_acertos / item.total_respostas * 100) if item.total_respostas > 0 else 0 %}
+                <strong>{{ '%.1f'|format(p_value) }}%</strong> 
+                <span style="font-size: 12px; color: #6c757d;">
+                    (Taxa de acerto. Valores altos indicam questão fácil; valores baixos, difícil.)
+                </span>
+            </p>
+
+            <p><strong>Análise de Distratores:</strong></p>
+            <table class="distrator-table">
+                <thead>
+                    <tr>
+                        <th>Alternativa</th>
+                        <th>A</th>
+                        <th>B</th>
+                        <th>C</th>
+                        <th>D</th>
+                        <th>Nula/Branco</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>% Escolha</strong></td>
+                        {% for opt in ['A', 'B', 'C', 'D', 'NULA'] %}
+                            {% set percentual = (item.distratores[opt] / item.total_respostas * 100) if item.total_respostas > 0 else 0 %}
+                            <td class="{{ 'gabarito' if opt == item.questao.gabarito else '' }}">
+                                {{ '%.1f'|format(percentual) }}%
+                            </td>
                         {% endfor %}
-                    </table>
-                    {% endif %}
-                {% else %}
-                    <p class="text-muted">Nenhuma resposta registrada para esta questão.</p>
-                {% endif %}
-            </div>
+                    </tr>
+                    <tr>
+                        <td><strong>Nº de Alunos</strong></td>
+                        {% for opt in ['A', 'B', 'C', 'D', 'NULA'] %}
+                             <td class="{{ 'gabarito' if opt == item.questao.gabarito else '' }}">
+                                {{ item.distratores[opt] }}
+                            </td>
+                        {% endfor %}
+                    </tr>
+                </tbody>
+            </table>
         </div>
     {% endfor %}
 

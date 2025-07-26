@@ -4,18 +4,19 @@
     <meta charset="UTF-8">
     <title>Relatório de Saúde do Banco de Questões</title>
     <style>
-        @page { size: A4; margin: 1.5cm; }
-        body { font-family: sans-serif; color: #333; }
-        h1 { text-align: center; border-bottom: 2px solid #ccc; padding-bottom: 10px; }
-        .header-info { background-color: #f2f2f2; padding: 15px; border-radius: 5px; margin-bottom: 25px; font-size: 1.1em; text-align: center; }
-        .disciplina-card { border: 1px solid #ddd; border-radius: 5px; margin-bottom: 20px; page-break-inside: avoid; }
-        .disciplina-header { background-color: #e8e8e8; padding: 10px; font-weight: bold; font-size: 1.2em; }
-        .disciplina-header .total { float: right; font-weight: normal; font-size: 0.9em; }
-        .disciplina-body { padding: 15px; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { border-bottom: 1px solid #eee; padding: 8px 5px; text-align: left; font-size: 0.9em; }
-        th { font-weight: bold; }
-        footer { text-align: center; font-size: 0.8em; color: #777; position: fixed; bottom: -20px; left: 0; right: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; margin: 1.5cm; color: #333; }
+        header { text-align: center; margin-bottom: 20px; }
+        h1 { border-bottom: 2px solid #eee; padding-bottom: 10px; font-size: 24px; }
+        .header-info { background-color: #f8f9fa; padding: 15px; border: 1px solid #dee2e6; border-radius: 5px; margin-bottom: 25px; font-size: 14px; text-align: center; }
+        .header-info p { margin: 5px 0; }
+        h3 { font-size: 18px; border-bottom: 1px solid #eee; padding-bottom: 5px; margin-top: 30px; }
+        .stats-container { display: flex; justify-content: space-between; flex-wrap: wrap; }
+        .stats-table { width: 100%; margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; }
+        th, td { border: 1px solid #dee2e6; padding: 12px; text-align: left; }
+        th { background-color: #e9ecef; font-weight: 600; }
+        tbody tr:nth-child(even) { background-color: #f8f9fa; }
+        footer { text-align: center; font-size: 12px; color: #6c757d; margin-top: 40px; border-top: 1px solid #eee; padding-top: 15px; }
     </style>
 </head>
 <body>
@@ -24,44 +25,75 @@
     </header>
 
     <div class="header-info">
-        <strong>Total de Questões na Escola: {{ total_geral }}</strong>
+        <p><strong>Escola:</strong> {{ escola_nome }}</p>
+        <p><strong>Total de Questões no Banco:</strong> <h2>{{ total_questoes }}</h2></p>
+        <p><strong>Data de Geração:</strong> {{ data_geracao.strftime('%d/%m/%Y às %H:%M') }}</p>
     </div>
 
-    {% for disciplina, info in dados.items() %}
-        <div class="disciplina-card">
-            <div class="disciplina-header">
-                {{ disciplina }}
-                <span class="total">Total na Disciplina: {{ info.total }}</span>
-            </div>
-            <div class="disciplina-body">
-                {% if info.detalhes %}
-                    <table>
-                        <thead>
-                            <tr>
-                                <th style="width: 50%;">Tipo</th>
-                                <th style="width: 30%;">Nível</th>
-                                <th style="width: 20%;">Quantidade</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for detalhe in info.detalhes %}
-                            <tr>
-                                <td>{{ detalhe.tipo }}</td>
-                                <td>{{ detalhe.nivel }}</td>
-                                <td>{{ detalhe.quantidade }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                {% else %}
-                    <p>Nenhuma questão encontrada.</p>
-                {% endif %}
-            </div>
+    <div class="stats-container">
+        <div class="stats-table">
+            <h3>Distribuição por Disciplina</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Disciplina</th>
+                        <th>Nº de Questões</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for nome, contagem in stats_por_disciplina %}
+                    <tr>
+                        <td>{{ nome }}</td>
+                        <td>{{ contagem }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
-    {% endfor %}
+
+        <div class="stats-table">
+            <h3>Distribuição por Série</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Série</th>
+                        <th>Nº de Questões</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for nome, contagem in stats_por_serie %}
+                    <tr>
+                        <td>{{ nome }}</td>
+                        <td>{{ contagem }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="stats-table">
+            <h3>Distribuição por Nível de Dificuldade</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nível</th>
+                        <th>Nº de Questões</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for nivel, contagem in stats_por_nivel %}
+                    <tr>
+                        <td>{{ nivel.capitalize() if nivel else 'Não definido' }}</td>
+                        <td>{{ contagem }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
 
     <footer>
-        <p>OnlineTests - Relatório gerado em {{ data_geracao.strftime('%d/%m/%Y %H:%M') }}</p>
+        <p>OnlineTests - Relatório gerado automaticamente.</p>
     </footer>
 </body>
 </html>

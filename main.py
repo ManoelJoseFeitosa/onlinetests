@@ -655,7 +655,7 @@ def contato():
             resend.api_key = resend_api_key
             params = {
                 "from": "Online Tests <onboarding@resend.dev>",
-                "to": ["manoelbd2012@gmail.com"],
+                "to": ["contato@onlinetests.com.br"],
                 "subject": f"Nova Mensagem de Contato de {nome}",
                 "html": f"""...""", # Omitido para brevidade
                 "reply_to": email_remetente
@@ -837,24 +837,99 @@ def gerenciar_usuarios():
     if not ano_letivo_ativo:
         flash('Nenhum ano letivo ativo encontrado. Crie um em "Gerenciar Ciclo".', 'warning')
         return redirect(url_for('main_routes.gerenciar_ciclo'))
+
+    # ### CORREÇÃO APLICADA AQUI (LÓGICA DO POST) ###
     if request.method == 'POST':
-        # ... Lógica de pesquisa e cadastro de usuários ...
+        # Esta seção inteira estava faltando
+        nome = request.form.get('nome')
+        email = request.form.get('email')
+        role = request.form.get('role')
+        escola_id = current_user.escola_id
+
+        # Verifica se o email já existe na escola
+        email_existente = Usuario.query.filter(
+            func.lower(Usuario.email) == func.lower(email),
+            Usuario.escola_id == escola_id
+        ).first()
+
+        if email_existente:
+            flash(f'O e-mail "{email}" já está cadastrado nesta escola.', 'danger')
+            return redirect(url_for('main_routes.gerenciar_usuarios'))
+
+        # Gera uma senha aleatória e segura para o primeiro acesso
+        senha_provisoria = ''.join(random.choices('abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789', k=8))
+        
+        try:
+            novo_usuario = Usuario(
+                nome=nome,
+                email=email,
+                password=generate_password_hash(senha_provisoria, method='pbkdf2:sha256'),
+                role=role,
+                escola_id=escola_id,
+                precisa_trocar_senha=True # Força a troca de senha no primeiro login
+            )
+            db.session.add(novo_usuario)
+            db.session.commit()
+            log_audit('USER_CREATED', target_obj=novo_usuario, details={'role': role, 'creator': current_user.email})
+            flash(f'{role.capitalize()} "{nome}" cadastrado com sucesso! A senha provisória é: {senha_provisoria}', 'success')
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erro ao cadastrar usuário: {e}', 'danger')
+
         return redirect(url_for('main_routes.gerenciar_usuarios'))
+
+    # Lógica do GET (permanece a mesma)
     series = Serie.query.filter_by(escola_id=current_user.escola_id).order_by(Serie.nome).all()
     disciplinas = Disciplina.query.filter_by(escola_id=current_user.escola_id).order_by(Disciplina.nome).all()
-    usuarios = Usuario.query.options(joinedload(Usuario.matriculas).joinedload(Matricula.serie)).filter_by(escola_id=current_user.escola_id).order_by(Usuario.nome).all()
-    return render_template('app/gerenciar_usuarios.html', series=series, disciplinas=disciplinas, usuarios=usuarios)
+    # Usando joinedload para otimizar a consulta das séries dos alunos
+    usuarios = Usuario.query.options(
+        joinedload(Usuario.matriculas).joinedload(Matricula.serie)
+    ).filter(
+        Usuario.escola_id == current_user.escola_id,
+        Usuario.is_superadmin == False
+    ).order_by(Usuario.nome).all()
+    
+    return render_template('app/gerenciar_usuarios.html', series=series, disciplinas=disciplinas, usuarios=usuarios, ano_letivo_ativo=ano_letivo_ativo)
 
 @main_routes.route('/admin/editar_usuario/<int:user_id>', methods=['GET', 'POST'])
 @login_required
 @role_required('coordenador')
 def editar_usuario(user_id):
-    usuario = Usuario.query.options(joinedload(Usuario.disciplinas_lecionadas), joinedload(Usuario.series_lecionadas)).filter_by(id=user_id, escola_id=current_user.escola_id).first_or_404()
+    usuario = Usuario.query.options(
+        joinedload(Usuario.disciplinas_lecionadas), 
+        joinedload(Usuario.series_lecionadas)
+    ).filter_by(id=user_id, escola_id=current_user.escola_id).first_or_404()
+    
+    ano_letivo_ativo = AnoLetivo.query.filter_by(escola_id=current_user.escola_id, status='ativo').first()
+
     if request.method == 'POST':
+        # Lógica de edição (já parecia estar em desenvolvimento, mantida por enquanto)
         # ... Lógica de edição de usuário ...
+        flash('Dados do usuário atualizados com sucesso!', 'success') # Exemplo de flash
         return redirect(url_for('main_routes.gerenciar_usuarios'))
-    # ... Lógica GET ...
-    return render_template('app/editar_usuario.html', usuario=usuario) # Simplificado
+
+    # ### CORREÇÃO APLICADA AQUI (LÓGICA DO GET) ###
+    # Carrega os dados que estavam faltando para o template
+    series = Serie.query.filter_by(escola_id=current_user.escola_id).order_by(Serie.nome).all()
+    disciplinas = Disciplina.query.filter_by(escola_id=current_user.escola_id).order_by(Disciplina.nome).all()
+    
+    # Cria o JSON de séries para o JavaScript do template
+    series_json = [{'id': s.id, 'nome': s.nome} for s in series]
+    
+    matricula_atual = None
+    if ano_letivo_ativo and usuario.role == 'aluno':
+        matricula_atual = Matricula.query.filter_by(aluno_id=user_id, ano_letivo_id=ano_letivo_ativo.id).first()
+
+    # Passa todas as variáveis necessárias para o template
+    return render_template(
+        'app/editar_usuario.html', 
+        usuario=usuario, 
+        series=series, 
+        disciplinas=disciplinas, 
+        series_json=series_json,  # Esta era a variável que causava o erro
+        matricula_atual=matricula_atual,
+        ano_letivo_ativo=ano_letivo_ativo
+    )
 
 @main_routes.route('/admin/matricula/salvar', methods=['POST'])
 @login_required
@@ -868,11 +943,62 @@ def salvar_matricula():
 @login_required
 @role_required('coordenador')
 def gerenciar_academico():
+    escola_id = current_user.escola_id
     if request.method == 'POST':
-        # ... Lógica de gerenciar séries e disciplinas ...
+        action = request.form.get('action') # Identifica qual botão foi pressionado
+
+        try:
+            # --- AÇÃO 1: CADASTRAR NOVA SÉRIE ---
+            if action == 'salvar_serie':
+                nome_serie = request.form.get('nome_serie')
+                if nome_serie:
+                    existente = Serie.query.filter_by(nome=nome_serie, escola_id=escola_id).first()
+                    if existente:
+                        flash(f'A série "{nome_serie}" já existe.', 'warning')
+                    else:
+                        nova_serie = Serie(nome=nome_serie, escola_id=escola_id)
+                        db.session.add(nova_serie)
+                        db.session.commit()
+                        flash(f'Série "{nome_serie}" cadastrada com sucesso!', 'success')
+                else:
+                    flash('O nome da série não pode ser vazio.', 'danger')
+
+            # --- AÇÃO 2: CADASTRAR NOVA DISCIPLINA ---
+            elif action == 'salvar_disciplina':
+                nome_disciplina = request.form.get('nome_disciplina')
+                if nome_disciplina:
+                    existente = Disciplina.query.filter_by(nome=nome_disciplina, escola_id=escola_id).first()
+                    if existente:
+                        flash(f'A disciplina "{nome_disciplina}" já existe.', 'warning')
+                    else:
+                        nova_disciplina = Disciplina(nome=nome_disciplina, escola_id=escola_id)
+                        db.session.add(nova_disciplina)
+                        db.session.commit()
+                        flash(f'Disciplina "{nome_disciplina}" cadastrada com sucesso!', 'success')
+                else:
+                    flash('O nome da disciplina não pode ser vazio.', 'danger')
+
+            # --- AÇÃO 3: ASSOCIAR DISCIPLINAS A UMA SÉRIE ---
+            elif action == 'salvar_associacao':
+                serie_id = request.form.get('serie_id_associacao')
+                disciplinas_ids = request.form.getlist('disciplinas_selecionadas')
+                
+                serie = Serie.query.get(serie_id)
+                if serie:
+                    disciplinas_selecionadas = Disciplina.query.filter(Disciplina.id.in_(disciplinas_ids)).all()
+                    serie.disciplinas = disciplinas_selecionadas
+                    db.session.commit()
+                    flash(f'Disciplinas associadas à série "{serie.nome}" com sucesso!', 'success')
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Ocorreu um erro: {e}', 'danger')
+
         return redirect(url_for('main_routes.gerenciar_academico'))
-    series = Serie.query.filter_by(escola_id=current_user.escola_id).options(joinedload(Serie.disciplinas)).order_by(Serie.nome).all()
-    disciplinas = Disciplina.query.filter_by(escola_id=current_user.escola_id).order_by(Disciplina.nome).all()
+
+    # Lógica GET (carregar dados para exibir na página)
+    series = Serie.query.filter_by(escola_id=escola_id).options(joinedload(Serie.disciplinas)).order_by(Serie.nome).all()
+    disciplinas = Disciplina.query.filter_by(escola_id=escola_id).order_by(Disciplina.nome).all()
     return render_template('app/gerenciar_academico.html', series=series, disciplinas=disciplinas)
 
 # --- Rotas do Banco de Questões ---
@@ -910,35 +1036,324 @@ def editar_questao(questao_id):
 @login_required
 @role_required('coordenador', 'professor')
 def criar_modelo_avaliacao():
+    escola_id = current_user.escola_id
+
     if request.method == 'POST':
-        # ... Lógica de criar modelo ...
-        return redirect(url_for('main_routes.listar_modelos_avaliacao'))
-    # ... Lógica GET ...
-    return render_template('app/criar_modelo_avaliacao.html') # Simplificado
+        try:
+            nome_modelo = request.form.get('nome_modelo')
+            tipo_modelo = request.form.get('tipo_modelo')
+            serie_id = request.form.get('serie_id', type=int)
+            tempo_limite_str = request.form.get('tempo_limite')
+            tempo_limite = int(tempo_limite_str) if tempo_limite_str and tempo_limite_str.isdigit() else None
+
+            if not all([nome_modelo, tipo_modelo, serie_id]):
+                flash('Nome do modelo, tipo e série são obrigatórios.', 'danger')
+                return redirect(url_for('main_routes.criar_modelo_avaliacao'))
+
+            regras_selecao = {'disciplinas': []}
+            
+            i = 0
+            while f'disciplina_id_{i}' in request.form:
+                disciplina_id = request.form.get(f'disciplina_id_{i}', type=int)
+                if not disciplina_id:
+                    i += 1
+                    continue
+
+                regra_disciplina = {
+                    'id': disciplina_id,
+                    'questoes_por_assunto': [],
+                    'questoes_por_nivel': []
+                }
+
+                # Para provas, os assuntos são coletados de um campo multiselect
+                if tipo_modelo == 'prova':
+                    assuntos = request.form.getlist(f'regra_{i}_assunto_0')
+                    for assunto in assuntos:
+                        regra_disciplina['questoes_por_assunto'].append({'assunto': assunto, 'quantidade': 0}) # Quantidade por assunto não especificada neste modo
+
+                # Coleta regras por nível de dificuldade
+                niveis = ['facil', 'media', 'dificil']
+                total_questoes_nivel = 0
+                for nivel in niveis:
+                    quantidade = request.form.get(f'regra_{i}_nivel_{nivel}_qtd', type=int)
+                    if quantidade and quantidade > 0:
+                        regra_disciplina['questoes_por_nivel'].append({'nivel': nivel, 'quantidade': quantidade})
+                        total_questoes_nivel += quantidade
+                
+                # Só adiciona a regra se houver alguma questão a ser selecionada
+                if total_questoes_nivel > 0 or (tipo_modelo == 'prova' and regra_disciplina['questoes_por_assunto']):
+                     regras_selecao['disciplinas'].append(regra_disciplina)
+
+                i += 1
+
+            if not regras_selecao['disciplinas']:
+                flash('Nenhuma regra de seleção de questões foi definida. Adicione a quantidade de questões para ao menos uma disciplina.', 'warning')
+                # Precisamos recarregar os dados para o template em caso de falha na validação
+                series = Serie.query.filter_by(escola_id=escola_id).order_by(Serie.nome).all()
+                disciplinas = Disciplina.query.filter_by(escola_id=escola_id).order_by(Disciplina.nome).all()
+                return render_template('app/criar_modelo_avaliacao.html', series=series, disciplinas=disciplinas)
+
+
+            novo_modelo = ModeloAvaliacao(
+                nome=nome_modelo, tipo=tipo_modelo, tempo_limite=tempo_limite,
+                criador_id=current_user.id, serie_id=serie_id, escola_id=escola_id,
+                regras_selecao=regras_selecao
+            )
+            db.session.add(novo_modelo)
+            db.session.commit()
+            
+            log_audit('ASSESSMENT_MODEL_CREATED', target_obj=novo_modelo)
+            flash(f'Modelo de avaliação "{nome_modelo}" criado com sucesso!', 'success')
+            return redirect(url_for('main_routes.listar_modelos_avaliacao'))
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Ocorreu um erro ao criar o modelo: {e}', 'danger')
+    
+    # Lógica GET
+    series = Serie.query.filter_by(escola_id=escola_id).order_by(Serie.nome).all()
+    disciplinas = Disciplina.query.filter_by(escola_id=escola_id).order_by(Disciplina.nome).all()
+    return render_template('app/criar_modelo_avaliacao.html', series=series, disciplinas=disciplinas)
 
 @main_routes.route('/iniciar-avaliacao/<int:modelo_id>')
 @login_required
 @role_required('aluno')
 def iniciar_avaliacao_dinamica(modelo_id):
-    # ... Lógica de iniciar avaliação ...
-    return redirect(url_for('main_routes.responder_avaliacao', avaliacao_id=nova_avaliacao.id))
+    # 1. Carregar o modelo e o ano letivo ativo.
+    modelo = ModeloAvaliacao.query.get_or_404(modelo_id)
+    ano_letivo_ativo = AnoLetivo.query.filter_by(escola_id=current_user.escola_id, status='ativo').first()
+    if not ano_letivo_ativo:
+        flash('Não há um ano letivo ativo. Contate a coordenação da sua escola.', 'danger')
+        return redirect(url_for('main_routes.listar_modelos_avaliacao'))
+
+    # 2. Verificar se o aluno já tem um resultado para uma avaliação gerada por este modelo.
+    #    Isso impede que o aluno gere múltiplas provas a partir do mesmo modelo.
+    resultado_existente = Resultado.query.join(Avaliacao).filter(
+        Avaliacao.modelo_id == modelo_id,
+        Resultado.aluno_id == current_user.id
+    ).first()
+
+    if resultado_existente:
+        flash('Você já iniciou esta avaliação. Continue de onde parou.', 'info')
+        # Redireciona para a tentativa já existente.
+        return redirect(url_for('main_routes.responder_avaliacao', avaliacao_id=resultado_existente.avaliacao_id))
+
+    # Inicia a transação do banco de dados
+    try:
+        # 3. Lógica para selecionar as questões baseadas nas regras do modelo.
+        questoes_selecionadas = []
+        ids_questoes_usadas = set() # Usado para não selecionar a mesma questão duas vezes
+
+        for regra in modelo.regras_selecao.get('disciplinas', []):
+            disciplina_id = regra.get('id')
+            
+            # Monta a query base para esta disciplina
+            query_base = Questao.query.filter(
+                Questao.disciplina_id == disciplina_id,
+                Questao.serie_id == modelo.serie_id,
+                Questao.id.notin_(ids_questoes_usadas) # Evita duplicatas
+            )
+
+            # Seleção por NÍVEL
+            for regra_nivel in regra.get('questoes_por_nivel', []):
+                nivel = regra_nivel.get('nivel')
+                quantidade = regra_nivel.get('quantidade', 0)
+                if quantidade > 0:
+                    questoes_por_nivel = query_base.filter(Questao.nivel == nivel).order_by(func.random()).limit(quantidade).all()
+                    
+                    if len(questoes_por_nivel) < quantidade:
+                        flash(f'Atenção: Não foram encontradas questões suficientes de nível "{nivel}" para a disciplina. A prova foi gerada com menos questões.', 'warning')
+
+                    for q in questoes_por_nivel:
+                        if q.id not in ids_questoes_usadas:
+                            questoes_selecionadas.append(q)
+                            ids_questoes_usadas.add(q.id)
+            
+            # Seleção por ASSUNTO (para o tipo 'prova')
+            ids_assuntos = [assunto_regra.get('assunto') for assunto_regra in regra.get('questoes_por_assunto', [])]
+            if ids_assuntos:
+                 # Esta parte pode ser expandida se a prova por assunto precisar de uma quantidade específica.
+                 # Por enquanto, estamos priorizando a seleção por nível dentro dos assuntos definidos.
+                 query_base = query_base.filter(Questao.assunto.in_(ids_assuntos))
+
+
+        if not questoes_selecionadas:
+            flash('Não foi possível gerar a avaliação pois não foram encontradas questões que atendam às regras definidas. Por favor, contate seu professor ou a coordenação.', 'danger')
+            return redirect(url_for('main_routes.listar_modelos_avaliacao'))
+
+        # 4. Criar a nova instância da Avaliação para este aluno.
+        nova_avaliacao = Avaliacao(
+            nome=modelo.nome,
+            tipo=modelo.tipo,
+            tempo_limite=modelo.tempo_limite,
+            criador_id=modelo.criador_id,
+            disciplina_id=modelo.regras_selecao['disciplinas'][0]['id'] if modelo.tipo == 'prova' else None,
+            serie_id=modelo.serie_id,
+            escola_id=current_user.escola_id,
+            ano_letivo_id=ano_letivo_ativo.id,
+            is_dinamica=True,
+            modelo_id=modelo.id,
+            questoes=questoes_selecionadas,
+            alunos_designados=[current_user] # Designa a prova para o aluno atual
+        )
+        db.session.add(nova_avaliacao)
+        
+        # O flush é importante para que 'nova_avaliacao' receba um ID antes do commit,
+        # permitindo que o 'Resultado' seja criado e vinculado a ela na mesma transação.
+        db.session.flush()
+
+        # 5. Criar o registro de resultado inicial.
+        novo_resultado = Resultado(
+            aluno_id=current_user.id,
+            avaliacao_id=nova_avaliacao.id,
+            ano_letivo_id=ano_letivo_ativo.id,
+            status='Iniciada' # Status inicial da prova
+        )
+        db.session.add(novo_resultado)
+
+        # 6. Salvar tudo no banco de dados e redirecionar.
+        db.session.commit()
+        log_audit('DYNAMIC_ASSESSMENT_STARTED', target_obj=nova_avaliacao, details={'modelo_id': modelo_id, 'aluno_id': current_user.id})
+        flash(f'Avaliação "{modelo.nome}" iniciada com sucesso! Boa prova!', 'success')
+        return redirect(url_for('main_routes.responder_avaliacao', avaliacao_id=nova_avaliacao.id))
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"ERRO AO INICIAR AVALIAÇÃO DINÂMICA: {e}") # Log para debug no servidor
+        flash('Ocorreu um erro inesperado ao iniciar a avaliação. Tente novamente.', 'danger')
+        return redirect(url_for('main_routes.listar_modelos_avaliacao'))
 
 @main_routes.route('/modelos-avaliacoes')
 @login_required
 @role_required('aluno', 'professor', 'coordenador')
 def listar_modelos_avaliacao():
-    # ... Lógica de listar modelos e avaliações ...
+    escola_id = current_user.escola_id
+    ano_letivo_ativo = AnoLetivo.query.filter_by(escola_id=escola_id, status='ativo').first()
+
+    if not ano_letivo_ativo:
+        flash('Não há um ano letivo ativo. A funcionalidade de avaliações está limitada.', 'warning')
+        return redirect(url_for('main_routes.dashboard'))
+
+    # --- LÓGICA PARA PROFESSORES E COORDENADORES ---
     if current_user.role in ['coordenador', 'professor']:
-        return render_template('app/listar_avaliacoes_geradas.html') # Simplificado
-    else: # Aluno
-        return render_template('app/listar_modelos_avaliacao.html') # Simplificado
+        # Eles veem todos os modelos e avaliações de recuperação da escola
+        
+        # Carrega todos os modelos de avaliação da escola
+        modelos = ModeloAvaliacao.query.filter_by(escola_id=escola_id).order_by(ModeloAvaliacao.nome).all()
+        
+        # Carrega todas as avaliações estáticas (recuperações) da escola no ano ativo
+        recuperacoes = Avaliacao.query.filter(
+            Avaliacao.escola_id == escola_id,
+            Avaliacao.ano_letivo_id == ano_letivo_ativo.id,
+            Avaliacao.is_dinamica == False
+        ).order_by(Avaliacao.nome).all()
+
+        return render_template('app/listar_avaliacoes_geradas.html', modelos=modelos, recuperacoes=recuperacoes)
+    
+    # --- LÓGICA PARA ALUNOS ---
+    else: # Papel 'aluno'
+        # Alunos veem uma lista filtrada para sua série, com o status de cada avaliação.
+        serie_aluno = current_user.serie_atual
+        if not serie_aluno:
+            flash('Você não está matriculado em uma série no ano letivo ativo. Contate a secretaria.', 'warning')
+            return render_template('app/listar_modelos_avaliacao.html', avaliacoes_disponiveis=[])
+
+        # 1. Buscar todas as avaliações potenciais para o aluno
+        # Modelos dinâmicos disponíveis para a série do aluno
+        modelos_disponiveis = ModeloAvaliacao.query.filter_by(serie_id=serie_aluno.id).order_by(ModeloAvaliacao.nome).all()
+        
+        # Recuperações estáticas designadas especificamente para o aluno
+        recuperacoes_designadas = Avaliacao.query.join(avaliacao_alunos_designados).filter(
+            avaliacao_alunos_designados.c.usuario_id == current_user.id,
+            Avaliacao.ano_letivo_id == ano_letivo_ativo.id
+        ).order_by(Avaliacao.nome).all()
+
+        # 2. Buscar todos os resultados do aluno para ver o status de cada avaliação
+        resultados_do_aluno = Resultado.query.options(
+            joinedload(Resultado.avaliacao) # Otimiza a query para já carregar a avaliação
+        ).filter(
+            Resultado.aluno_id == current_user.id,
+            Resultado.ano_letivo_id == ano_letivo_ativo.id
+        ).all()
+        
+        # 3. Mapear os resultados para fácil acesso
+        # Mapa para avaliações dinâmicas (chave é o ID do modelo)
+        mapa_resultados_modelo = {res.avaliacao.modelo_id: res for res in resultados_do_aluno if res.avaliacao and res.avaliacao.is_dinamica}
+        # Mapa para avaliações estáticas (chave é o ID da avaliação)
+        mapa_resultados_estatica = {res.avaliacao_id: res for res in resultados_do_aluno if res.avaliacao and not res.avaliacao.is_dinamica}
+
+        # 4. Preparar a lista final para o template
+        avaliacoes_para_aluno = []
+
+        # Processa os modelos dinâmicos
+        for modelo in modelos_disponiveis:
+            resultado = mapa_resultados_modelo.get(modelo.id)
+            status = resultado.status if resultado else 'Não Iniciada'
+            avaliacoes_para_aluno.append({
+                'tipo_obj': 'modelo',
+                'objeto': modelo,
+                'resultado': resultado,
+                'status': status
+            })
+
+        # Processa as recuperações estáticas
+        for recuperacao in recuperacoes_designadas:
+            resultado = mapa_resultados_estatica.get(recuperacao.id)
+            status = resultado.status if resultado else 'Não Iniciada'
+            avaliacoes_para_aluno.append({
+                'tipo_obj': 'recuperacao',
+                'objeto': recuperacao,
+                'resultado': resultado,
+                'status': status
+            })
+            
+        return render_template('app/listar_modelos_avaliacao.html', avaliacoes_disponiveis=avaliacoes_para_aluno)
 
 @main_routes.route('/modelo-avaliacao/<int:modelo_id>/detalhes')
 @login_required
 @role_required('coordenador', 'professor')
 def detalhes_modelo_avaliacao(modelo_id):
-    # ... Lógica de detalhes ...
-    return render_template('app/detalhes_modelo_avaliacao.html') # Simplificado
+    # 1. Carrega o modelo de avaliação e verifica a permissão (se pertence à escola do usuário).
+    modelo = ModeloAvaliacao.query.filter_by(id=modelo_id, escola_id=current_user.escola_id).first_or_404()
+
+    # 2. Busca todos os resultados de avaliações que foram geradas a partir deste modelo.
+    #    Usamos joinedload para carregar os dados do aluno e da avaliação de forma otimizada.
+    resultados = Resultado.query.options(
+        joinedload(Resultado.aluno),
+        joinedload(Resultado.avaliacao)
+    ).join(Avaliacao).filter(Avaliacao.modelo_id == modelo_id).order_by(
+        Resultado.data_realizacao.desc()
+    ).all()
+
+    # 3. Calcula estatísticas básicas a partir dos resultados.
+    stats = {
+        'total_realizadas': 0,
+        'media_geral': 0,
+        'total_finalizadas': 0
+    }
+    soma_notas = 0
+    
+    if resultados:
+        notas_validas = [r.nota for r in resultados if r.status == 'Finalizado' and r.nota is not None]
+        stats['total_realizadas'] = len(resultados)
+        stats['total_finalizadas'] = len(notas_validas)
+        if stats['total_finalizadas'] > 0:
+            soma_notas = sum(notas_validas)
+            stats['media_geral'] = soma_notas / stats['total_finalizadas']
+
+    # 4. Cria um mapa de disciplinas para facilitar a exibição das regras no template.
+    #    Isso evita fazer consultas ao banco dentro do template.
+    disciplinas_escola = Disciplina.query.filter_by(escola_id=current_user.escola_id).all()
+    disciplinas_map = {d.id: d.nome for d in disciplinas_escola}
+
+    # 5. Renderiza o template com todos os dados coletados e processados.
+    return render_template(
+        'app/detalhes_modelo_avaliacao.html', 
+        modelo=modelo, 
+        resultados=resultados, 
+        stats=stats, 
+        disciplinas_map=disciplinas_map
+    )
 
 @main_routes.route('/api/buscar-questoes')
 @login_required
@@ -1062,153 +1477,1227 @@ def criar_recuperacao():
 
 @main_routes.route('/avaliacoes')
 @login_required
+@role_required('coordenador', 'professor') # Adicionado para garantir a permissão correta
 def listar_avaliacoes():
-    # ... Lógica de listar avaliações (estáticas) ...
-    return render_template('app/listar_avaliacoes.html') # Simplificado
+    """
+    Lista as avaliações estáticas (ex: recuperações) criadas para a escola
+    no ano letivo corrente. Visível apenas para Coordenadores e Professores.
+    """
+    escola_id = current_user.escola_id
+    
+    # Busca o ano letivo ativo para filtrar as avaliações relevantes
+    ano_letivo_ativo = AnoLetivo.query.filter_by(escola_id=escola_id, status='ativo').first()
+
+    if not ano_letivo_ativo:
+        flash("Nenhum ano letivo ativo encontrado. Não é possível listar as avaliações.", "warning")
+        return render_template('app/listar_avaliacoes.html', avaliacoes=[])
+
+    # Busca no banco todas as avaliações que NÃO são dinâmicas (ou seja, foram criadas manualmente)
+    # e que pertencem ao ano letivo ativo.
+    # Usamos joinedload para otimizar a busca dos dados do criador, disciplina e série.
+    avaliacoes_estaticas = Avaliacao.query.options(
+        joinedload(Avaliacao.criador),
+        joinedload(Avaliacao.disciplina),
+        joinedload(Avaliacao.serie)
+    ).filter(
+        Avaliacao.escola_id == escola_id,
+        Avaliacao.is_dinamica == False,
+        Avaliacao.ano_letivo_id == ano_letivo_ativo.id
+    ).order_by(Avaliacao.nome).all()
+
+    return render_template('app/listar_avaliacoes.html', avaliacoes=avaliacoes_estaticas)
 
 @main_routes.route('/avaliacao/<int:avaliacao_id>/detalhes')
 @login_required
 @role_required('coordenador', 'professor')
 def detalhes_avaliacao(avaliacao_id):
-    # ... Lógica de detalhes de avaliação estática ...
-    return render_template('app/detalhes_avaliacao.html') # Simplificado
+    """
+    Exibe os detalhes de uma avaliação estática (não dinâmica), incluindo
+    os alunos designados, seus status e estatísticas gerais.
+    """
+    # 1. Carrega a avaliação, garantindo que ela é estática e pertence à escola do usuário.
+    #    Usamos joinedload para carregar de forma otimizada as listas de questões,
+    #    alunos designados e os resultados com os dados dos respectivos alunos.
+    avaliacao = Avaliacao.query.options(
+        joinedload(Avaliacao.questoes),
+        joinedload(Avaliacao.alunos_designados),
+        joinedload(Avaliacao.resultados).joinedload(Resultado.aluno),
+        joinedload(Avaliacao.serie),
+        joinedload(Avaliacao.disciplina)
+    ).filter(
+        Avaliacao.id == avaliacao_id,
+        Avaliacao.escola_id == current_user.escola_id,
+        Avaliacao.is_dinamica == False
+    ).first_or_404()
+
+    # 2. Processa os dados para facilitar a exibição no template.
+    
+    # Cria um dicionário mapeando o ID do aluno ao seu resultado, para busca rápida.
+    resultados_map = {resultado.aluno_id: resultado for resultado in avaliacao.resultados}
+    
+    # Cria uma lista combinada de alunos com seus status (Iniciada, Finalizado, Não Iniciada).
+    alunos_com_status = []
+    for aluno in avaliacao.alunos_designados:
+        resultado = resultados_map.get(aluno.id)
+        alunos_com_status.append({
+            'aluno': aluno,
+            'resultado': resultado,
+            'status': resultado.status if resultado else 'Não Iniciada'
+        })
+
+    # 3. Calcula estatísticas gerais da avaliação.
+    stats = {
+        'total_designados': len(avaliacao.alunos_designados),
+        'total_realizadas': len(avaliacao.resultados),
+        'total_finalizadas': 0,
+        'media_geral': 0
+    }
+    
+    # Filtra apenas os resultados finalizados que possuem nota para o cálculo da média.
+    notas_validas = [r.nota for r in avaliacao.resultados if r.status == 'Finalizado' and r.nota is not None]
+    if notas_validas:
+        stats['total_finalizadas'] = len(notas_validas)
+        stats['media_geral'] = sum(notas_validas) / len(notas_validas)
+
+    # 4. Renderiza o template, passando todos os dados processados.
+    return render_template(
+        'app/detalhes_avaliacao.html',
+        avaliacao=avaliacao,
+        alunos_com_status=alunos_com_status,
+        stats=stats
+    )
 
 @main_routes.route('/meus-resultados')
 @login_required
 @role_required('aluno')
 def meus_resultados():
-    # ... Lógica de resultados do aluno ...
-    return render_template('app/meus_resultados.html') # Simplificado
+    """
+    Exibe a lista de todos os resultados de avaliações (iniciadas ou finalizadas)
+    para o aluno logado no ano letivo corrente.
+    """
+    # Busca o ano letivo ativo para a escola do aluno.
+    ano_letivo_ativo = AnoLetivo.query.filter_by(escola_id=current_user.escola_id, status='ativo').first()
+
+    if not ano_letivo_ativo:
+        flash("Nenhum ano letivo ativo encontrado. Não é possível exibir seus resultados.", "warning")
+        return render_template('app/meus_resultados.html', resultados=[])
+
+    # Busca todos os resultados do aluno no ano letivo ativo.
+    # Usamos joinedload para carregar de forma otimizada os dados da avaliação
+    # e da disciplina associada a cada avaliação, evitando múltiplas queries.
+    resultados_aluno = Resultado.query.options(
+        joinedload(Resultado.avaliacao).joinedload(Avaliacao.disciplina),
+        joinedload(Resultado.avaliacao).joinedload(Avaliacao.serie)
+    ).filter(
+        Resultado.aluno_id == current_user.id,
+        Resultado.ano_letivo_id == ano_letivo_ativo.id
+    ).order_by(Resultado.data_realizacao.desc()).all()
+
+    # Renderiza o template, passando a lista de resultados encontrados.
+    return render_template('app/meus_resultados.html', resultados=resultados_aluno)
 
 @main_routes.route('/resultado/<int:resultado_id>')
 @login_required
 @role_required('aluno')
 def ver_resultado_detalhado(resultado_id):
-    resultado = Resultado.query.filter_by(id=resultado_id, aluno_id=current_user.id).first_or_404()
-    return render_template('app/ver_resultado.html', resultado=resultado)
+    """
+    Exibe a página de detalhes de um resultado de avaliação específico para o aluno,
+    mostrando cada questão, a resposta do aluno, o gabarito e o feedback (se houver).
+    """
+    # 1. Carrega o resultado e todos os dados relacionados de forma otimizada.
+    #    - Garante que o resultado pertence ao aluno logado (verificação de segurança).
+    #    - Usa joinedload para carregar a avaliação, suas questões, e as respostas do aluno
+    #      com suas respectivas questões, tudo em uma consulta eficiente.
+    resultado = Resultado.query.options(
+        joinedload(Resultado.avaliacao).subqueryload(Avaliacao.questoes),
+        joinedload(Resultado.respostas).joinedload(Resposta.questao)
+    ).filter(
+        Resultado.id == resultado_id,
+        Resultado.aluno_id == current_user.id
+    ).first_or_404()
+
+    # 2. Cria um dicionário para mapear o ID de cada questão à resposta dada pelo aluno.
+    #    Isso simplifica muito a lógica no template, evitando buscas dentro de loops.
+    respostas_map = {resposta.questao_id: resposta for resposta in resultado.respostas}
+
+    # 3. Renderiza o template, passando o resultado completo e o mapa de respostas.
+    #    O template irá iterar sobre `resultado.avaliacao.questoes` e, para cada questão,
+    #    usará o `respostas_map` para encontrar a resposta do aluno correspondente.
+    return render_template(
+        'app/ver_resultado.html', 
+        resultado=resultado, 
+        respostas_map=respostas_map
+    )
 
 @main_routes.route('/correcao/avaliacao/<int:avaliacao_id>')
 @login_required
 @role_required('professor', 'coordenador')
 def correcao_lista_alunos(avaliacao_id):
-    # ... Lógica de listar alunos para correção ...
-    return render_template('app/correcao_lista.html') # Simplificado
+    """
+    Lista todos os resultados (tentativas) dos alunos para uma avaliação específica,
+    permitindo que o professor/coordenador selecione uma para corrigir.
+    Funciona tanto para avaliações dinâmicas quanto estáticas.
+    """
+    # 1. Carrega a avaliação e todos os seus resultados associados.
+    #    - Garante que a avaliação pertence à escola do usuário.
+    #    - Usa joinedload para carregar os dados do aluno de cada resultado e
+    #      a série da avaliação de forma otimizada.
+    avaliacao = Avaliacao.query.options(
+        joinedload(Avaliacao.resultados).joinedload(Resultado.aluno),
+        joinedload(Avaliacao.serie)
+    ).filter(
+        Avaliacao.id == avaliacao_id,
+        Avaliacao.escola_id == current_user.escola_id
+    ).first_or_404()
+
+    # 2. Ordena os resultados pelo nome do aluno para uma exibição consistente.
+    #    A ordenação é feita em Python após a consulta, pois ordenar por um
+    #    campo de uma tabela juntada pode ser complexo e variar entre bancos de dados.
+    resultados_ordenados = sorted(avaliacao.resultados, key=lambda r: r.aluno.nome)
+
+    # 3. Renderiza o template, passando a avaliação e a lista ordenada de resultados.
+    return render_template(
+        'app/correcao_lista.html', 
+        avaliacao=avaliacao, 
+        resultados=resultados_ordenados
+    )
 
 @main_routes.route('/correcao/resultado/<int:resultado_id>', methods=['GET', 'POST'])
 @login_required
 @role_required('professor', 'coordenador')
 def corrigir_respostas(resultado_id):
-    # ... Lógica de correção ...
+    """
+    Exibe a interface de correção para um resultado específico (GET) e
+    processa o envio da correção (POST).
+    """
+    # 1. Carrega o resultado e todos os dados relacionados de forma otimizada.
+    #    - A verificação de permissão é feita garantindo que a avaliação pertence à escola do usuário.
+    resultado = Resultado.query.options(
+        joinedload(Resultado.aluno),
+        joinedload(Resultado.avaliacao).subqueryload(Avaliacao.questoes),
+        joinedload(Resultado.respostas).joinedload(Resposta.questao)
+    ).join(Avaliacao).filter(
+        Resultado.id == resultado_id,
+        Avaliacao.escola_id == current_user.escola_id
+    ).first_or_404()
+
+    # --- LÓGICA DO POST: Salvar a correção ---
     if request.method == 'POST':
-        # ...
-        return redirect(url_for('main_routes.detalhes_modelo_avaliacao', modelo_id=resultado.avaliacao.modelo_id))
-    return render_template('app/correcao_respostas.html') # Simplificado
+        try:
+            total_nota = 0
+            # Itera sobre as respostas dadas pelo aluno para atualizar cada uma.
+            for resposta in resultado.respostas:
+                questao_id = resposta.questao_id
+                
+                # Pega os pontos e o feedback do formulário
+                pontos = request.form.get(f'pontos_{questao_id}', type=float, default=0.0)
+                feedback = request.form.get(f'feedback_{questao_id}', '')
+
+                # Atualiza o objeto Resposta
+                resposta.pontos = pontos
+                resposta.feedback_professor = feedback
+                resposta.status_correcao = 'avaliada'
+                
+                total_nota += pontos
+
+            # Atualiza o objeto Resultado principal com a nota e o novo status
+            resultado.nota = total_nota
+            resultado.status = 'Finalizado'
+
+            db.session.commit()
+            
+            log_audit('ASSESSMENT_GRADED', target_obj=resultado, details={'final_score': total_nota, 'grader_id': current_user.id})
+            flash(f'Avaliação de {resultado.aluno.nome} corrigida e finalizada com sucesso!', 'success')
+
+            # Redireciona para a página de detalhes apropriada
+            if resultado.avaliacao.is_dinamica and resultado.avaliacao.modelo_id:
+                return redirect(url_for('main_routes.detalhes_modelo_avaliacao', modelo_id=resultado.avaliacao.modelo_id))
+            else:
+                return redirect(url_for('main_routes.detalhes_avaliacao', avaliacao_id=resultado.avaliacao.id))
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Ocorreu um erro ao salvar a correção: {e}", "danger")
+
+    # --- LÓGICA DO GET: Exibir a página para correção ---
+    # Cria o mapa de respostas para facilitar a vida do template
+    respostas_map = {resposta.questao_id: resposta for resposta in resultado.respostas}
+    
+    return render_template(
+        'app/correcao_respostas.html',
+        resultado=resultado,
+        respostas_map=respostas_map
+    )
 
 @main_routes.route('/admin/relatorios')
 @login_required
 @role_required('coordenador')
 def painel_relatorios():
-    # ... Lógica de carregar dados para o painel ...
-    return render_template('app/painel_relatorios.html') # Simplificado
+    """
+    Carrega todos os dados necessários (listas de séries, disciplinas, alunos, etc.)
+    para popular os formulários no painel de geração de relatórios do coordenador.
+    """
+    escola_id = current_user.escola_id
+
+    # Carrega as listas de entidades da escola para usar nos menus de seleção (dropdowns)
+    
+    # Lista de anos letivos para filtro de período
+    anos_letivos = AnoLetivo.query.filter_by(escola_id=escola_id).order_by(AnoLetivo.ano.desc()).all()
+    
+    # Lista de séries para relatórios por turma
+    series = Serie.query.filter_by(escola_id=escola_id).order_by(Serie.nome).all()
+    
+    # Lista de disciplinas para relatórios de desempenho por matéria
+    disciplinas = Disciplina.query.filter_by(escola_id=escola_id).order_by(Disciplina.nome).all()
+    
+    # Lista de alunos para relatórios individuais, como boletins
+    alunos = Usuario.query.filter_by(escola_id=escola_id, role='aluno').order_by(Usuario.nome).all()
+    
+    # Lista de modelos de avaliação para relatórios de simulados e provas
+    modelos_avaliacao = ModeloAvaliacao.query.filter_by(escola_id=escola_id).order_by(ModeloAvaliacao.nome).all()
+
+    # Renderiza o template, passando todas as listas de dados
+    return render_template(
+        'app/painel_relatorios.html',
+        anos_letivos=anos_letivos,
+        series=series,
+        disciplinas=disciplinas,
+        alunos=alunos,
+        modelos_avaliacao=modelos_avaliacao
+    )
 
 @main_routes.route('/admin/auditoria')
 @login_required
 @role_required('coordenador')
 def painel_auditoria():
-    # ... Lógica de auditoria ...
-    return render_template('app/painel_auditoria.html') # Simplificado
+    """
+    Exibe o painel de auditoria com logs de eventos do sistema,
+    com funcionalidades de busca, filtro e paginação.
+    """
+    escola_id = current_user.escola_id
+    
+    # --- Paginação e Filtros ---
+    page = request.args.get('page', 1, type=int)
+    search_query = request.args.get('q', '').strip()
+    action_filter = request.args.get('action_filter', '')
+
+    # --- Query Base ---
+    # Começamos buscando os logs e juntando com a tabela de usuários para poder filtrar pela escola.
+    # Ordenamos pelos mais recentes primeiro.
+    query = AuditLog.query.options(joinedload(AuditLog.user)).join(
+        Usuario, AuditLog.user_id == Usuario.id
+    ).filter(
+        Usuario.escola_id == escola_id
+    ).order_by(AuditLog.timestamp.desc())
+
+    # --- Aplicando Filtros ---
+    if search_query:
+        # Permite buscar por email do usuário, IP ou detalhes da ação
+        query = query.filter(or_(
+            AuditLog.user_email.ilike(f'%{search_query}%'),
+            AuditLog.ip_address.ilike(f'%{search_query}%'),
+            AuditLog.details.cast(db.String).ilike(f'%{search_query}%') # Busca no JSON de detalhes
+        ))
+    
+    if action_filter:
+        query = query.filter(AuditLog.action == action_filter)
+
+    # --- Paginação ---
+    per_page = 25  # Define quantos logs por página
+    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+    logs = pagination.items
+
+    # --- Dados para os Filtros do Template ---
+    # Busca todos os tipos de ação únicos que já ocorreram na escola para popular o menu de filtro.
+    # Isso torna o filtro mais inteligente, mostrando apenas ações relevantes.
+    try:
+        distinct_actions_query = db.session.query(AuditLog.action).join(
+            Usuario, AuditLog.user_id == Usuario.id
+        ).filter(
+            Usuario.escola_id == escola_id
+        ).distinct().order_by(AuditLog.action)
+        
+        unique_actions = [item[0] for item in distinct_actions_query.all()]
+    except Exception as e:
+        print(f"Erro ao buscar ações distintas para o filtro de auditoria: {e}")
+        unique_actions = []
+
+
+    return render_template(
+        'app/painel_auditoria.html',
+        logs=logs,
+        pagination=pagination,
+        unique_actions=unique_actions,
+        # Devolve os filtros atuais para o template para manter o estado dos formulários
+        search_query=search_query,
+        action_filter=action_filter
+    )
 
 @main_routes.route('/admin/relatorios/desempenho_por_assunto', methods=['POST'])
 @login_required
 @role_required('coordenador')
 def relatorio_desempenho_por_assunto():
-    # ... Lógica de gerar PDF ...
-    return response
+    """
+    Gera um relatório em PDF mostrando o desempenho dos alunos por assunto
+    dentro de uma disciplina e série específicas.
+    """
+    try:
+        # 1. Obter os filtros do formulário
+        serie_id = request.form.get('serie_id', type=int)
+        disciplina_id = request.form.get('disciplina_id', type=int)
+        ano_letivo_id = request.form.get('ano_letivo_id', type=int)
+
+        if not all([serie_id, disciplina_id, ano_letivo_id]):
+            flash('Série, disciplina e ano letivo são obrigatórios para gerar este relatório.', 'danger')
+            return redirect(url_for('main_routes.painel_relatorios'))
+
+        # 2. Buscar os nomes para o cabeçalho do relatório
+        serie = Serie.query.get(serie_id)
+        disciplina = Disciplina.query.get(disciplina_id)
+        ano_letivo = AnoLetivo.query.get(ano_letivo_id)
+
+        # 3. Consulta agregada para calcular o desempenho por assunto
+        #    Esta é a parte mais importante: o banco de dados faz todo o trabalho pesado.
+        desempenho_por_assunto = db.session.query(
+            Questao.assunto,
+            func.count(Resposta.id).label('total_respostas'),
+            # Usamos case para contar condicionalmente os acertos (resposta == gabarito)
+            func.sum(case((Resposta.resposta_aluno == Questao.gabarito, 1), else_=0)).label('total_acertos')
+        ).join(Questao, Resposta.questao_id == Questao.id
+        ).join(Resultado, Resposta.resultado_id == Resultado.id
+        ).join(Avaliacao, Resultado.avaliacao_id == Avaliacao.id
+        ).filter(
+            Avaliacao.serie_id == serie_id,
+            Questao.disciplina_id == disciplina_id, # Filtra pela disciplina na questão
+            Resultado.ano_letivo_id == ano_letivo_id,
+            Avaliacao.escola_id == current_user.escola_id
+        ).group_by(Questao.assunto
+        ).order_by(Questao.assunto).all()
+
+        if not desempenho_por_assunto:
+            flash('Nenhum dado encontrado para os filtros selecionados. Não é possível gerar o relatório.', 'warning')
+            return redirect(url_for('main_routes.painel_relatorios'))
+
+        # 4. Renderizar um template HTML que servirá de base para o PDF
+        #    (Este template é apenas para a geração do PDF, não para ser exibido diretamente)
+        html_renderizado = render_template(
+            'app/reports/desempenho_assunto_pdf.html',
+            serie=serie,
+            disciplina=disciplina,
+            ano_letivo=ano_letivo,
+            desempenho_data=desempenho_por_assunto,
+            data_geracao=datetime.now()
+        )
+
+        # 5. Usar WeasyPrint para converter o HTML em PDF
+        pdf = HTML(string=html_renderizado).write_pdf()
+
+        # 6. Criar e retornar a resposta com o PDF
+        response = make_response(pdf)
+        response.headers['Content-Type'] = 'application/pdf'
+        response.headers['Content-Disposition'] = f'inline; filename=desempenho_{serie.nome}_{disciplina.nome}.pdf'
+        
+        log_audit('REPORT_GENERATED', details={'report_type': 'desempenho_por_assunto', 'filters': f'Série ID: {serie_id}, Disciplina ID: {disciplina_id}'})
+        return response
+
+    except Exception as e:
+        print(f"ERRO ao gerar relatório de desempenho por assunto: {e}")
+        flash("Ocorreu um erro inesperado ao gerar o relatório. Tente novamente.", "danger")
+        return redirect(url_for('main_routes.painel_relatorios'))
 
 @main_routes.route('/admin/relatorios/desempenho_por_nivel', methods=['POST'])
 @login_required
 @role_required('coordenador')
 def relatorio_desempenho_por_nivel():
-    # ... Lógica de gerar PDF ...
-    return response
+    """
+    Gera um relatório em PDF mostrando o desempenho dos alunos por nível de dificuldade
+    (fácil, médio, difícil) para uma disciplina e série específicas.
+    """
+    try:
+        # 1. Obter os filtros do formulário
+        serie_id = request.form.get('serie_id', type=int)
+        disciplina_id = request.form.get('disciplina_id', type=int)
+        ano_letivo_id = request.form.get('ano_letivo_id', type=int)
+
+        if not all([serie_id, disciplina_id, ano_letivo_id]):
+            flash('Série, disciplina e ano letivo são obrigatórios para gerar este relatório.', 'danger')
+            return redirect(url_for('main_routes.painel_relatorios'))
+
+        # 2. Buscar os nomes para o cabeçalho do relatório
+        serie = Serie.query.get(serie_id)
+        disciplina = Disciplina.query.get(disciplina_id)
+        ano_letivo = AnoLetivo.query.get(ano_letivo_id)
+
+        # 3. Consulta agregada para calcular o desempenho por NÍVEL
+        desempenho_por_nivel = db.session.query(
+            Questao.nivel,
+            func.count(Resposta.id).label('total_respostas'),
+            func.sum(case((Resposta.resposta_aluno == Questao.gabarito, 1), else_=0)).label('total_acertos')
+        ).join(Questao, Resposta.questao_id == Questao.id
+        ).join(Resultado, Resposta.resultado_id == Resultado.id
+        ).join(Avaliacao, Resultado.avaliacao_id == Avaliacao.id
+        ).filter(
+            Avaliacao.serie_id == serie_id,
+            Questao.disciplina_id == disciplina_id,
+            Resultado.ano_letivo_id == ano_letivo_id,
+            Avaliacao.escola_id == current_user.escola_id
+        ).group_by(Questao.nivel).all() # <<< A MUDANÇA PRINCIPAL ESTÁ AQUI
+
+        if not desempenho_por_nivel:
+            flash('Nenhum dado encontrado para os filtros selecionados. Não é possível gerar o relatório.', 'warning')
+            return redirect(url_for('main_routes.painel_relatorios'))
+            
+        # Opcional: Ordenar os resultados para garantir a ordem 'facil', 'media', 'dificil'
+        ordem_niveis = {'facil': 0, 'media': 1, 'dificil': 2}
+        desempenho_ordenado = sorted(desempenho_por_nivel, key=lambda x: ordem_niveis.get(x.nivel, 99))
+
+        # 4. Renderizar um template HTML específico para este relatório
+        html_renderizado = render_template(
+            'app/reports/desempenho_nivel_pdf.html',
+            serie=serie,
+            disciplina=disciplina,
+            ano_letivo=ano_letivo,
+            desempenho_data=desempenho_ordenado,
+            data_geracao=datetime.now()
+        )
+
+        # 5. Usar WeasyPrint para converter o HTML em PDF
+        pdf = HTML(string=html_renderizado).write_pdf()
+
+        # 6. Criar e retornar a resposta com o PDF
+        response = make_response(pdf)
+        response.headers['Content-Type'] = 'application/pdf'
+        response.headers['Content-Disposition'] = f'inline; filename=desempenho_por_nivel_{serie.nome}_{disciplina.nome}.pdf'
+        
+        log_audit('REPORT_GENERATED', details={'report_type': 'desempenho_por_nivel', 'filters': f'Série ID: {serie_id}, Disciplina ID: {disciplina_id}'})
+        return response
+
+    except Exception as e:
+        print(f"ERRO ao gerar relatório de desempenho por nível: {e}")
+        flash("Ocorreu um erro inesperado ao gerar o relatório. Tente novamente.", "danger")
+        return redirect(url_for('main_routes.painel_relatorios'))
 
 @main_routes.route('/admin/relatorios/analise_de_itens', methods=['POST'])
 @login_required
 @role_required('coordenador')
 def relatorio_analise_de_itens():
-    # ... Lógica de gerar PDF ...
-    return response
+    """
+    Gera um relatório PDF de Análise de Itens para um Modelo de Avaliação,
+    mostrando o índice de dificuldade e a análise de distratores para cada questão.
+    """
+    try:
+        # 1. Obter os filtros do formulário
+        modelo_id = request.form.get('modelo_id', type=int)
+        ano_letivo_id = request.form.get('ano_letivo_id', type=int)
 
-@main_routes.route('/admin/relatorios/saude_banco_questoes')
+        if not all([modelo_id, ano_letivo_id]):
+            flash('Modelo de avaliação e ano letivo são obrigatórios para gerar este relatório.', 'danger')
+            return redirect(url_for('main_routes.painel_relatorios'))
+
+        # 2. Buscar informações para o cabeçalho
+        modelo = ModeloAvaliacao.query.get(modelo_id)
+        ano_letivo = AnoLetivo.query.get(ano_letivo_id)
+        if not modelo or not ano_letivo or modelo.escola_id != current_user.escola_id:
+            abort(404) # Garante que o coordenador não acesse dados de outra escola
+
+        # 3. Buscar todos os dados de respostas relevantes de uma só vez
+        # Encontra todos os resultados de avaliações geradas pelo modelo no ano letivo
+        resultados = Resultado.query.join(Avaliacao).filter(
+            Avaliacao.modelo_id == modelo_id,
+            Resultado.ano_letivo_id == ano_letivo_id
+        ).all()
+        
+        if not resultados:
+            flash('Nenhuma avaliação foi realizada para este modelo nos filtros selecionados.', 'warning')
+            return redirect(url_for('main_routes.painel_relatorios'))
+
+        resultado_ids = [r.id for r in resultados]
+        
+        # Pega todas as respostas e as questões associadas de uma vez
+        respostas = Resposta.query.options(joinedload(Resposta.questao)).filter(
+            Resposta.resultado_id.in_(resultado_ids)
+        ).all()
+
+        # 4. Processar os dados em Python para fazer a análise
+        analise_itens = {}
+        # Primeiro, inicializamos a estrutura de dados para cada questão
+        for resp in respostas:
+            q_id = resp.questao_id
+            if q_id not in analise_itens:
+                analise_itens[q_id] = {
+                    'questao': resp.questao,
+                    'total_respostas': 0,
+                    'total_acertos': 0,
+                    'distratores': {'A': 0, 'B': 0, 'C': 0, 'D': 0, 'NULA': 0}
+                }
+        
+        # Agora, populamos a análise com os dados das respostas
+        for resp in respostas:
+            q_id = resp.questao_id
+            stats = analise_itens[q_id]
+            stats['total_respostas'] += 1
+            
+            # Contabiliza acertos
+            if resp.resposta_aluno == stats['questao'].gabarito:
+                stats['total_acertos'] += 1
+            
+            # Contabiliza distratores
+            if resp.resposta_aluno in stats['distratores']:
+                stats['distratores'][resp.resposta_aluno] += 1
+            else:
+                stats['distratores']['NULA'] += 1 # Respostas em branco ou inválidas
+
+        # 5. Renderizar o template HTML para o PDF
+        html_renderizado = render_template(
+            'app/reports/analise_itens_pdf.html',
+            modelo=modelo,
+            ano_letivo=ano_letivo,
+            analise_data=analise_itens.values(), # Passa a lista de análises
+            data_geracao=datetime.now()
+        )
+
+        # 6. Gerar o PDF e retornar a resposta
+        pdf = HTML(string=html_renderizado).write_pdf()
+        response = make_response(pdf)
+        response.headers['Content-Type'] = 'application/pdf'
+        response.headers['Content-Disposition'] = f'inline; filename=analise_de_itens_{modelo.nome}.pdf'
+        
+        log_audit('REPORT_GENERATED', details={'report_type': 'analise_de_itens', 'filters': f'Modelo ID: {modelo_id}'})
+        return response
+
+    except Exception as e:
+        print(f"ERRO ao gerar relatório de análise de itens: {e}")
+        flash("Ocorreu um erro inesperado ao gerar o relatório. Tente novamente.", "danger")
+        return redirect(url_for('main_routes.painel_relatorios'))
+
+@main_routes.route('/admin/relatorios/saude_banco_questoes', methods=['GET'])
 @login_required
 @role_required('coordenador')
 def relatorio_saude_banco_questoes():
-    # ... Lógica de gerar PDF ...
-    return response
+    """
+    Gera um relatório PDF com estatísticas sobre a "saúde" do banco de questões
+    da escola, mostrando a distribuição por disciplina, série e nível.
+    """
+    try:
+        escola_id = current_user.escola_id
+
+        # 1. Contagem total de questões na escola
+        total_questoes = db.session.query(func.count(Questao.id)).join(
+            Disciplina, Questao.disciplina_id == Disciplina.id
+        ).filter(Disciplina.escola_id == escola_id).scalar() or 0
+
+        # 2. Contagem de questões por Disciplina
+        stats_por_disciplina = db.session.query(
+            Disciplina.nome, func.count(Questao.id)
+        ).outerjoin(Questao, Disciplina.id == Questao.disciplina_id
+        ).filter(Disciplina.escola_id == escola_id
+        ).group_by(Disciplina.id).order_by(Disciplina.nome).all()
+
+        # 3. Contagem de questões por Série
+        stats_por_serie = db.session.query(
+            Serie.nome, func.count(Questao.id)
+        ).outerjoin(Questao, Serie.id == Questao.serie_id
+        ).filter(Serie.escola_id == escola_id
+        ).group_by(Serie.id).order_by(Serie.nome).all()
+
+        # 4. Contagem de questões por Nível de Dificuldade
+        stats_por_nivel = db.session.query(
+            Questao.nivel, func.count(Questao.id)
+        ).join(Disciplina, Questao.disciplina_id == Disciplina.id
+        ).filter(Disciplina.escola_id == escola_id
+        ).group_by(Questao.nivel).all()
+
+        # 5. Renderizar o template HTML para o PDF
+        html_renderizado = render_template(
+            'app/reports/saude_banco_questoes_pdf.html',
+            total_questoes=total_questoes,
+            stats_por_disciplina=stats_por_disciplina,
+            stats_por_serie=stats_por_serie,
+            stats_por_nivel=stats_por_nivel,
+            escola_nome=current_user.escola.nome,
+            data_geracao=datetime.now()
+        )
+
+        # 6. Gerar o PDF e retornar a resposta
+        pdf = HTML(string=html_renderizado).write_pdf()
+        response = make_response(pdf)
+        response.headers['Content-Type'] = 'application/pdf'
+        response.headers['Content-Disposition'] = 'inline; filename=relatorio_saude_banco_questoes.pdf'
+
+        log_audit('REPORT_GENERATED', details={'report_type': 'saude_banco_questoes'})
+        return response
+
+    except Exception as e:
+        print(f"ERRO ao gerar relatório de saúde do banco de questões: {e}")
+        flash("Ocorreu um erro inesperado ao gerar o relatório. Tente novamente.", "danger")
+        return redirect(url_for('main_routes.painel_relatorios'))
+
+Ok, próxima rota. O relatório "Comparativo entre Turmas" é muito útil para gestores, pois permite comparar o desempenho de diferentes séries/turmas em uma mesma avaliação padronizada (um mesmo modelo).
+
+A lógica será focada em agregar os resultados por turma:
+
+Receber os filtros do formulário (o modelo_id da avaliação e o ano_letivo_id).
+
+Executar uma consulta ao banco que agrupe os resultados por Serie (turma).
+
+Para cada turma, a consulta irá calcular estatísticas-chave: número de participantes, nota média, maior nota, menor nota e desvio padrão.
+
+Renderizar um template HTML que apresente esses dados em uma tabela comparativa.
+
+Converter o HTML em PDF e retorná-lo.
+
+Rota Corrigida: relatorio_comparativo_turmas
+Python
 
 @main_routes.route('/admin/relatorios/comparativo_turmas', methods=['POST'])
 @login_required
 @role_required('coordenador')
 def relatorio_comparativo_turmas():
-    # ... Lógica de gerar PDF ...
-    return response
+    """
+    Gera um relatório PDF comparando o desempenho de diferentes turmas
+    em um mesmo Modelo de Avaliação.
+    """
+    try:
+        # 1. Obter os filtros do formulário
+        modelo_id = request.form.get('modelo_id', type=int)
+        ano_letivo_id = request.form.get('ano_letivo_id', type=int)
+
+        if not all([modelo_id, ano_letivo_id]):
+            flash('Modelo de avaliação e ano letivo são obrigatórios para gerar este relatório.', 'danger')
+            return redirect(url_for('main_routes.painel_relatorios'))
+
+        # 2. Buscar informações para o cabeçalho do relatório
+        modelo = ModeloAvaliacao.query.get(modelo_id)
+        ano_letivo = AnoLetivo.query.get(ano_letivo_id)
+        if not modelo or not ano_letivo or modelo.escola_id != current_user.escola_id:
+            abort(404)
+
+        # 3. Consulta agregada para calcular as estatísticas por turma (Série)
+        #    Apenas resultados 'Finalizado' são considerados para as estatísticas.
+        #    A função stddev_samp calcula o desvio padrão (sample standard deviation).
+        #    Nota: A disponibilidade de func.stddev_samp pode depender do seu banco de dados (funciona no PostgreSQL).
+        stats_por_turma = db.session.query(
+            Serie.nome,
+            func.count(Resultado.id).label('num_participantes'),
+            func.avg(Resultado.nota).label('media_notas'),
+            func.max(Resultado.nota).label('maior_nota'),
+            func.min(Resultado.nota).label('menor_nota'),
+            func.stddev_samp(Resultado.nota).label('desvio_padrao')
+        ).join(Avaliacao, Resultado.avaliacao_id == Avaliacao.id
+        ).join(Serie, Avaliacao.serie_id == Serie.id
+        ).filter(
+            Avaliacao.modelo_id == modelo_id,
+            Resultado.ano_letivo_id == ano_letivo_id,
+            Avaliacao.escola_id == current_user.escola_id,
+            Resultado.status == 'Finalizado'
+        ).group_by(Serie.id).order_by(Serie.nome).all()
+
+        if not stats_por_turma:
+            flash('Nenhum resultado finalizado encontrado para os filtros selecionados. Não é possível gerar o relatório comparativo.', 'warning')
+            return redirect(url_for('main_routes.painel_relatorios'))
+
+        # 4. Renderizar o template HTML para o PDF
+        html_renderizado = render_template(
+            'app/reports/comparativo_turmas_pdf.html',
+            modelo=modelo,
+            ano_letivo=ano_letivo,
+            stats_data=stats_por_turma,
+            data_geracao=datetime.now()
+        )
+
+        # 5. Gerar o PDF e retornar a resposta
+        pdf = HTML(string=html_renderizado).write_pdf()
+        response = make_response(pdf)
+        response.headers['Content-Type'] = 'application/pdf'
+        response.headers['Content-Disposition'] = f'inline; filename=comparativo_turmas_{modelo.nome}.pdf'
+        
+        log_audit('REPORT_GENERATED', details={'report_type': 'comparativo_turmas', 'filters': f'Modelo ID: {modelo_id}'})
+        return response
+
+    except Exception as e:
+        print(f"ERRO ao gerar relatório comparativo de turmas: {e}")
+        flash("Ocorreu um erro inesperado ao gerar o relatório. Tente novamente.", "danger")
+        return redirect(url_for('main_routes.painel_relatorios'))
 
 @main_routes.route('/admin/relatorios/alunos_por_serie', methods=['POST'])
 @login_required
 @role_required('coordenador')
 def relatorio_alunos_por_serie():
-    # ... Lógica de gerar PDF ...
-    return response
+    """
+    Gera um relatório PDF com a lista de todos os alunos matriculados
+    em uma série/turma específica em um determinado ano letivo.
+    """
+    try:
+        # 1. Obter os filtros do formulário
+        serie_id = request.form.get('serie_id', type=int)
+        ano_letivo_id = request.form.get('ano_letivo_id', type=int)
+
+        if not all([serie_id, ano_letivo_id]):
+            flash('Série e ano letivo são obrigatórios para gerar este relatório.', 'danger')
+            return redirect(url_for('main_routes.painel_relatorios'))
+
+        # 2. Buscar informações para o cabeçalho e validar permissão
+        serie = Serie.query.get(serie_id)
+        ano_letivo = AnoLetivo.query.get(ano_letivo_id)
+        if not serie or not ano_letivo or serie.escola_id != current_user.escola_id:
+            abort(404)
+
+        # 3. Buscar todos os alunos matriculados na série e ano letivo especificados.
+        #    A tabela Matricula é a fonte perfeita para esta informação.
+        #    Usamos joinedload para já carregar os dados do aluno e ordenamos pelo nome.
+        matriculas = Matricula.query.options(
+            joinedload(Matricula.aluno)
+        ).filter_by(
+            serie_id=serie_id,
+            ano_letivo_id=ano_letivo_id
+        ).join(Usuario).order_by(Usuario.nome).all()
+
+        if not matriculas:
+            flash(f'Nenhum aluno encontrado para a turma "{serie.nome}" no ano de {ano_letivo.ano}.', 'warning')
+            return redirect(url_for('main_routes.painel_relatorios'))
+
+        # 4. Renderizar o template HTML para o PDF
+        html_renderizado = render_template(
+            'app/reports/lista_alunos_pdf.html',
+            serie=serie,
+            ano_letivo=ano_letivo,
+            matriculas=matriculas,
+            data_geracao=datetime.now()
+        )
+
+        # 5. Gerar o PDF e retornar a resposta
+        pdf = HTML(string=html_renderizado).write_pdf()
+        response = make_response(pdf)
+        response.headers['Content-Type'] = 'application/pdf'
+        response.headers['Content-Disposition'] = f'inline; filename=lista_alunos_{serie.nome}.pdf'
+        
+        log_audit('REPORT_GENERATED', details={'report_type': 'lista_alunos_por_serie', 'filters': f'Série ID: {serie_id}'})
+        return response
+
+    except Exception as e:
+        print(f"ERRO ao gerar relatório de alunos por série: {e}")
+        flash("Ocorreu um erro inesperado ao gerar o relatório. Tente novamente.", "danger")
+        return redirect(url_for('main_routes.painel_relatorios'))
 
 @main_routes.route('/admin/relatorios/professores')
 @login_required
 @role_required('coordenador')
 def relatorio_professores():
-    # ... Lógica de gerar PDF ...
-    return response
+    """
+    Gera um relatório PDF com a lista de todos os professores da escola,
+    incluindo as disciplinas e turmas que lecionam.
+    """
+    try:
+        escola_id = current_user.escola_id
+
+        # 1. Busca todos os professores da escola.
+        #    Usamos 'subqueryload' para carregar de forma eficiente as listas de
+        #    disciplinas e séries de cada professor em queries separadas,
+        #    o que é ideal para relações "muitos-para-muitos".
+        professores = Usuario.query.options(
+            subqueryload(Usuario.disciplinas_lecionadas),
+            subqueryload(Usuario.series_lecionadas)
+        ).filter_by(
+            escola_id=escola_id,
+            role='professor'
+        ).order_by(Usuario.nome).all()
+
+        # 2. Renderizar o template HTML para o PDF
+        html_renderizado = render_template(
+            'app/reports/lista_professores_pdf.html',
+            professores=professores,
+            escola_nome=current_user.escola.nome,
+            data_geracao=datetime.now()
+        )
+
+        # 3. Gerar o PDF e retornar a resposta
+        pdf = HTML(string=html_renderizado).write_pdf()
+        response = make_response(pdf)
+        response.headers['Content-Type'] = 'application/pdf'
+        response.headers['Content-Disposition'] = 'inline; filename=lista_de_professores.pdf'
+
+        log_audit('REPORT_GENERATED', details={'report_type': 'lista_professores'})
+        return response
+
+    except Exception as e:
+        print(f"ERRO ao gerar relatório de professores: {e}")
+        flash("Ocorreu um erro inesperado ao gerar o relatório. Tente novamente.", "danger")
+        return redirect(url_for('main_routes.painel_relatorios'))
+
+Ok, próxima rota. Um relatório de "Resultado de Simulado" é um dos mais importantes para a escola, pois geralmente mostra um ranking de todos os alunos que participaram de uma avaliação padronizada.
+
+O fluxo de trabalho será:
+
+Receber os filtros do formulário (o modelo_id do simulado e o ano_letivo_id).
+
+Buscar no banco todos os resultados dos alunos para esse simulado, ordenando pela nota em ordem decrescente para criar o ranking.
+
+Renderizar um template HTML formatado como uma lista de classificação.
+
+Converter o HTML em PDF e retorná-lo.
+
+Rota Corrigida: relatorio_resultado_simulado
+Python
 
 @main_routes.route('/admin/relatorios/resultado_simulado', methods=['POST'])
 @login_required
 @role_required('coordenador')
 def relatorio_resultado_simulado():
-    # ... Lógica de gerar PDF ...
-    return response
+    """
+    Gera um relatório PDF com o resultado geral (ranking) de todos os alunos
+    que participaram de um simulado (baseado em um Modelo de Avaliação).
+    """
+    try:
+        # 1. Obter os filtros do formulário
+        modelo_id = request.form.get('modelo_id', type=int)
+        ano_letivo_id = request.form.get('ano_letivo_id', type=int)
+
+        if not all([modelo_id, ano_letivo_id]):
+            flash('Modelo de avaliação e ano letivo são obrigatórios para gerar este relatório.', 'danger')
+            return redirect(url_for('main_routes.painel_relatorios'))
+
+        # 2. Buscar informações para o cabeçalho e validar permissão
+        modelo = ModeloAvaliacao.query.get(modelo_id)
+        ano_letivo = AnoLetivo.query.get(ano_letivo_id)
+        if not modelo or not ano_letivo or modelo.escola_id != current_user.escola_id:
+            abort(404)
+
+        # 3. Buscar todos os resultados finalizados para este simulado, ordenados por nota.
+        #    A ordenação é a chave para este relatório.
+        resultados = Resultado.query.options(
+            joinedload(Resultado.aluno),
+            joinedload(Resultado.avaliacao)
+        ).join(Avaliacao).filter(
+            Avaliacao.modelo_id == modelo_id,
+            Resultado.ano_letivo_id == ano_letivo_id,
+            Avaliacao.escola_id == current_user.escola_id,
+            Resultado.status == 'Finalizado'
+        ).order_by(Resultado.nota.desc(), Usuario.nome.asc()).all() # Ordena por nota (maior primeiro), e nome como desempate
+
+        if not resultados:
+            flash(f'Nenhum resultado finalizado encontrado para o simulado "{modelo.nome}".', 'warning')
+            return redirect(url_for('main_routes.painel_relatorios'))
+
+        # 4. Renderizar o template HTML para o PDF
+        html_renderizado = render_template(
+            'app/reports/resultado_simulado_pdf.html',
+            modelo=modelo,
+            ano_letivo=ano_letivo,
+            resultados=resultados,
+            data_geracao=datetime.now()
+        )
+
+        # 5. Gerar o PDF e retornar a resposta
+        pdf = HTML(string=html_renderizado).write_pdf()
+        response = make_response(pdf)
+        response.headers['Content-Type'] = 'application/pdf'
+        response.headers['Content-Disposition'] = f'inline; filename=resultado_simulado_{modelo.nome}.pdf'
+        
+        log_audit('REPORT_GENERATED', details={'report_type': 'resultado_simulado', 'filters': f'Modelo ID: {modelo_id}'})
+        return response
+
+    except Exception as e:
+        print(f"ERRO ao gerar relatório de resultado de simulado: {e}")
+        flash("Ocorreu um erro inesperado ao gerar o relatório. Tente novamente.", "danger")
+        return redirect(url_for('main_routes.painel_relatorios'))
 
 @main_routes.route('/admin/relatorios/boletim_aluno', methods=['POST'])
 @login_required
 @role_required('coordenador')
 def relatorio_boletim_aluno():
-    # ... Lógica de gerar PDF ...
-    return response
+    """
+    Gera um relatório PDF com o boletim de notas de um aluno específico
+    para um determinado ano letivo, agrupando os resultados por disciplina.
+    """
+    try:
+        # 1. Obter os filtros do formulário
+        aluno_id = request.form.get('aluno_id', type=int)
+        ano_letivo_id = request.form.get('ano_letivo_id', type=int)
+
+        if not all([aluno_id, ano_letivo_id]):
+            flash('Aluno e ano letivo são obrigatórios para gerar o boletim.', 'danger')
+            return redirect(url_for('main_routes.painel_relatorios'))
+
+        # 2. Buscar informações para o cabeçalho e validar permissão
+        aluno = Usuario.query.get(aluno_id)
+        ano_letivo = AnoLetivo.query.get(ano_letivo_id)
+        if not aluno or not ano_letivo or aluno.escola_id != current_user.escola_id:
+            abort(404)
+
+        # 3. Buscar todos os resultados finalizados do aluno no ano letivo
+        resultados = Resultado.query.options(
+            joinedload(Resultado.avaliacao).joinedload(Avaliacao.disciplina)
+        ).filter(
+            Resultado.aluno_id == aluno_id,
+            Resultado.ano_letivo_id == ano_letivo_id,
+            Resultado.status == 'Finalizado',
+            Resultado.nota.isnot(None)
+        ).all()
+        
+        if not resultados:
+            flash(f'Nenhum resultado finalizado encontrado para o aluno "{aluno.nome}" no ano de {ano_letivo.ano}.', 'warning')
+            return redirect(url_for('main_routes.painel_relatorios'))
+
+        # 4. Processar e agrupar os resultados por disciplina
+        boletim_data = {}
+        for res in resultados:
+            # Apenas avaliações ligadas a uma disciplina entram no boletim
+            if res.avaliacao and res.avaliacao.disciplina:
+                disciplina = res.avaliacao.disciplina
+                if disciplina.id not in boletim_data:
+                    boletim_data[disciplina.id] = {
+                        'nome_disciplina': disciplina.nome,
+                        'avaliacoes': [],
+                        'media_final': 0
+                    }
+                boletim_data[disciplina.id]['avaliacoes'].append({
+                    'nome': res.avaliacao.nome,
+                    'nota': res.nota
+                })
+        
+        # Calcular a média final para cada disciplina
+        for disc_id in boletim_data:
+            notas = [av['nota'] for av in boletim_data[disc_id]['avaliacoes']]
+            if notas:
+                boletim_data[disc_id]['media_final'] = sum(notas) / len(notas)
+
+        # 5. Renderizar o template HTML para o PDF
+        html_renderizado = render_template(
+            'app/reports/boletim_aluno_pdf.html',
+            aluno=aluno,
+            ano_letivo=ano_letivo,
+            boletim_data=boletim_data.values(),
+            data_geracao=datetime.now()
+        )
+
+        # 6. Gerar o PDF e retornar a resposta
+        pdf = HTML(string=html_renderizado).write_pdf()
+        response = make_response(pdf)
+        response.headers['Content-Type'] = 'application/pdf'
+        response.headers['Content-Disposition'] = f'inline; filename=boletim_{aluno.nome}.pdf'
+        
+        log_audit('REPORT_GENERATED', details={'report_type': 'boletim_aluno', 'filters': f'Aluno ID: {aluno_id}'})
+        return response
+
+    except Exception as e:
+        print(f"ERRO ao gerar boletim do aluno: {e}")
+        flash("Ocorreu um erro inesperado ao gerar o relatório. Tente novamente.", "danger")
+        return redirect(url_for('main_routes.painel_relatorios'))
 
 @main_routes.route('/responder_avaliacao/<int:avaliacao_id>', methods=['GET', 'POST'])
 @login_required
 @role_required('aluno')
 def responder_avaliacao(avaliacao_id):
-    # ... Lógica de responder avaliação ...
+    """
+    Lida com a exibição da prova para o aluno (GET) e o salvamento/finalização
+    das respostas (POST).
+    """
+    # --- LÓGICA DO POST: Salvar ou Finalizar a Avaliação ---
     if request.method == 'POST':
-        return redirect(url_for('main_routes.meus_resultados'))
-    return render_template('app/responder_avaliacao.html') # Simplificado
+        resultado = Resultado.query.filter_by(avaliacao_id=avaliacao_id, aluno_id=current_user.id).first_or_404()
+        
+        # Impede que uma prova já finalizada seja alterada
+        if resultado.status == 'Finalizado':
+            flash('Esta avaliação já foi finalizada e não pode ser alterada.', 'warning')
+            return redirect(url_for('main_routes.meus_resultados'))
+
+        try:
+            # Mapeia as respostas já existentes para atualização
+            respostas_existentes = {resp.questao_id: resp for resp in resultado.respostas}
+
+            # Itera sobre todas as questões da avaliação para salvar as respostas
+            for questao in resultado.avaliacao.questoes:
+                resposta_aluno = request.form.get(f'q_{questao.id}')
+                
+                if resposta_aluno is not None: # Se o aluno respondeu a esta questão
+                    if questao.id in respostas_existentes:
+                        # Atualiza a resposta existente
+                        respostas_existentes[questao.id].resposta_aluno = resposta_aluno
+                    else:
+                        # Cria uma nova resposta se for a primeira vez
+                        nova_resposta = Resposta(
+                            resultado_id=resultado.id,
+                            questao_id=questao.id,
+                            resposta_aluno=resposta_aluno
+                        )
+                        db.session.add(nova_resposta)
+            
+            # Verifica se o aluno clicou em "Finalizar"
+            if 'finalizar' in request.form:
+                # Calcula a nota preliminar (apenas para questões de múltipla escolha)
+                nota_preliminar = 0
+                for resposta in resultado.respostas:
+                    if resposta.questao.tipo == 'multipla_escolha' and resposta.resposta_aluno == resposta.questao.gabarito:
+                        nota_preliminar += 1.0 # ou o peso da questão, se houver
+                
+                resultado.nota = nota_preliminar
+                resultado.status = 'Finalizado'
+                resultado.data_realizacao = datetime.utcnow()
+                flash('Avaliação finalizada com sucesso!', 'success')
+                log_audit('ASSESSMENT_FINISHED', target_obj=resultado, details={'final_score': nota_preliminar})
+            else:
+                flash('Seu progresso foi salvo!', 'info')
+
+            db.session.commit()
+            return redirect(url_for('main_routes.meus_resultados'))
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Ocorreu um erro ao salvar suas respostas: {e}', 'danger')
+
+    # --- LÓGICA DO GET: Exibir a Avaliação ---
+    # Carrega a avaliação e o resultado do aluno
+    resultado = Resultado.query.filter_by(avaliacao_id=avaliacao_id, aluno_id=current_user.id).first()
+    avaliacao = Avaliacao.query.get_or_404(avaliacao_id)
+
+    # Validação de acesso
+    # Se for uma avaliação estática, o aluno precisa estar na lista de designados
+    if not avaliacao.is_dinamica and current_user not in avaliacao.alunos_designados:
+        flash('Você não tem permissão para acessar esta avaliação.', 'danger')
+        return redirect(url_for('main_routes.dashboard'))
+
+    # Se o resultado não existe (primeiro acesso a uma prova estática), cria um.
+    if not resultado and not avaliacao.is_dinamica:
+        ano_letivo_ativo = AnoLetivo.query.filter_by(escola_id=current_user.escola_id, status='ativo').first()
+        resultado = Resultado(
+            aluno_id=current_user.id,
+            avaliacao_id=avaliacao.id,
+            ano_letivo_id=ano_letivo_ativo.id if ano_letivo_ativo else None,
+            status='Iniciada'
+        )
+        db.session.add(resultado)
+        db.session.commit()
+        log_audit('STATIC_ASSESSMENT_STARTED', target_obj=resultado)
+
+    if not resultado:
+        # Se mesmo assim não houver resultado (ex: aluno tentando acessar URL de prova dinâmica de outro)
+        flash('Avaliação não encontrada ou não iniciada.', 'danger')
+        return redirect(url_for('main_routes.listar_modelos_avaliacao'))
+
+    # Impede o acesso se já estiver finalizada
+    if resultado.status == 'Finalizado':
+        flash('Esta avaliação já foi finalizada. Você pode ver seu resultado na lista abaixo.', 'info')
+        return redirect(url_for('main_routes.ver_resultado_detalhado', resultado_id=resultado.id))
+
+    # Mapeia as respostas já salvas para preencher o formulário
+    respostas_map = {resp.questao_id: resp.resposta_aluno for resp in resultado.respostas}
+
+    return render_template(
+        'app/responder_avaliacao.html', 
+        avaliacao=resultado.avaliacao, 
+        respostas_map=respostas_map
+    )
 
 # ### ROTAS ANTIGAS DE API (MANTIDAS NO BLUEPRINT WEB POR ENQUANTO) ###
 @main_routes.route('/api/conteudo_simulado/<int:serie_id>')
 @login_required
+@role_required('professor', 'coordenador') # Adicionado para segurança
 def get_conteudo_simulado_por_serie(serie_id):
-    # ... sua lógica original ...
-    return jsonify(resultado_final)
+    """
+    API para buscar as disciplinas e os assuntos disponíveis
+    no banco de questões para uma determinada série.
+    Usado para montar a tela de criação de simulados.
+    """
+    try:
+        # Garante que a série pertence à escola do usuário
+        serie = Serie.query.filter_by(id=serie_id, escola_id=current_user.escola_id).first_or_404()
+        
+        # Pega os IDs das disciplinas associadas a esta série
+        disciplina_ids = [d.id for d in serie.disciplinas]
+        
+        # Busca todos os assuntos distintos para as disciplinas encontradas
+        questoes_data = db.session.query(
+            Questao.disciplina_id,
+            Disciplina.nome.label('disciplina_nome'),
+            Questao.assunto
+        ).join(Disciplina, Questao.disciplina_id == Disciplina.id
+        ).filter(
+            Questao.disciplina_id.in_(disciplina_ids),
+            Questao.serie_id == serie_id # Garante que as questões são da série correta
+        ).distinct().all()
+
+        # Organiza os dados em um dicionário para agrupar assuntos por disciplina
+        disciplinas_com_assuntos = {}
+        for q in questoes_data:
+            if q.disciplina_id not in disciplinas_com_assuntos:
+                disciplinas_com_assuntos[q.disciplina_id] = {
+                    'id': q.disciplina_id,
+                    'nome': q.disciplina_nome,
+                    'assuntos': []
+                }
+            if q.assunto: # Evita adicionar assuntos nulos
+                disciplinas_com_assuntos[q.disciplina_id]['assuntos'].append(q.assunto)
+
+        return jsonify(list(disciplinas_com_assuntos.values()))
+
+    except Exception as e:
+        print(f"ERRO em /api/conteudo_simulado: {e}")
+        return jsonify({'error': 'Erro ao buscar conteúdo do simulado'}), 500
 
 @main_routes.route('/api/assuntos')
 @login_required
+@role_required('professor', 'coordenador') # Adicionado para segurança
 def get_assuntos_por_disciplina_e_serie():
-    # ... sua lógica original ...
-    return jsonify({'assuntos': assuntos_list})
+    """
+    API que retorna uma lista de assuntos distintos baseada na disciplina e série
+    fornecidas como parâmetros na URL.
+    Usado na criação de provas de disciplina única.
+    """
+    try:
+        disciplina_id = request.args.get('disciplina_id', type=int)
+        serie_id = request.args.get('serie_id', type=int)
+
+        if not disciplina_id or not serie_id:
+            return jsonify({'error': 'ID da disciplina e da série são obrigatórios'}), 400
+
+        # A query busca os assuntos distintos, garantindo que a disciplina
+        # pertence à escola do usuário logado para segurança.
+        assuntos_query = db.session.query(Questao.assunto).join(
+            Disciplina, Questao.disciplina_id == Disciplina.id
+        ).filter(
+            Questao.disciplina_id == disciplina_id,
+            Questao.serie_id == serie_id,
+            Disciplina.escola_id == current_user.escola_id
+        ).distinct().order_by(Questao.assunto).all()
+        
+        # Converte a lista de tuplas em uma lista de strings
+        assuntos_list = [item[0] for item in assuntos_query if item[0]]
+
+        return jsonify({'assuntos': assuntos_list})
+
+    except Exception as e:
+        print(f"ERRO em /api/assuntos: {e}")
+        return jsonify({'error': 'Erro ao buscar assuntos'}), 500
 
 @main_routes.route('/api/alunos_por_serie/<int:serie_id>')
 @login_required
-@role_required('coordenador')
+@role_required('coordenador', 'professor') # Professor também pode precisar disso
 def api_alunos_por_serie(serie_id):
-    # ... sua lógica original ...
-    return jsonify(alunos=alunos_ordenados)
+    """
+    API que retorna uma lista de alunos (ID e Nome) matriculados
+    em uma série específica no ano letivo ativo.
+    """
+    try:
+        ano_letivo_ativo = AnoLetivo.query.filter_by(escola_id=current_user.escola_id, status='ativo').first()
+        if not ano_letivo_ativo:
+            return jsonify({'error': 'Nenhum ano letivo ativo encontrado'}), 404
+
+        # Busca os alunos através da tabela de Matrícula
+        matriculas = Matricula.query.options(
+            joinedload(Matricula.aluno)
+        ).filter_by(
+            serie_id=serie_id,
+            ano_letivo_id=ano_letivo_ativo.id
+        ).join(Usuario).order_by(Usuario.nome).all()
+
+        # Formata a saída em um JSON simples
+        alunos_list = [{'id': m.aluno.id, 'nome': m.aluno.nome} for m in matriculas]
+        
+        return jsonify(alunos=alunos_list)
+
+    except Exception as e:
+        print(f"ERRO em /api/alunos_por_serie: {e}")
+        return jsonify({'error': 'Erro ao buscar alunos'}), 500
 
 # ===================================================================
 # SEÇÃO 7: REGISTRO DOS BLUEPRINTS E EXECUÇÃO

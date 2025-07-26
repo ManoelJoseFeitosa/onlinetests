@@ -4,16 +4,39 @@
     <meta charset="UTF-8">
     <title>Relatório de Desempenho por Assunto</title>
     <style>
-        body { font-family: sans-serif; margin: 2cm; }
-        h1, h2, h3 { color: #333; }
-        h1 { text-align: center; border-bottom: 2px solid #ccc; padding-bottom: 10px; }
-        .header-info { background-color: #f2f2f2; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; margin: 1.5cm; color: #333; }
+        header { text-align: center; margin-bottom: 20px; }
+        h1 { border-bottom: 2px solid #eee; padding-bottom: 10px; font-size: 24px; }
+        .header-info { background-color: #f8f9fa; padding: 15px; border: 1px solid #dee2e6; border-radius: 5px; margin-bottom: 25px; font-size: 14px; }
         .header-info p { margin: 5px 0; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
-        th { background-color: #e8e8e8; }
-        tbody tr:nth-child(even) { background-color: #f9f9f9; }
-        footer { text-align: center; font-size: 0.8em; color: #777; position: fixed; bottom: 0; left: 0; right: 0; }
+        h3 { font-size: 18px; border-bottom: 1px solid #eee; padding-bottom: 5px; margin-top: 30px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; }
+        th, td { border: 1px solid #dee2e6; padding: 12px; text-align: left; }
+        th { background-color: #e9ecef; font-weight: 600; }
+        tbody tr:nth-child(even) { background-color: #f8f9fa; }
+        footer { text-align: center; font-size: 12px; color: #6c757d; margin-top: 40px; border-top: 1px solid #eee; padding-top: 15px; }
+        
+        /* Estilo para a barra de aproveitamento */
+        .progress-bar-container {
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background-color: #e9ecef;
+            width: 120px;
+            height: 20px;
+        }
+        .progress-bar {
+            height: 100%;
+            background-color: #0d6efd; /* Azul */
+            border-radius: 3px;
+            text-align: center;
+            color: white;
+            font-size: 11px;
+            line-height: 20px;
+            font-weight: bold;
+        }
+        .progress-bar.yellow { background-color: #ffc107; } /* Amarelo para atenção */
+        .progress-bar.red { background-color: #dc3545; } /* Vermelho para baixo desempenho */
+
     </style>
 </head>
 <body>
@@ -25,25 +48,43 @@
         <p><strong>Série/Turma:</strong> {{ serie.nome }}</p>
         <p><strong>Disciplina:</strong> {{ disciplina.nome }}</p>
         <p><strong>Ano Letivo:</strong> {{ ano_letivo.ano }}</p>
-        <p><strong>Data de Geração:</strong> {{ data_geracao.strftime('%d/%m/%Y %H:%M') }}</p>
+        <p><strong>Data de Geração:</strong> {{ data_geracao.strftime('%d/%m/%Y às %H:%M') }}</p>
     </div>
 
-    <h3>Análise de Notas</h3>
-    {% if dados %}
+    <h3>Análise de Desempenho</h3>
+    
+    {% if desempenho_data %}
         <table>
             <thead>
                 <tr>
                     <th>Assunto</th>
-                    <th>Nota Média da Turma (0 a 10)</th>
-                    <th>Total de Questões Respondidas</th>
+                    <th>Total de Respostas</th>
+                    <th>Total de Acertos</th>
+                    <th>Aproveitamento</th>
                 </tr>
             </thead>
             <tbody>
-                {% for assunto, media, contagem in dados %}
+                {% for item in desempenho_data %}
                 <tr>
-                    <td>{{ assunto }}</td>
-                    <td>{{ "%.2f"|format(media) }}</td>
-                    <td>{{ contagem }}</td>
+                    <td>{{ item.assunto }}</td>
+                    <td>{{ item.total_respostas }}</td>
+                    <td>{{ item.total_acertos }}</td>
+                    <td>
+                        {% set aproveitamento = (item.total_acertos / item.total_respostas * 100) if item.total_respostas > 0 else 0 %}
+                        
+                        {% set bar_color_class = '' %}
+                        {% if aproveitamento < 50 %}
+                            {% set bar_color_class = 'red' %}
+                        {% elif aproveitamento < 70 %}
+                            {% set bar_color_class = 'yellow' %}
+                        {% endif %}
+
+                        <div class="progress-bar-container">
+                            <div class="progress-bar {{ bar_color_class }}" style="width: {{ '%.1f'|format(aproveitamento) }}%;">
+                                {{ '%.1f'|format(aproveitamento) }}%
+                            </div>
+                        </div>
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
