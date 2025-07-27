@@ -2548,10 +2548,10 @@ def relatorio_boletim_aluno():
             })
 
         # 5. Renderizar o template HTML para o PDF
-        # ### CORREÇÃO APLICADA AQUI ###
-        # O caminho do template foi corrigido de 'app/reports/...' para 'app/relatorios/...'.
+        # ### CORREÇÃO FINAL APLICADA AQUI ###
+        # O caminho e o nome do arquivo foram ajustados para corresponder à sua estrutura de pastas.
         html_renderizado = render_template(
-            'app/relatorios/boletim_aluno_pdf.html',
+            'app/relatorios/boletim_aluno.html',
             todos_os_boletins=todos_os_boletins,
             serie=serie,
             ano_letivo=ano_letivo,
