@@ -1129,8 +1129,10 @@ def editar_questao(questao_id):
 def criar_modelo_avaliacao():
     escola_id = current_user.escola_id
 
+    # --- LÓGICA DO POST (permanece a mesma) ---
     if request.method == 'POST':
         try:
+            # ... (toda a sua lógica de POST continua aqui, sem alterações)
             nome_modelo = request.form.get('nome_modelo')
             tipo_modelo = request.form.get('tipo_modelo')
             serie_id = request.form.get('serie_id', type=int)
@@ -1156,13 +1158,11 @@ def criar_modelo_avaliacao():
                     'questoes_por_nivel': []
                 }
 
-                # Para provas, os assuntos são coletados de um campo multiselect
                 if tipo_modelo == 'prova':
                     assuntos = request.form.getlist(f'regra_{i}_assunto_0')
                     for assunto in assuntos:
-                        regra_disciplina['questoes_por_assunto'].append({'assunto': assunto, 'quantidade': 0}) # Quantidade por assunto não especificada neste modo
+                        regra_disciplina['questoes_por_assunto'].append({'assunto': assunto, 'quantidade': 0})
 
-                # Coleta regras por nível de dificuldade
                 niveis = ['facil', 'media', 'dificil']
                 total_questoes_nivel = 0
                 for nivel in niveis:
@@ -1171,7 +1171,6 @@ def criar_modelo_avaliacao():
                         regra_disciplina['questoes_por_nivel'].append({'nivel': nivel, 'quantidade': quantidade})
                         total_questoes_nivel += quantidade
                 
-                # Só adiciona a regra se houver alguma questão a ser selecionada
                 if total_questoes_nivel > 0 or (tipo_modelo == 'prova' and regra_disciplina['questoes_por_assunto']):
                      regras_selecao['disciplinas'].append(regra_disciplina)
 
@@ -1179,11 +1178,9 @@ def criar_modelo_avaliacao():
 
             if not regras_selecao['disciplinas']:
                 flash('Nenhuma regra de seleção de questões foi definida. Adicione a quantidade de questões para ao menos uma disciplina.', 'warning')
-                # Precisamos recarregar os dados para o template em caso de falha na validação
                 series = Serie.query.filter_by(escola_id=escola_id).order_by(Serie.nome).all()
                 disciplinas = Disciplina.query.filter_by(escola_id=escola_id).order_by(Disciplina.nome).all()
                 return render_template('app/criar_modelo_avaliacao.html', series=series, disciplinas=disciplinas)
-
 
             novo_modelo = ModeloAvaliacao(
                 nome=nome_modelo, tipo=tipo_modelo, tempo_limite=tempo_limite,
@@ -1201,9 +1198,18 @@ def criar_modelo_avaliacao():
             db.session.rollback()
             flash(f'Ocorreu um erro ao criar o modelo: {e}', 'danger')
     
-    # Lógica GET
+    # --- LÓGICA DO GET (CORREÇÃO APLICADA AQUI) ---
     series = Serie.query.filter_by(escola_id=escola_id).order_by(Serie.nome).all()
     disciplinas = Disciplina.query.filter_by(escola_id=escola_id).order_by(Disciplina.nome).all()
+
+    # Validação para garantir que existem dados acadêmicos mínimos para criar um modelo
+    if not series:
+        flash('É necessário cadastrar ao menos uma série antes de criar um modelo de avaliação.', 'warning')
+        return redirect(url_for('main_routes.gerenciar_academico'))
+    if not disciplinas:
+        flash('É necessário cadastrar ao menos uma disciplina antes de criar um modelo de avaliação.', 'warning')
+        return redirect(url_for('main_routes.gerenciar_academico'))
+
     return render_template('app/criar_modelo_avaliacao.html', series=series, disciplinas=disciplinas)
 
 @main_routes.route('/iniciar-avaliacao/<int:modelo_id>')
