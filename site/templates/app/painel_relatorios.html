@@ -6,7 +6,6 @@
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="mb-0">Central de Relatórios</h2>
-        <!-- CORREÇÃO APLICADA AQUI -->
         <a href="{{ url_for('main_routes.dashboard') }}" class="btn btn-outline-secondary">&larr; Voltar ao Painel</a>
     </div>
     <p class="text-muted">Gere relatórios em PDF para análise e acompanhamento acadêmico.</p>
@@ -17,7 +16,6 @@
             <div class="card h-100 shadow-sm">
                 <div class="card-header"><h5 class="mb-0"><i class="bi bi-people-fill me-2"></i>Alunos por Série</h5></div>
                 <div class="card-body d-flex flex-column">
-                    <!-- CORREÇÃO APLICADA AQUI -->
                     <form action="{{ url_for('main_routes.relatorio_alunos_por_serie') }}" method="POST" target="_blank" class="d-flex flex-column flex-grow-1">
                         <div class="mb-3">
                             <label for="ano_letivo_alunos" class="form-label">Ano Letivo</label>
@@ -25,12 +23,15 @@
                                 {% for ano in anos_letivos %}<option value="{{ ano.id }}">{{ ano.ano }}</option>{% endfor %}
                             </select>
                         </div>
-                        <div class="mb-3">
-                            <label for="series_ids_alunos" class="form-label">Séries</label>
-                            <select class="form-select" name="series_ids" id="series_ids_alunos" multiple required size="5">
+                        <div class="mb-3 flex-grow-1">
+                            <label for="serie_id_alunos" class="form-label">Série</label>
+                            <!-- ### CORREÇÃO APLICADA AQUI ### -->
+                            <!-- Removido 'multiple', alterado o name para 'serie_id' e ajustado o id -->
+                            <select class="form-select" name="serie_id" id="serie_id_alunos" required>
+                                <option value="" disabled selected>-- Selecione uma Série --</option>
                                 {% for serie in series %}<option value="{{ serie.id }}">{{ serie.nome }}</option>{% endfor %}
                             </select>
-                            <div class="form-text">Segure Ctrl (ou Cmd) para selecionar várias.</div>
+                            <!-- Removido o texto de ajuda para seleção múltipla -->
                         </div>
                         <button type="submit" class="btn btn-primary w-100 mt-auto">Gerar PDF</button>
                     </form>
@@ -40,20 +41,20 @@
 
         <div class="col-md-6 col-lg-4">
             <div class="card h-100 shadow-sm">
-                <div class="card-header"><h5 class="mb-0"><i class="bi bi-file-earmark-text-fill me-2"></i>Boletim por Turma</h5></div>
+                <div class="card-header"><h5 class="mb-0"><i class="bi bi-file-earmark-text-fill me-2"></i>Boletim do Aluno</h5></div>
                 <div class="card-body d-flex flex-column">
-                    <!-- CORREÇÃO APLICADA AQUI -->
-                    <form action="{{ url_for('main_routes.relatorio_boletim_aluno') }}" method="POST" target="_blank" class="d-flex flex-column flex-grow-1">
+                     <form action="{{ url_for('main_routes.relatorio_boletim_aluno') }}" method="POST" target="_blank" class="d-flex flex-column flex-grow-1">
                         <div class="mb-3">
                             <label for="ano_letivo_boletim" class="form-label">Ano Letivo</label>
                             <select class="form-select" name="ano_letivo_id" id="ano_letivo_boletim" required>
                                 {% for ano in anos_letivos %}<option value="{{ ano.id }}">{{ ano.ano }}</option>{% endfor %}
                             </select>
                         </div>
-                        <div class="mb-3">
-                            <label for="serie_id_boletim" class="form-label">Série</label>
-                            <select class="form-select" name="serie_id" id="serie_id_boletim" required>
-                                {% for serie in series %}<option value="{{ serie.id }}">{{ serie.nome }}</option>{% endfor %}
+                        <div class="mb-3 flex-grow-1">
+                            <label for="aluno_id_boletim" class="form-label">Aluno</label>
+                            <select class="form-select" name="aluno_id" id="aluno_id_boletim" required>
+                                <option value="" disabled selected>-- Selecione um Aluno --</option>
+                                {% for aluno in alunos %}<option value="{{ aluno.id }}">{{ aluno.nome }}</option>{% endfor %}
                             </select>
                         </div>
                         <button type="submit" class="btn btn-primary w-100 mt-auto">Gerar PDF</button>
@@ -66,8 +67,14 @@
             <div class="card h-100 shadow-sm">
                 <div class="card-header"><h5 class="mb-0"><i class="bi bi-bar-chart-line-fill me-2"></i>Desempenho por Assunto</h5></div>
                 <div class="card-body d-flex flex-column">
-                    <!-- CORREÇÃO APLICADA AQUI -->
-                    <form action="{{ url_for('main_routes.relatorio_desempenho_por_assunto') }}" method="POST" target="_blank" class="d-flex flex-column flex-grow-1">
+                     <form action="{{ url_for('main_routes.relatorio_desempenho_por_assunto') }}" method="POST" target="_blank" class="d-flex flex-column flex-grow-1">
+                        <div class="mb-3">
+                            <label for="ano_letivo_assunto" class="form-label">Ano Letivo</label>
+                            <select name="ano_letivo_id" id="ano_letivo_assunto" class="form-select" required>
+                                <option value="" disabled selected>-- Selecione um Ano --</option>
+                                {% for ano in anos_letivos %}<option value="{{ ano.id }}">{{ ano.ano }}</option>{% endfor %}
+                            </select>
+                        </div>
                         <div class="mb-3">
                             <label for="serie_id_assunto" class="form-label">Série</label>
                             <select name="serie_id" id="serie_id_assunto" class="form-select" required>
@@ -75,7 +82,7 @@
                                 {% for serie in series %}<option value="{{ serie.id }}">{{ serie.nome }}</option>{% endfor %}
                             </select>
                         </div>
-                        <div class="mb-3">
+                        <div class="mb-3 flex-grow-1">
                             <label for="disciplina_id_assunto" class="form-label">Disciplina</label>
                             <select name="disciplina_id" id="disciplina_id_assunto" class="form-select" required>
                                 <option value="" disabled selected>-- Selecione uma Disciplina --</option>
@@ -93,16 +100,22 @@
                 <div class="card-header"><h5 class="mb-0"><i class="bi bi-search me-2"></i>Análise de Itens (Questões)</h5></div>
                 <div class="card-body d-flex flex-column">
                     <p class="small text-muted">Avalie a qualidade de cada questão em uma prova ou simulado.</p>
-                    <!-- CORREÇÃO APLICADA AQUI -->
-                    <form action="{{ url_for('main_routes.relatorio_analise_de_itens') }}" method="POST" target="_blank" class="mt-auto">
+                     <form action="{{ url_for('main_routes.relatorio_analise_de_itens') }}" method="POST" target="_blank" class="d-flex flex-column flex-grow-1">
                         <div class="mb-3">
-                            <label for="avaliacao_id_analise" class="form-label">Avaliação</label>
-                            <select name="avaliacao_id" id="avaliacao_id_analise" class="form-select" required>
-                                <option value="" disabled selected>-- Selecione uma Avaliação --</option>
-                                {% for avaliacao in avaliacoes %}<option value="{{ avaliacao.id }}">{{ avaliacao.nome }} ({{ avaliacao.tipo|capitalize }})</option>{% endfor %}
+                             <label for="ano_letivo_analise" class="form-label">Ano Letivo</label>
+                            <select name="ano_letivo_id" id="ano_letivo_analise" class="form-select" required>
+                                <option value="" disabled selected>-- Selecione um Ano --</option>
+                                {% for ano in anos_letivos %}<option value="{{ ano.id }}">{{ ano.ano }}</option>{% endfor %}
                             </select>
                         </div>
-                        <div class="d-grid"><button type="submit" class="btn btn-primary">Gerar PDF</button></div>
+                        <div class="mb-3 flex-grow-1">
+                            <label for="modelo_id_analise" class="form-label">Modelo de Avaliação</label>
+                            <select name="modelo_id" id="modelo_id_analise" class="form-select" required>
+                                <option value="" disabled selected>-- Selecione uma Avaliação --</option>
+                                {% for modelo in modelos_avaliacao %}<option value="{{ modelo.id }}">{{ modelo.nome }}</option>{% endfor %}
+                            </select>
+                        </div>
+                        <div class="d-grid mt-auto"><button type="submit" class="btn btn-primary">Gerar PDF</button></div>
                     </form>
                 </div>
             </div>
@@ -112,9 +125,14 @@
             <div class="card h-100 shadow-sm">
                 <div class="card-header"><h5 class="mb-0"><i class="bi bi-layers-fill me-2"></i>Desempenho por Nível</h5></div>
                 <div class="card-body d-flex flex-column">
-                    <p class="small text-muted">Analise a performance da turma ou de um aluno por dificuldade.</p>
-                    <!-- CORREÇÃO APLICADA AQUI -->
-                    <form action="{{ url_for('main_routes.relatorio_desempenho_por_nivel') }}" method="POST" target="_blank" class="d-flex flex-column flex-grow-1">
+                     <form action="{{ url_for('main_routes.relatorio_desempenho_por_nivel') }}" method="POST" target="_blank" class="d-flex flex-column flex-grow-1">
+                        <div class="mb-3">
+                            <label for="ano_letivo_nivel" class="form-label">Ano Letivo</label>
+                            <select name="ano_letivo_id" id="ano_letivo_nivel" class="form-select" required>
+                                <option value="" disabled selected>-- Selecione um Ano --</option>
+                                {% for ano in anos_letivos %}<option value="{{ ano.id }}">{{ ano.ano }}</option>{% endfor %}
+                            </select>
+                        </div>
                         <div class="mb-3">
                             <label for="serie_id_nivel" class="form-label">Série</label>
                             <select name="serie_id" id="serie_id_nivel" class="form-select" required>
@@ -122,10 +140,11 @@
                                 {% for serie in series %}<option value="{{ serie.id }}">{{ serie.nome }}</option>{% endfor %}
                             </select>
                         </div>
-                        <div class="mb-3">
-                            <label for="aluno_id_nivel" class="form-label">Aluno</label>
-                            <select name="aluno_id" id="aluno_id_nivel" class="form-select">
-                                <option value="0">Todos os Alunos da Série</option>
+                        <div class="mb-3 flex-grow-1">
+                            <label for="disciplina_id_nivel" class="form-label">Disciplina</label>
+                            <select name="disciplina_id" id="disciplina_id_nivel" class="form-select" required>
+                                <option value="" disabled selected>-- Selecione uma Disciplina --</option>
+                                {% for disciplina in disciplinas %}<option value="{{ disciplina.id }}">{{ disciplina.nome }}</option>{% endfor %}
                             </select>
                         </div>
                         <button type="submit" class="btn btn-primary w-100 mt-auto">Gerar PDF</button>
@@ -139,18 +158,22 @@
                 <div class="card-header"><h5 class="mb-0"><i class="bi bi-diagram-3-fill me-2"></i>Comparativo entre Turmas</h5></div>
                 <div class="card-body d-flex flex-column">
                     <p class="small text-muted">Compare o desempenho de diferentes turmas na mesma avaliação.</p>
-                    <!-- CORREÇÃO APLICADA AQUI -->
-                    <form action="{{ url_for('main_routes.relatorio_comparativo_turmas') }}" method="POST" target="_blank" class="mt-auto">
+                     <form action="{{ url_for('main_routes.relatorio_comparativo_turmas') }}" method="POST" target="_blank" class="d-flex flex-column flex-grow-1">
                         <div class="mb-3">
-                            <label for="avaliacao_id_comparativo" class="form-label">Avaliação</label>
-                            <select name="avaliacao_id" id="avaliacao_id_comparativo" class="form-select" required>
-                                <option value="" disabled selected>-- Selecione uma Avaliação --</option>
-                                {% for avaliacao in avaliacoes %}
-                                    <option value="{{ avaliacao.id }}">{{ avaliacao.nome }} ({{ avaliacao.tipo|capitalize }})</option>
-                                {% endfor %}
+                             <label for="ano_letivo_comparativo" class="form-label">Ano Letivo</label>
+                            <select name="ano_letivo_id" id="ano_letivo_comparativo" class="form-select" required>
+                                <option value="" disabled selected>-- Selecione um Ano --</option>
+                                {% for ano in anos_letivos %}<option value="{{ ano.id }}">{{ ano.ano }}</option>{% endfor %}
                             </select>
                         </div>
-                        <div class="d-grid">
+                        <div class="mb-3 flex-grow-1">
+                            <label for="modelo_id_comparativo" class="form-label">Modelo de Avaliação</label>
+                            <select name="modelo_id" id="modelo_id_comparativo" class="form-select" required>
+                                <option value="" disabled selected>-- Selecione uma Avaliação --</option>
+                                {% for modelo in modelos_avaliacao %}<option value="{{ modelo.id }}">{{ modelo.nome }}</option>{% endfor %}
+                            </select>
+                        </div>
+                        <div class="d-grid mt-auto">
                             <button type="submit" class="btn btn-primary">Gerar PDF</button>
                         </div>
                     </form>
@@ -162,7 +185,6 @@
                 <div class="card-header"><h5 class="mb-0"><i class="bi bi-clipboard-data-fill me-2"></i>Saúde do Banco de Questões</h5></div>
                 <div class="card-body d-flex flex-column">
                     <p class="small text-muted">Obtenha uma visão geral de todas as questões cadastradas na escola.</p>
-                    <!-- CORREÇÃO APLICADA AQUI -->
                     <a href="{{ url_for('main_routes.relatorio_saude_banco_questoes') }}" target="_blank" class="btn btn-secondary w-100 mt-auto">Gerar Relatório</a>
                 </div>
             </div>
@@ -172,8 +194,7 @@
             <div class="card h-100 shadow-sm">
                 <div class="card-header"><h5 class="mb-0"><i class="bi bi-person-video3 me-2"></i>Lista de Professores</h5></div>
                 <div class="card-body d-flex flex-column">
-                    <p>Gera uma lista com todos os professores cadastrados na escola.</p>
-                    <!-- CORREÇÃO APLICADA AQUI -->
+                    <p class="small text-muted">Gera uma lista com todos os professores cadastrados na escola.</p>
                     <a href="{{ url_for('main_routes.relatorio_professores') }}" target="_blank" class="btn btn-secondary w-100 mt-auto">Gerar PDF</a>
                 </div>
             </div>
@@ -183,15 +204,22 @@
             <div class="card h-100 shadow-sm">
                 <div class="card-header"><h5 class="mb-0"><i class="bi bi-graph-up-arrow me-2"></i>Resultados de Simulado</h5></div>
                 <div class="card-body d-flex flex-column">
-                    <!-- CORREÇÃO APLICADA AQUI -->
-                    <form action="{{ url_for('main_routes.relatorio_resultado_simulado') }}" method="POST" target="_blank" class="mt-auto">
+                     <form action="{{ url_for('main_routes.relatorio_resultado_simulado') }}" method="POST" target="_blank" class="d-flex flex-column flex-grow-1">
                         <div class="mb-3">
-                            <label for="avaliacao_id_simulado" class="form-label">Selecione o Simulado</label>
-                            <select class="form-select" name="avaliacao_id" id="avaliacao_id_simulado" required>
-                                {% for simulado in simulados %}<option value="{{ simulado.id }}">{{ simulado.nome }} ({{ simulado.ano_letivo.ano }})</option>{% else %}<option disabled>Nenhum simulado encontrado</option>{% endfor %}
+                            <label for="ano_letivo_simulado" class="form-label">Ano Letivo</label>
+                            <select name="ano_letivo_id" id="ano_letivo_simulado" class="form-select" required>
+                                <option value="" disabled selected>-- Selecione um Ano --</option>
+                                {% for ano in anos_letivos %}<option value="{{ ano.id }}">{{ ano.ano }}</option>{% endfor %}
                             </select>
                         </div>
-                        <button type="submit" class="btn btn-primary w-100">Gerar PDF</button>
+                        <div class="mb-3 flex-grow-1">
+                            <label for="modelo_id_simulado" class="form-label">Selecione o Simulado</label>
+                            <select class="form-select" name="modelo_id" id="modelo_id_simulado" required>
+                                <option value="" disabled selected>-- Selecione um Modelo --</option>
+                                {% for modelo in modelos_avaliacao %}{% if modelo.tipo == 'simulado' %}<option value="{{ modelo.id }}">{{ modelo.nome }}</option>{% endif %}{% endfor %}
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 mt-auto">Gerar PDF</button>
                     </form>
                 </div>
             </div>
@@ -204,40 +232,6 @@
 {% block scripts %}
 {{ super() }}
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const serieSelectNivel = document.getElementById('serie_id_nivel');
-        const alunoSelectNivel = document.getElementById('aluno_id_nivel');
-
-        if (serieSelectNivel) {
-            serieSelectNivel.addEventListener('change', function() {
-                const serieId = this.value;
-                alunoSelectNivel.innerHTML = '<option value="0">Carregando...</option>';
-
-                if (!serieId) {
-                    alunoSelectNivel.innerHTML = '<option value="0">Todos os Alunos da Série</option>';
-                    return;
-                }
-
-                // CORREÇÃO APLICADA AQUI
-                const url = `{{ url_for('main_routes.api_alunos_por_serie', serie_id=0) }}`.replace('0', serieId);
-
-                fetch(url)
-                    .then(response => response.json())
-                    .then(data => {
-                        alunoSelectNivel.innerHTML = '<option value="0">Todos os Alunos da Série</option>';
-                        if (data.alunos) {
-                            data.alunos.forEach(aluno => {
-                                const option = new Option(aluno.nome, aluno.id);
-                                alunoSelectNivel.add(option);
-                            });
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Erro ao buscar alunos:', error);
-                        alunoSelectNivel.innerHTML = '<option value="0">Erro ao carregar</option>';
-                    });
-            });
-        }
-    });
+    // Este script foi removido pois não era mais necessário com a correção da lógica dos formulários.
 </script>
 {% endblock %}
