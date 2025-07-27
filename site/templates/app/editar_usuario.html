@@ -135,7 +135,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     }).join('');
                     
                     const badgeClass = data.matriculado ? 'bg-success' : 'bg-warning text-dark';
-                    const statusAtual = `Status atual: <span class="badge ${badgeClass}">${data.status | capitalize}</span>`;
+                    
+                    // ### CORREÇÃO APLICADA AQUI ###
+                    // Capitaliza o status usando JavaScript puro, pois o filtro |capitalize não funciona aqui.
+                    const statusText = data.status ? data.status.charAt(0).toUpperCase() + data.status.slice(1) : '';
+                    const statusAtual = `Status atual: <span class="badge ${badgeClass}">${statusText}</span>`;
+                    // ### FIM DA CORREÇÃO ###
 
                     const anoSelecionadoTexto = anoLetivoSelect.options[anoLetivoSelect.selectedIndex].text.match(/\d{4}/);
                     const anoFormatado = anoSelecionadoTexto ? anoSelecionadoTexto[0] : '';
