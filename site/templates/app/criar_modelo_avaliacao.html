@@ -135,13 +135,12 @@
             fetch(url)
                 .then(response => response.ok ? response.json() : Promise.reject('Erro de rede'))
                 .then(data => {
-                    assuntosSelect.innerHTML = '';
+                    // ### CORREÇÃO APLICADA AQUI ###
+                    // Constrói as opções como uma string HTML e depois atualiza o innerHTML de uma vez.
+                    // Isso é mais robusto do que adicionar uma por uma.
                     if (data.assuntos && data.assuntos.length > 0) {
-                        data.assuntos.forEach(assunto => {
-                            // ### CORREÇÃO APLICADA AQUI ###
-                            // A API retorna uma lista de strings, então 'assunto' é a string, não um objeto.
-                            assuntosSelect.add(new Option(assunto, assunto));
-                        });
+                        const optionsHTML = data.assuntos.map(assunto => `<option value="${assunto}">${assunto}</option>`).join('');
+                        assuntosSelect.innerHTML = optionsHTML;
                     } else {
                         assuntosSelect.innerHTML = '<option disabled>Nenhum assunto encontrado</option>';
                     }
