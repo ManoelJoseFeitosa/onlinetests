@@ -6,7 +6,6 @@
 <div class="container-fluid mt-4 px-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="display-6">Detalhes da Avaliação</h1>
-        <!-- CORREÇÃO APLICADA AQUI -->
         <a href="{{ url_for('main_routes.listar_modelos_avaliacao') }}" class="btn btn-outline-secondary">&larr; Voltar à Lista</a>
     </div>
 
@@ -22,10 +21,13 @@
                     <p><strong>Criada por:</strong> {{ modelo.criador.nome }}</p>
                 </div>
                 <div class="col-md-6">
+                    <!-- ### CORREÇÃO 1: Lógica correta para somar as questões ### -->
                     {% set total_questoes = namespace(value=0) %}
                     {% if modelo.regras_selecao and modelo.regras_selecao.disciplinas %}
                         {% for disc in modelo.regras_selecao.disciplinas %}
-                            {% set total_questoes.value = total_questoes.value + (disc.niveis.facil or 0) + (disc.niveis.media or 0) + (disc.niveis.dificil or 0) %}
+                            {% for nivel in disc.questoes_por_nivel %}
+                                {% set total_questoes.value = total_questoes.value + (nivel.quantidade or 0) %}
+                            {% endfor %}
                         {% endfor %}
                     {% endif %}
                     <p><strong>Nº de Questões (por aluno):</strong> {{ total_questoes.value }}</p>
@@ -44,13 +46,15 @@
                 <div class="col-md-6 border-end">
                     <div class="p-3">
                         <h6>Participantes</h6>
-                        <p class="display-5 fw-bold text-primary">{{ num_participantes }}</p>
+                        <!-- ### CORREÇÃO 2: Usando a variável correta vinda do backend ### -->
+                        <p class="display-5 fw-bold text-primary">{{ stats.total_realizadas }}</p>
                     </div>
                 </div>
                 <div class="col-md-6">
                     <div class="p-3">
                         <h6>Média da Turma</h6>
-                        <p class="display-5 fw-bold text-primary">{{ "%.2f"|format(media_turma) }}</p>
+                        <!-- ### CORREÇÃO 3: Usando a variável correta vinda do backend ### -->
+                        <p class="display-5 fw-bold text-primary">{{ "%.2f"|format(stats.media_geral) }}</p>
                     </div>
                 </div>
             </div>
@@ -81,19 +85,18 @@
                             <td>
                                 {% if resultado.status == 'Finalizado' %}
                                     <span class="badge bg-success">Finalizado</span>
-                                {% elif resultado.status == 'Pendente' %}
-                                    <span class="badge bg-warning text-dark">Pendente</span>
+                                {% elif resultado.status == 'Iniciada' %}
+                                    <span class="badge bg-warning text-dark">Em Andamento</span>
                                 {% else %}
                                     <span class="badge bg-secondary">{{ resultado.status }}</span>
                                 {% endif %}
                             </td>
                             <td><strong>{{ "%.2f"|format(resultado.nota) if resultado.nota is not none else 'N/A' }}</strong></td>
                             <td>
-                                {% if resultado.status == 'Pendente' %}
-                                    <!-- CORREÇÃO APLICADA AQUI -->
+                                {% if resultado.status == 'Finalizado' %}
+                                    <a href="{{ url_for('main_routes.corrigir_respostas', resultado_id=resultado.id) }}" class="btn btn-sm btn-outline-secondary">Revisar</a>
+                                {% else %}
                                     <a href="{{ url_for('main_routes.corrigir_respostas', resultado_id=resultado.id) }}" class="btn btn-sm btn-primary">Corrigir</a>
-                                {% elif resultado.status == 'Finalizado' %}
-                                    <a href="#" class="btn btn-sm btn-outline-secondary disabled">Revisado</a>
                                 {% endif %}
                             </td>
                         </tr>
