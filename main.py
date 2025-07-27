@@ -2310,7 +2310,6 @@ def relatorio_alunos_por_serie():
     em uma série/turma específica em um determinado ano letivo.
     """
     try:
-        # 1. Obter os filtros do formulário
         serie_id = request.form.get('serie_id', type=int)
         ano_letivo_id = request.form.get('ano_letivo_id', type=int)
 
@@ -2318,15 +2317,11 @@ def relatorio_alunos_por_serie():
             flash('Série e ano letivo são obrigatórios para gerar este relatório.', 'danger')
             return redirect(url_for('main_routes.painel_relatorios'))
 
-        # 2. Buscar informações para o cabeçalho e validar permissão
         serie = Serie.query.get(serie_id)
         ano_letivo = AnoLetivo.query.get(ano_letivo_id)
         if not serie or not ano_letivo or serie.escola_id != current_user.escola_id:
             abort(404)
 
-        # 3. Buscar todos os alunos matriculados na série e ano letivo especificados.
-        #    A tabela Matricula é a fonte perfeita para esta informação.
-        #    Usamos joinedload para já carregar os dados do aluno e ordenamos pelo nome.
         matriculas = Matricula.query.options(
             joinedload(Matricula.aluno)
         ).filter_by(
@@ -2338,7 +2333,6 @@ def relatorio_alunos_por_serie():
             flash(f'Nenhum aluno encontrado para a turma "{serie.nome}" no ano de {ano_letivo.ano}.', 'warning')
             return redirect(url_for('main_routes.painel_relatorios'))
 
-        # 4. Renderizar o template HTML para o PDF
         html_renderizado = render_template(
             'app/reports/lista_alunos_pdf.html',
             serie=serie,
@@ -2347,18 +2341,21 @@ def relatorio_alunos_por_serie():
             data_geracao=datetime.now()
         )
 
-        # 5. Gerar o PDF e retornar a resposta
         pdf = HTML(string=html_renderizado).write_pdf()
         response = make_response(pdf)
         response.headers['Content-Type'] = 'application/pdf'
-        response.headers['Content-Disposition'] = f'inline; filename=lista_alunos_{serie.nome}.pdf'
+        
+        # Garante que o nome do arquivo seja seguro para o header
+        nome_arquivo_seguro = secure_filename(f'lista_alunos_{serie.nome}.pdf')
+        response.headers['Content-Disposition'] = f'inline; filename={nome_arquivo_seguro}'
         
         log_audit('REPORT_GENERATED', details={'report_type': 'lista_alunos_por_serie', 'filters': f'Série ID: {serie_id}'})
         return response
 
     except Exception as e:
-        print(f"ERRO ao gerar relatório de alunos por série: {e}")
-        flash("Ocorreu um erro inesperado ao gerar o relatório. Tente novamente.", "danger")
+        db.session.rollback()
+        print(f"ERRO CRÍTICO AO GERAR RELATÓRIO DE ALUNOS: {e}")
+        flash(f"Ocorreu um erro inesperado ao gerar o relatório. Detalhe: {e}", "danger")
         return redirect(url_for('main_routes.painel_relatorios'))
 
 @main_routes.route('/admin/relatorios/professores')
