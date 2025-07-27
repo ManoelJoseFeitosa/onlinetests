@@ -2,9 +2,22 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Boletim do Aluno</title>
+    <title>Boletim dos Alunos da Turma</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; margin: 1.5cm; color: #333; }
+        
+        /* --- NOVO --- */
+        /* Este container irá envolver o boletim de CADA aluno */
+        .boletim-container {
+            /* A regra mais importante: força uma quebra de página DEPOIS de cada boletim */
+            page-break-after: always;
+        }
+        /* Para evitar uma página em branco extra no final do PDF */
+        .boletim-container:last-child {
+            page-break-after: avoid;
+        }
+        /* --- FIM DO NOVO --- */
+
         header { text-align: center; margin-bottom: 20px; }
         h1 { border-bottom: 2px solid #eee; padding-bottom: 10px; font-size: 24px; }
         .header-info { background-color: #f8f9fa; padding: 15px; border: 1px solid #dee2e6; border-radius: 5px; margin-bottom: 25px; font-size: 14px; }
@@ -20,47 +33,60 @@
     </style>
 </head>
 <body>
-    <header>
-        <h1>Boletim de Desempenho do Aluno</h1>
-    </header>
 
-    <div class="header-info">
-        <p><strong>Aluno(a):</strong> {{ aluno.nome }}</p>
-        <p><strong>Escola:</strong> {{ aluno.escola.nome }}</p>
-        <p><strong>Ano Letivo:</strong> {{ ano_letivo.ano }}</p>
-        <p><strong>Data de Geração:</strong> {{ data_geracao.strftime('%d/%m/%Y às %H:%M') }}</p>
-    </div>
+    {% for dados_aluno in todos_os_boletins %}
+    
+    <div class="boletim-container">
 
-    {% for disciplina_data in boletim_data|sort(attribute='nome_disciplina') %}
-    <div class="disciplina-block">
-        <div class="disciplina-header">{{ disciplina_data.nome_disciplina }}</div>
-        <table class="disciplina-table">
-            <thead>
-                <tr>
-                    <th>Avaliação</th>
-                    <th style="text-align: right; width: 20%;">Nota</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for avaliacao in disciplina_data.avaliacoes %}
-                <tr>
-                    <td>{{ avaliacao.nome }}</td>
-                    <td style="text-align: right;">{{ "%.2f"|format(avaliacao.nota) }}</td>
-                </tr>
-                {% endfor %}
-                <tr>
-                    <td><strong>MÉDIA FINAL</strong></td>
-                    <td style="text-align: right;"><strong>{{ "%.2f"|format(disciplina_data.media_final) }}</strong></td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-    {% else %}
-        <p style="text-align: center; margin-top: 20px;">Nenhum resultado encontrado para este aluno no ano letivo selecionado.</p>
+        <header>
+            <h1>Boletim de Desempenho do Aluno</h1>
+        </header>
+
+        <div class="header-info">
+            <p><strong>Aluno(a):</strong> {{ dados_aluno.aluno.nome }}</p>
+            <p><strong>Escola:</strong> {{ dados_aluno.aluno.escola.nome }}</p>
+            <p><strong>Série:</strong> {{ serie.nome }}</p>
+            <p><strong>Ano Letivo:</strong> {{ ano_letivo.ano }}</p>
+            <p><strong>Data de Geração:</strong> {{ data_geracao.strftime('%d/%m/%Y às %H:%M') }}</p>
+        </div>
+
+        {% if dados_aluno.sem_resultados %}
+            <p style="text-align: center; margin-top: 20px;">Nenhum resultado finalizado encontrado para este aluno.</p>
+        {% else %}
+            {% for disciplina_data in dados_aluno.boletim_data %}
+            <div class="disciplina-block">
+                <div class="disciplina-header">{{ disciplina_data.nome_disciplina }}</div>
+                <table class="disciplina-table">
+                    <thead>
+                        <tr>
+                            <th>Avaliação</th>
+                            <th style="text-align: right; width: 20%;">Nota</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for avaliacao in disciplina_data.avaliacoes %}
+                        <tr>
+                            <td>{{ avaliacao.nome }}</td>
+                            <td style="text-align: right;">{{ "%.2f"|format(avaliacao.nota) }}</td>
+                        </tr>
+                        {% endfor %}
+                        <tr>
+                            <td><strong>MÉDIA FINAL</strong></td>
+                            <td style="text-align: right;"><strong>{{ "%.2f"|format(disciplina_data.media_final) }}</strong></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            {% endfor %}
+        {% endif %}
+
+        <footer>
+            <p>OnlineTests - Relatório gerado automaticamente.</p>
+        </footer>
+
+    </div> {% else %}
+        <h1 style="text-align: center;">Nenhum aluno encontrado</h1>
+        <p style="text-align: center;">Não foram encontrados alunos na série <strong>{{ serie.nome }}</strong> para o ano letivo de <strong>{{ ano_letivo.ano }}</strong>.</p>
     {% endfor %}
-
-    <footer>
-        <p>OnlineTests - Relatório gerado automaticamente.</p>
-    </footer>
-</body>
+    </body>
 </html>

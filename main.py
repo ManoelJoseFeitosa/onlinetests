@@ -2472,67 +2472,96 @@ def relatorio_resultado_simulado():
 @role_required('coordenador')
 def relatorio_boletim_aluno():
     """
-    Gera um relatório PDF com o boletim de notas de um aluno específico
-    para um determinado ano letivo, agrupando os resultados por disciplina.
+    Gera um relatório PDF com os boletins de todos os alunos de uma série específica
+    para um determinado ano letivo. Cada aluno em uma nova página.
     """
     try:
-        # 1. Obter os filtros do formulário
-        aluno_id = request.form.get('aluno_id', type=int)
+        # 1. Obter os filtros do formulário (agora por Série)
+        serie_id = request.form.get('serie_id', type=int)
         ano_letivo_id = request.form.get('ano_letivo_id', type=int)
 
-        if not all([aluno_id, ano_letivo_id]):
-            flash('Aluno e ano letivo são obrigatórios para gerar o boletim.', 'danger')
+        if not all([serie_id, ano_letivo_id]):
+            flash('Ano letivo e Série são obrigatórios para gerar os boletins.', 'danger')
             return redirect(url_for('main_routes.painel_relatorios'))
 
-        # 2. Buscar informações para o cabeçalho e validar permissão
-        aluno = Usuario.query.get(aluno_id)
+        # 2. Buscar informações para o cabeçalho
         ano_letivo = AnoLetivo.query.get(ano_letivo_id)
-        if not aluno or not ano_letivo or aluno.escola_id != current_user.escola_id:
+        serie = Serie.query.get(serie_id)
+        if not ano_letivo or not serie or serie.escola_id != current_user.escola_id:
             abort(404)
 
-        # 3. Buscar todos os resultados finalizados do aluno no ano letivo
-        resultados = Resultado.query.options(
-            joinedload(Resultado.avaliacao).joinedload(Avaliacao.disciplina)
-        ).filter(
-            Resultado.aluno_id == aluno_id,
-            Resultado.ano_letivo_id == ano_letivo_id,
-            Resultado.status == 'Finalizado',
-            Resultado.nota.isnot(None)
-        ).all()
-        
-        if not resultados:
-            flash(f'Nenhum resultado finalizado encontrado para o aluno "{aluno.nome}" no ano de {ano_letivo.ano}.', 'warning')
+        # 3. Buscar todos os alunos da série selecionada
+        alunos_da_serie = Usuario.query.filter(
+            Usuario.serie_id == serie_id,
+            Usuario.escola_id == current_user.escola_id,
+            Usuario.role == 'aluno' # Garantir que estamos pegando apenas alunos
+        ).order_by(Usuario.nome).all()
+
+        if not alunos_da_serie:
+            flash(f'Nenhum aluno encontrado na série "{serie.nome}" para o ano de {ano_letivo.ano}.', 'warning')
             return redirect(url_for('main_routes.painel_relatorios'))
 
-        # 4. Processar e agrupar os resultados por disciplina
-        boletim_data = {}
-        for res in resultados:
-            # Apenas avaliações ligadas a uma disciplina entram no boletim
-            if res.avaliacao and res.avaliacao.disciplina:
-                disciplina = res.avaliacao.disciplina
-                if disciplina.id not in boletim_data:
-                    boletim_data[disciplina.id] = {
-                        'nome_disciplina': disciplina.nome,
-                        'avaliacoes': [],
-                        'media_final': 0
-                    }
-                boletim_data[disciplina.id]['avaliacoes'].append({
-                    'nome': res.avaliacao.nome,
-                    'nota': res.nota
+        # 4. Processar o boletim para CADA aluno
+        todos_os_boletins = []
+        for aluno in alunos_da_serie:
+            # Buscar todos os resultados finalizados do aluno no ano letivo
+            resultados = Resultado.query.options(
+                joinedload(Resultado.avaliacao).joinedload(Avaliacao.disciplina)
+            ).filter(
+                Resultado.aluno_id == aluno.id,
+                Resultado.ano_letivo_id == ano_letivo_id,
+                Resultado.status == 'Finalizado',
+                Resultado.nota.isnot(None)
+            ).all()
+            
+            # Se o aluno não tiver resultados, podemos pulá-lo ou mostrar um boletim vazio
+            if not resultados:
+                # Opção 1: Pular o aluno
+                # continue
+                # Opção 2: Adicionar com dados vazios para que ele apareça no PDF
+                 todos_os_boletins.append({
+                    'aluno': aluno,
+                    'boletim_data': {},
+                    'sem_resultados': True # Flag para o template saber
                 })
-        
-        # Calcular a média final para cada disciplina
-        for disc_id in boletim_data:
-            notas = [av['nota'] for av in boletim_data[disc_id]['avaliacoes']]
-            if notas:
-                boletim_data[disc_id]['media_final'] = sum(notas) / len(notas)
+                 continue
 
-        # 5. Renderizar o template HTML para o PDF
+
+            # Agrupar os resultados por disciplina
+            boletim_data = {}
+            for res in resultados:
+                if res.avaliacao and res.avaliacao.disciplina:
+                    disciplina = res.avaliacao.disciplina
+                    if disciplina.id not in boletim_data:
+                        boletim_data[disciplina.id] = {
+                            'nome_disciplina': disciplina.nome,
+                            'avaliacoes': [],
+                            'media_final': 0
+                        }
+                    boletim_data[disciplina.id]['avaliacoes'].append({
+                        'nome': res.avaliacao.nome,
+                        'nota': res.nota
+                    })
+            
+            # Calcular a média final para cada disciplina
+            for disc_id in boletim_data:
+                notas = [av['nota'] for av in boletim_data[disc_id]['avaliacoes']]
+                if notas:
+                    boletim_data[disc_id]['media_final'] = round(sum(notas) / len(notas), 2)
+            
+            # Adicionar os dados processados do aluno à lista principal
+            todos_os_boletins.append({
+                'aluno': aluno,
+                'boletim_data': sorted(boletim_data.values(), key=lambda x: x['nome_disciplina']),
+                'sem_resultados': False
+            })
+
+        # 5. Renderizar o template HTML com os dados de TODOS os alunos
         html_renderizado = render_template(
             'app/reports/boletim_aluno_pdf.html',
-            aluno=aluno,
+            todos_os_boletins=todos_os_boletins,
+            serie=serie,
             ano_letivo=ano_letivo,
-            boletim_data=boletim_data.values(),
             data_geracao=datetime.now()
         )
 
@@ -2540,13 +2569,13 @@ def relatorio_boletim_aluno():
         pdf = HTML(string=html_renderizado).write_pdf()
         response = make_response(pdf)
         response.headers['Content-Type'] = 'application/pdf'
-        response.headers['Content-Disposition'] = f'inline; filename=boletim_{aluno.nome}.pdf'
+        response.headers['Content-Disposition'] = f'inline; filename=boletins_{serie.nome}_{ano_letivo.ano}.pdf'
         
-        log_audit('REPORT_GENERATED', details={'report_type': 'boletim_aluno', 'filters': f'Aluno ID: {aluno_id}'})
+        log_audit('REPORT_GENERATED', details={'report_type': 'boletim_turma', 'filters': f'Série ID: {serie_id}'})
         return response
 
     except Exception as e:
-        print(f"ERRO ao gerar boletim do aluno: {e}")
+        print(f"ERRO ao gerar boletim da turma: {e}")
         flash("Ocorreu um erro inesperado ao gerar o relatório. Tente novamente.", "danger")
         return redirect(url_for('main_routes.painel_relatorios'))
 
