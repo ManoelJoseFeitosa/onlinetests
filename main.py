@@ -2333,8 +2333,10 @@ def relatorio_alunos_por_serie():
             flash(f'Nenhum aluno encontrado para a turma "{serie.nome}" no ano de {ano_letivo.ano}.', 'warning')
             return redirect(url_for('main_routes.painel_relatorios'))
 
+        # ### CORREÇÃO APLICADA AQUI ###
+        # O caminho do template foi corrigido para corresponder à sua estrutura de pastas.
         html_renderizado = render_template(
-            'app/reports/lista_alunos_pdf.html',
+            'app/relatorios/alunos_por_serie.html',
             serie=serie,
             ano_letivo=ano_letivo,
             matriculas=matriculas,
@@ -2345,7 +2347,6 @@ def relatorio_alunos_por_serie():
         response = make_response(pdf)
         response.headers['Content-Type'] = 'application/pdf'
         
-        # Garante que o nome do arquivo seja seguro para o header
         nome_arquivo_seguro = secure_filename(f'lista_alunos_{serie.nome}.pdf')
         response.headers['Content-Disposition'] = f'inline; filename={nome_arquivo_seguro}'
         
