@@ -24,7 +24,6 @@ import random
 from weasyprint import HTML, CSS
 from sqlalchemy.orm import joinedload
 from sqlalchemy import or_, UniqueConstraint, func, and_
-from app.models import Turma
 import json
 # ### ALTERAÇÃO: Adicionada a biblioteca JWT para gerar e verificar tokens da API
 import jwt
