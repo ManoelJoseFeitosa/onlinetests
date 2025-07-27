@@ -2488,7 +2488,6 @@ def relatorio_boletim_aluno():
             abort(404)
 
         # 3. Buscar todos os alunos da série usando um JOIN com a tabela Matricula.
-        #    Esta é a correção principal.
         alunos_da_serie = Usuario.query.join(
             Matricula, Usuario.id == Matricula.aluno_id
         ).filter(
@@ -2549,8 +2548,10 @@ def relatorio_boletim_aluno():
             })
 
         # 5. Renderizar o template HTML para o PDF
+        # ### CORREÇÃO APLICADA AQUI ###
+        # O caminho do template foi corrigido de 'app/reports/...' para 'app/relatorios/...'.
         html_renderizado = render_template(
-            'app/reports/boletim_aluno_pdf.html',
+            'app/relatorios/boletim_aluno_pdf.html',
             todos_os_boletins=todos_os_boletins,
             serie=serie,
             ano_letivo=ano_letivo,
