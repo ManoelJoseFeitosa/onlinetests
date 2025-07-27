@@ -847,13 +847,19 @@ def gerenciar_usuarios():
         flash('Nenhum ano letivo ativo encontrado. Crie um em "Gerenciar Ciclo".', 'warning')
         return redirect(url_for('main_routes.gerenciar_ciclo'))
 
-    # ### CORREÇÃO APLICADA AQUI (LÓGICA DO POST) ###
     if request.method == 'POST':
-        # Esta seção inteira estava faltando
         nome = request.form.get('nome')
         email = request.form.get('email')
         role = request.form.get('role')
         escola_id = current_user.escola_id
+
+        # 1. Captura a senha provisória enviada pelo formulário.
+        senha_provisoria = request.form.get('senha')
+
+        # 2. Valida se o campo de senha não está vazio.
+        if not senha_provisoria:
+            flash('O campo "Senha Provisória" é obrigatório.', 'danger')
+            return redirect(url_for('main_routes.gerenciar_usuarios'))
 
         # Verifica se o email já existe na escola
         email_existente = Usuario.query.filter(
@@ -864,14 +870,12 @@ def gerenciar_usuarios():
         if email_existente:
             flash(f'O e-mail "{email}" já está cadastrado nesta escola.', 'danger')
             return redirect(url_for('main_routes.gerenciar_usuarios'))
-
-        # Gera uma senha aleatória e segura para o primeiro acesso
-        senha_provisoria = ''.join(random.choices('abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789', k=8))
         
         try:
             novo_usuario = Usuario(
                 nome=nome,
                 email=email,
+                # 3. Usa a senha do formulário para criar o hash.
                 password=generate_password_hash(senha_provisoria, method='pbkdf2:sha256'),
                 role=role,
                 escola_id=escola_id,
@@ -880,7 +884,10 @@ def gerenciar_usuarios():
             db.session.add(novo_usuario)
             db.session.commit()
             log_audit('USER_CREATED', target_obj=novo_usuario, details={'role': role, 'creator': current_user.email})
-            flash(f'{role.capitalize()} "{nome}" cadastrado com sucesso! A senha provisória é: {senha_provisoria}', 'success')
+            
+            # 4. Mensagem de sucesso ajustada, sem expor a senha.
+            flash(f'{role.capitalize()} "{nome}" cadastrado com sucesso! A senha provisória foi definida e deve ser informada ao usuário.', 'success')
+
         except Exception as e:
             db.session.rollback()
             flash(f'Erro ao cadastrar usuário: {e}', 'danger')
@@ -890,7 +897,6 @@ def gerenciar_usuarios():
     # Lógica do GET (permanece a mesma)
     series = Serie.query.filter_by(escola_id=current_user.escola_id).order_by(Serie.nome).all()
     disciplinas = Disciplina.query.filter_by(escola_id=current_user.escola_id).order_by(Disciplina.nome).all()
-    # Usando joinedload para otimizar a consulta das séries dos alunos
     usuarios = Usuario.query.options(
         joinedload(Usuario.matriculas).joinedload(Matricula.serie)
     ).filter(
@@ -904,6 +910,7 @@ def gerenciar_usuarios():
 @login_required
 @role_required('coordenador')
 def editar_usuario(user_id):
+    # A busca inicial do usuário já carrega as associações, o que é ótimo.
     usuario = Usuario.query.options(
         joinedload(Usuario.disciplinas_lecionadas), 
         joinedload(Usuario.series_lecionadas)
@@ -911,12 +918,46 @@ def editar_usuario(user_id):
     
     ano_letivo_ativo = AnoLetivo.query.filter_by(escola_id=current_user.escola_id, status='ativo').first()
 
+    # --- LÓGICA DO POST (SALVAR ALTERAÇÕES) ---
     if request.method == 'POST':
-        # ... Lógica de edição de usuário ... (não precisa mexer aqui)
-        flash('Dados do usuário atualizados com sucesso!', 'success')
-        return redirect(url_for('main_routes.gerenciar_usuarios'))
+        try:
+            # 1. Atualiza os dados pessoais básicos
+            usuario.nome = request.form.get('nome')
+            usuario.email = request.form.get('email')
+            
+            # 2. Atualiza a senha, se uma nova foi fornecida
+            nova_senha = request.form.get('senha')
+            if nova_senha:
+                usuario.password = generate_password_hash(nova_senha, method='pbkdf2:sha256')
+                usuario.precisa_trocar_senha = True # Força o usuário a trocar a senha gerada pelo coordenador
+                flash('Senha do usuário redefinida. Ele precisará criar uma nova senha no próximo login.', 'info')
 
-    # Lógica do GET
+            # 3. Lógica específica para atualizar associações do PROFESSOR
+            if usuario.role == 'professor':
+                disciplinas_ids = request.form.getlist('disciplinas_ids', type=int)
+                series_ids = request.form.getlist('series_ids', type=int)
+
+                # Busca os objetos do banco de dados com base nos IDs recebidos
+                disciplinas_selecionadas = Disciplina.query.filter(Disciplina.id.in_(disciplinas_ids), Disciplina.escola_id == current_user.escola_id).all()
+                series_selecionadas = Serie.query.filter(Serie.id.in_(series_ids), Serie.escola_id == current_user.escola_id).all()
+                
+                # Atualiza as associações do professor
+                usuario.disciplinas_lecionadas = disciplinas_selecionadas
+                usuario.series_lecionadas = series_selecionadas
+                log_audit('PROFESSOR_ASSOCIATIONS_UPDATED', target_obj=usuario, details={'disciplinas': disciplinas_ids, 'series': series_ids})
+
+            # 4. Salva todas as alterações no banco de dados
+            db.session.commit()
+            flash('Dados do usuário atualizados com sucesso!', 'success')
+            return redirect(url_for('main_routes.gerenciar_usuarios'))
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Ocorreu um erro ao atualizar o usuário: {e}', 'danger')
+            print(f"ERRO AO EDITAR USUÁRIO: {e}")
+
+    # --- LÓGICA DO GET (EXIBIR O FORMULÁRIO) ---
+    # Esta parte já estava correta, não precisa de alterações.
     series = Serie.query.filter_by(escola_id=current_user.escola_id).order_by(Serie.nome).all()
     disciplinas = Disciplina.query.filter_by(escola_id=current_user.escola_id).order_by(Disciplina.nome).all()
     series_json = [{'id': s.id, 'nome': s.nome} for s in series]
@@ -925,8 +966,6 @@ def editar_usuario(user_id):
     if ano_letivo_ativo and usuario.role == 'aluno':
         matricula_atual = Matricula.query.filter_by(aluno_id=user_id, ano_letivo_id=ano_letivo_ativo.id).first()
 
-    # ### NOVA LINHA ADICIONADA AQUI ###
-    # Busca todos os anos letivos da escola para popular o dropdown
     anos_letivos = AnoLetivo.query.filter_by(escola_id=current_user.escola_id).order_by(AnoLetivo.ano.desc()).all()
 
     return render_template(
@@ -937,7 +976,6 @@ def editar_usuario(user_id):
         series_json=series_json,
         matricula_atual=matricula_atual,
         ano_letivo_ativo=ano_letivo_ativo,
-        # ### NOVA VARIÁVEL PASSADA PARA O TEMPLATE ###
         anos_letivos=anos_letivos
     )
 
