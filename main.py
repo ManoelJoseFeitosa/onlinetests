@@ -945,9 +945,52 @@ def editar_usuario(user_id):
 @login_required
 @role_required('coordenador')
 def salvar_matricula():
-    user_id = request.form.get('user_id', type=int)
-    # ... Lógica de salvar matrícula ...
-    return redirect(url_for('main_routes.editar_usuario', user_id=user_id))
+    try:
+        # 1. Captura os dados enviados pelo formulário
+        user_id = request.form.get('user_id', type=int)
+        ano_letivo_id = request.form.get('ano_letivo_id', type=int)
+        serie_id = request.form.get('serie_id', type=int)
+
+        # 2. Validação para garantir que todos os dados necessários foram enviados
+        if not all([user_id, ano_letivo_id, serie_id]):
+            flash('Dados insuficientes para salvar a matrícula. Tente novamente.', 'danger')
+            return redirect(url_for('main_routes.gerenciar_usuarios'))
+
+        # 3. Validação de segurança: garante que o aluno pertence à escola do coordenador
+        aluno = Usuario.query.filter_by(id=user_id, escola_id=current_user.escola_id, role='aluno').first_or_404()
+        
+        # 4. Procura por uma matrícula existente para este aluno neste ano letivo
+        matricula = Matricula.query.filter_by(
+            aluno_id=user_id,
+            ano_letivo_id=ano_letivo_id
+        ).first()
+
+        if matricula:
+            # 5. Se a matrícula já existe, apenas atualiza a série
+            matricula.serie_id = serie_id
+            flash(f'Matrícula do aluno {aluno.nome} foi atualizada com sucesso!', 'success')
+        else:
+            # 6. Se não existe, cria uma nova matrícula
+            nova_matricula = Matricula(
+                aluno_id=user_id,
+                ano_letivo_id=ano_letivo_id,
+                serie_id=serie_id,
+                status='cursando'  # Define o status padrão
+            )
+            db.session.add(nova_matricula)
+            flash(f'Aluno {aluno.nome} foi matriculado com sucesso!', 'success')
+
+        # 7. Salva as alterações no banco de dados
+        db.session.commit()
+        log_audit('ENROLLMENT_SAVED', target_obj=aluno, details={'ano_letivo_id': ano_letivo_id, 'serie_id': serie_id})
+
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Ocorreu um erro inesperado ao salvar a matrícula: {e}', 'danger')
+        print(f"ERRO CRÍTICO AO SALVAR MATRÍCULA: {e}") # Log para o servidor
+
+    # 8. Redireciona para a lista de usuários para ver o resultado
+    return redirect(url_for('main_routes.gerenciar_usuarios'))
 
 @main_routes.route('/admin/gerenciar-academico', methods=['GET', 'POST'])
 @login_required
