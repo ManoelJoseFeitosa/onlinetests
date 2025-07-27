@@ -21,7 +21,7 @@ from datetime import datetime, timedelta
 import random
 from weasyprint import HTML, CSS
 from sqlalchemy.orm import joinedload
-from sqlalchemy import or_, UniqueConstraint, func, and_
+from sqlalchemy import or_, UniqueConstraint, func, and_, case
 import json
 import jwt
 
