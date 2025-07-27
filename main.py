@@ -1337,60 +1337,55 @@ def listar_modelos_avaliacao():
 
     if not ano_letivo_ativo:
         flash('Não há um ano letivo ativo. A funcionalidade de avaliações está limitada.', 'warning')
-        return redirect(url_for('main_routes.dashboard'))
+        # Para o coordenador, é melhor mostrar a página vazia do que redirecionar
+        if current_user.role == 'aluno':
+            return redirect(url_for('main_routes.dashboard'))
 
     # --- LÓGICA PARA PROFESSORES E COORDENADORES ---
     if current_user.role in ['coordenador', 'professor']:
-        # Eles veem todos os modelos e avaliações de recuperação da escola
-        
         # Carrega todos os modelos de avaliação da escola
         modelos = ModeloAvaliacao.query.filter_by(escola_id=escola_id).order_by(ModeloAvaliacao.nome).all()
         
         # Carrega todas as avaliações estáticas (recuperações) da escola no ano ativo
-        recuperacoes = Avaliacao.query.filter(
-            Avaliacao.escola_id == escola_id,
-            Avaliacao.ano_letivo_id == ano_letivo_ativo.id,
-            Avaliacao.is_dinamica == False
-        ).order_by(Avaliacao.nome).all()
+        recuperacoes = []
+        if ano_letivo_ativo:
+            recuperacoes = Avaliacao.query.filter(
+                Avaliacao.escola_id == escola_id,
+                Avaliacao.ano_letivo_id == ano_letivo_ativo.id,
+                Avaliacao.is_dinamica == False
+            ).order_by(Avaliacao.nome).all()
 
         return render_template('app/listar_avaliacoes_geradas.html', modelos=modelos, recuperacoes=recuperacoes)
     
-    # --- LÓGICA PARA ALUNOS ---
+    # --- LÓGICA PARA ALUNOS (permanece a mesma) ---
     else: # Papel 'aluno'
-        # Alunos veem uma lista filtrada para sua série, com o status de cada avaliação.
         serie_aluno = current_user.serie_atual
         if not serie_aluno:
             flash('Você não está matriculado em uma série no ano letivo ativo. Contate a secretaria.', 'warning')
             return render_template('app/listar_modelos_avaliacao.html', avaliacoes_disponiveis=[])
 
-        # 1. Buscar todas as avaliações potenciais para o aluno
-        # Modelos dinâmicos disponíveis para a série do aluno
         modelos_disponiveis = ModeloAvaliacao.query.filter_by(serie_id=serie_aluno.id).order_by(ModeloAvaliacao.nome).all()
         
-        # Recuperações estáticas designadas especificamente para o aluno
-        recuperacoes_designadas = Avaliacao.query.join(avaliacao_alunos_designados).filter(
-            avaliacao_alunos_designados.c.usuario_id == current_user.id,
-            Avaliacao.ano_letivo_id == ano_letivo_ativo.id
-        ).order_by(Avaliacao.nome).all()
+        recuperacoes_designadas = []
+        if ano_letivo_ativo:
+            recuperacoes_designadas = Avaliacao.query.join(avaliacao_alunos_designados).filter(
+                avaliacao_alunos_designados.c.usuario_id == current_user.id,
+                Avaliacao.ano_letivo_id == ano_letivo_ativo.id
+            ).order_by(Avaliacao.nome).all()
 
-        # 2. Buscar todos os resultados do aluno para ver o status de cada avaliação
-        resultados_do_aluno = Resultado.query.options(
-            joinedload(Resultado.avaliacao) # Otimiza a query para já carregar a avaliação
-        ).filter(
-            Resultado.aluno_id == current_user.id,
-            Resultado.ano_letivo_id == ano_letivo_ativo.id
-        ).all()
+        resultados_do_aluno = []
+        if ano_letivo_ativo:
+            resultados_do_aluno = Resultado.query.options(
+                joinedload(Resultado.avaliacao)
+            ).filter(
+                Resultado.aluno_id == current_user.id,
+                Resultado.ano_letivo_id == ano_letivo_ativo.id
+            ).all()
         
-        # 3. Mapear os resultados para fácil acesso
-        # Mapa para avaliações dinâmicas (chave é o ID do modelo)
         mapa_resultados_modelo = {res.avaliacao.modelo_id: res for res in resultados_do_aluno if res.avaliacao and res.avaliacao.is_dinamica}
-        # Mapa para avaliações estáticas (chave é o ID da avaliação)
         mapa_resultados_estatica = {res.avaliacao_id: res for res in resultados_do_aluno if res.avaliacao and not res.avaliacao.is_dinamica}
 
-        # 4. Preparar a lista final para o template
         avaliacoes_para_aluno = []
-
-        # Processa os modelos dinâmicos
         for modelo in modelos_disponiveis:
             resultado = mapa_resultados_modelo.get(modelo.id)
             status = resultado.status if resultado else 'Não Iniciada'
@@ -1401,7 +1396,6 @@ def listar_modelos_avaliacao():
                 'status': status
             })
 
-        # Processa as recuperações estáticas
         for recuperacao in recuperacoes_designadas:
             resultado = mapa_resultados_estatica.get(recuperacao.id)
             status = resultado.status if resultado else 'Não Iniciada'
