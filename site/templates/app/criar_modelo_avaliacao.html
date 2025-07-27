@@ -11,7 +11,7 @@
     <hr>
 
     <form id="modelo-form" method="POST" action="{{ url_for('main_routes.criar_modelo_avaliacao') }}"
-          data-disciplinas='{{ disciplinas|tojson|safe }}'
+          data-disciplinas='{{ disciplinas_json|tojson|safe }}'
           data-api-assuntos-url="{{ url_for('main_routes.get_assuntos_por_disciplina_e_serie') }}"
           data-api-simulado-url-base="{{ url_for('main_routes.get_conteudo_simulado_por_serie', serie_id=0) }}">
 

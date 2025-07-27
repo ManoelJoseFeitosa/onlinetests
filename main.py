@@ -1129,10 +1129,9 @@ def editar_questao(questao_id):
 def criar_modelo_avaliacao():
     escola_id = current_user.escola_id
 
-    # --- LÓGICA DO POST (permanece a mesma) ---
     if request.method == 'POST':
         try:
-            # ... (toda a sua lógica de POST continua aqui, sem alterações)
+            # ... (a sua lógica de POST continua aqui, sem alterações)
             nome_modelo = request.form.get('nome_modelo')
             tipo_modelo = request.form.get('tipo_modelo')
             serie_id = request.form.get('serie_id', type=int)
@@ -1180,7 +1179,8 @@ def criar_modelo_avaliacao():
                 flash('Nenhuma regra de seleção de questões foi definida. Adicione a quantidade de questões para ao menos uma disciplina.', 'warning')
                 series = Serie.query.filter_by(escola_id=escola_id).order_by(Serie.nome).all()
                 disciplinas = Disciplina.query.filter_by(escola_id=escola_id).order_by(Disciplina.nome).all()
-                return render_template('app/criar_modelo_avaliacao.html', series=series, disciplinas=disciplinas)
+                disciplinas_json = [d.to_dict() for d in disciplinas]
+                return render_template('app/criar_modelo_avaliacao.html', series=series, disciplinas=disciplinas, disciplinas_json=disciplinas_json)
 
             novo_modelo = ModeloAvaliacao(
                 nome=nome_modelo, tipo=tipo_modelo, tempo_limite=tempo_limite,
@@ -1200,17 +1200,25 @@ def criar_modelo_avaliacao():
     
     # --- LÓGICA DO GET (CORREÇÃO APLICADA AQUI) ---
     series = Serie.query.filter_by(escola_id=escola_id).order_by(Serie.nome).all()
-    disciplinas = Disciplina.query.filter_by(escola_id=escola_id).order_by(Disciplina.nome).all()
+    disciplinas_obj = Disciplina.query.filter_by(escola_id=escola_id).order_by(Disciplina.nome).all()
 
-    # Validação para garantir que existem dados acadêmicos mínimos para criar um modelo
     if not series:
         flash('É necessário cadastrar ao menos uma série antes de criar um modelo de avaliação.', 'warning')
         return redirect(url_for('main_routes.gerenciar_academico'))
-    if not disciplinas:
+    if not disciplinas_obj:
         flash('É necessário cadastrar ao menos uma disciplina antes de criar um modelo de avaliação.', 'warning')
         return redirect(url_for('main_routes.gerenciar_academico'))
 
-    return render_template('app/criar_modelo_avaliacao.html', series=series, disciplinas=disciplinas)
+    # 1. Cria a lista de dicionários que pode ser convertida para JSON
+    disciplinas_json = [d.to_dict() for d in disciplinas_obj]
+
+    # 2. Passa AMBAS as listas para o template
+    return render_template(
+        'app/criar_modelo_avaliacao.html', 
+        series=series, 
+        disciplinas=disciplinas_obj, 
+        disciplinas_json=disciplinas_json
+    )
 
 @main_routes.route('/iniciar-avaliacao/<int:modelo_id>')
 @login_required
