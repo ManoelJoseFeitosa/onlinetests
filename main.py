@@ -912,32 +912,33 @@ def editar_usuario(user_id):
     ano_letivo_ativo = AnoLetivo.query.filter_by(escola_id=current_user.escola_id, status='ativo').first()
 
     if request.method == 'POST':
-        # Lógica de edição (já parecia estar em desenvolvimento, mantida por enquanto)
-        # ... Lógica de edição de usuário ...
-        flash('Dados do usuário atualizados com sucesso!', 'success') # Exemplo de flash
+        # ... Lógica de edição de usuário ... (não precisa mexer aqui)
+        flash('Dados do usuário atualizados com sucesso!', 'success')
         return redirect(url_for('main_routes.gerenciar_usuarios'))
 
-    # ### CORREÇÃO APLICADA AQUI (LÓGICA DO GET) ###
-    # Carrega os dados que estavam faltando para o template
+    # Lógica do GET
     series = Serie.query.filter_by(escola_id=current_user.escola_id).order_by(Serie.nome).all()
     disciplinas = Disciplina.query.filter_by(escola_id=current_user.escola_id).order_by(Disciplina.nome).all()
-    
-    # Cria o JSON de séries para o JavaScript do template
     series_json = [{'id': s.id, 'nome': s.nome} for s in series]
     
     matricula_atual = None
     if ano_letivo_ativo and usuario.role == 'aluno':
         matricula_atual = Matricula.query.filter_by(aluno_id=user_id, ano_letivo_id=ano_letivo_ativo.id).first()
 
-    # Passa todas as variáveis necessárias para o template
+    # ### NOVA LINHA ADICIONADA AQUI ###
+    # Busca todos os anos letivos da escola para popular o dropdown
+    anos_letivos = AnoLetivo.query.filter_by(escola_id=current_user.escola_id).order_by(AnoLetivo.ano.desc()).all()
+
     return render_template(
         'app/editar_usuario.html', 
         usuario=usuario, 
         series=series, 
         disciplinas=disciplinas, 
-        series_json=series_json,  # Esta era a variável que causava o erro
+        series_json=series_json,
         matricula_atual=matricula_atual,
-        ano_letivo_ativo=ano_letivo_ativo
+        ano_letivo_ativo=ano_letivo_ativo,
+        # ### NOVA VARIÁVEL PASSADA PARA O TEMPLATE ###
+        anos_letivos=anos_letivos
     )
 
 @main_routes.route('/admin/matricula/salvar', methods=['POST'])
@@ -2683,7 +2684,7 @@ def api_alunos_por_serie(serie_id):
 def get_matricula_por_ano(user_id, ano_letivo_id):
     """
     API para buscar a matrícula de um aluno em um ano letivo específico.
-    Retorna o ID da série em que o aluno estava matriculado.
+    Retorna um objeto JSON completo com o status da matrícula.
     """
     try:
         # Valida se o aluno pertence à escola do coordenador logado
@@ -2695,11 +2696,19 @@ def get_matricula_por_ano(user_id, ano_letivo_id):
         ).first()
 
         if matricula:
-            # Retorna o ID da série se a matrícula for encontrada
-            return jsonify({'serie_id': matricula.serie_id})
+            # Se encontrar a matrícula, retorna os dados completos
+            return jsonify({
+                'matriculado': True,
+                'serie_id': matricula.serie_id,
+                'status': matricula.status
+            })
         else:
-            # Retorna null se não houver matrícula para aquele ano
-            return jsonify({'serie_id': None}), 404
+            # Se não encontrar, informa que o aluno não está matriculado
+            return jsonify({
+                'matriculado': False,
+                'serie_id': None,
+                'status': 'Não Matriculado'
+            })
 
     except Exception as e:
         print(f"ERRO em /api/matricula: {e}")

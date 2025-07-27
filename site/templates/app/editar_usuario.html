@@ -6,14 +6,12 @@
 <div class="container mt-5">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="display-6">Editar Usuário: <span class="text-primary">{{ usuario.nome }}</span></h1>
-        <!-- CORREÇÃO APLICADA AQUI -->
         <a href="{{ url_for('main_routes.gerenciar_usuarios') }}" class="btn btn-outline-secondary">&larr; Voltar para Gerenciamento</a>
     </div>
 
     <div class="card shadow-sm">
         <div class="card-body p-4 p-md-5">
             
-            <!-- CORREÇÃO APLICADA AQUI -->
             <form method="POST" action="{{ url_for('main_routes.editar_usuario', user_id=usuario.id) }}" id="form-editar-usuario">
             <h5 class="mb-3 border-bottom pb-2">Dados Pessoais</h5>
                 <div class="row">
@@ -84,13 +82,13 @@
                         <option value="">-- Selecione um Ano --</option>
                         {% for ano in anos_letivos %}
                         <option value="{{ ano.id }}" {% if ano.status == 'ativo' %}selected{% endif %}>
-                            {{ ano.ano }} ({{ ano.status }})
+                            {{ ano.ano }} ({{ ano.status|capitalize }})
                         </option>
                         {% endfor %}
                     </select>
                 </div>
 
-                <div id="matricula-form-container" class="bg-light p-3 rounded">
+                <div id="matricula-form-container" class="bg-light p-3 rounded" style="min-height: 150px;">
                     </div>
             </fieldset>
             {% endif %}
@@ -100,7 +98,7 @@
                     <i class="bi bi-check-circle-fill me-2"></i>Salvar Alterações Cadastrais
                 </button>
             </div>
-            </div>
+        </div>
     </div>
 </div>
 {% endblock %}
@@ -109,77 +107,74 @@
 {{ super() }}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const anoLetivoSelect = document.getElementById('ano_letivo_select');
-    const matriculaFormContainer = document.getElementById('matricula-form-container');
-    const userId = '{{ usuario.id }}';
-    const allSeries = {{ series_json | tojson | safe }};
+    if (document.getElementById('ano_letivo_select')) {
+        const anoLetivoSelect = document.getElementById('ano_letivo_select');
+        const matriculaFormContainer = document.getElementById('matricula-form-container');
+        const userId = '{{ usuario.id }}';
+        const allSeries = {{ series_json | tojson | safe }};
 
-    function carregarFormMatricula() {
-        const anoId = anoLetivoSelect.value;
-        matriculaFormContainer.innerHTML = ''; 
+        function carregarFormMatricula() {
+            const anoId = anoLetivoSelect.value;
+            matriculaFormContainer.innerHTML = ''; 
 
-        if (!anoId) {
-            matriculaFormContainer.innerHTML = '<p class="text-center text-muted m-0">Selecione um ano letivo acima.</p>';
-            return;
+            if (!anoId) {
+                matriculaFormContainer.innerHTML = '<p class="text-center text-muted m-0 p-5">Selecione um ano letivo acima.</p>';
+                return;
+            }
+
+            matriculaFormContainer.innerHTML = '<p class="text-muted text-center p-5">Carregando dados da matrícula...</p>';
+            
+            const url = `{{ url_for('main_routes.get_matricula_por_ano', user_id=0, ano_letivo_id=0) }}`.replace('/0/0', `/${userId}/${anoId}`);
+
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    let seriesOptionsHTML = allSeries.map(serie => {
+                        const isSelected = data.matriculado && data.serie_id === serie.id ? 'selected' : '';
+                        return `<option value="${serie.id}" ${isSelected}>${serie.nome}</option>`;
+                    }).join('');
+                    
+                    const badgeClass = data.matriculado ? 'bg-success' : 'bg-warning text-dark';
+                    const statusAtual = `Status atual: <span class="badge ${badgeClass}">${data.status | capitalize}</span>`;
+
+                    const anoSelecionadoTexto = anoLetivoSelect.options[anoLetivoSelect.selectedIndex].text.match(/\d{4}/);
+                    const anoFormatado = anoSelecionadoTexto ? anoSelecionadoTexto[0] : '';
+
+                    const formHTML = `
+                        <form action="{{ url_for('main_routes.salvar_matricula') }}" method="POST">
+                            <input type="hidden" name="user_id" value="${userId}">
+                            <input type="hidden" name="ano_letivo_id" value="${anoId}">
+                            
+                            <p class="small mb-2">${statusAtual}</p>
+
+                            <div class="mb-3">
+                                <label for="serie_matricula" class="form-label">Série para o ano de <strong>${anoFormatado}</strong>:</label>
+                                <select id="serie_matricula" name="serie_id" class="form-select" required>
+                                    <option value="">-- Selecione a série --</option>
+                                    ${seriesOptionsHTML}
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-success">
+                                <i class="bi bi-check-circle me-1"></i>
+                                ${data.matriculado ? 'Atualizar Matrícula' : 'Matricular Aluno'}
+                            </button>
+                        </form>
+                    `;
+                    matriculaFormContainer.innerHTML = formHTML;
+                })
+                .catch(error => {
+                    console.error('Erro ao buscar ou processar matrícula:', error);
+                    matriculaFormContainer.innerHTML = '<p class="text-danger fw-bold">Erro ao carregar dados. Verifique o console para mais detalhes (F12).</p>';
+                });
         }
 
-        matriculaFormContainer.innerHTML = '<p class="text-muted">Carregando dados da matrícula...</p>';
-        
-        // CORREÇÃO APLICADA AQUI
-        const url = `{{ url_for('main_routes.get_matricula_por_ano', user_id=0, ano_letivo_id=0) }}`.replace('/0/0', `/${userId}/${anoId}`);
-
-        fetch(url)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`Erro de Rede: ${response.statusText}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                let seriesOptionsHTML = allSeries.map(serie => {
-                    const isSelected = data.matriculado && data.serie_id === serie.id ? 'selected' : '';
-                    return `<option value="${serie.id}" ${isSelected}>${serie.nome}</option>`;
-                }).join('');
-
-                const statusAtual = data.matriculado 
-                    ? `Status atual: <span class="badge bg-success">${data.status}</span>` 
-                    : 'Status atual: <span class="badge bg-warning text-dark">Não Matriculado</span>';
-                
-                const anoSelecionadoTexto = anoLetivoSelect.options[anoLetivoSelect.selectedIndex].text.match(/\d{4}/);
-                const anoFormatado = anoSelecionadoTexto ? anoSelecionadoTexto[0] : '';
-
-                const formHTML = `
-                    <!-- CORREÇÃO APLICADA AQUI -->
-                    <form action="{{ url_for('main_routes.salvar_matricula') }}" method="POST">
-                        <input type="hidden" name="user_id" value="${userId}">
-                        <input type="hidden" name="ano_letivo_id" value="${anoId}">
-                        
-                        <p class="small mb-2">${statusAtual}</p>
-
-                        <div class="mb-3">
-                            <label for="serie_matricula" class="form-label">Série para o ano de <strong>${anoFormatado}</strong>:</label>
-                            <select id="serie_matricula" name="serie_id" class="form-select" required>
-                                <option value="">-- Selecione a série --</option>
-                                ${seriesOptionsHTML}
-                            </select>
-                        </div>
-                        <button type="submit" class="btn btn-success">
-                            <i class="bi bi-check-circle me-1"></i>
-                            ${data.matriculado ? 'Atualizar Matrícula' : 'Matricular Aluno'}
-                        </button>
-                    </form>
-                `;
-                matriculaFormContainer.innerHTML = formHTML;
-            })
-            .catch(error => {
-                console.error('Erro ao buscar ou processar matrícula:', error);
-                matriculaFormContainer.innerHTML = '<p class="text-danger fw-bold">Erro ao carregar dados. Verifique o console para mais detalhes (F12).</p>';
-            });
-    }
-
-    if (anoLetivoSelect) {
         anoLetivoSelect.addEventListener('change', carregarFormMatricula);
-        carregarFormMatricula();
+        // Carrega o formulário para o ano letivo ativo ao abrir a página
+        if (anoLetivoSelect.value) {
+            carregarFormMatricula();
+        } else {
+             matriculaFormContainer.innerHTML = '<p class="text-center text-muted m-0 p-5">Selecione um ano letivo acima.</p>';
+        }
     }
 });
 </script>
