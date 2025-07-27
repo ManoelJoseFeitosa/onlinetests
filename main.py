@@ -24,6 +24,7 @@ import random
 from weasyprint import HTML, CSS
 from sqlalchemy.orm import joinedload
 from sqlalchemy import or_, UniqueConstraint, func, and_
+from app.models import Turma
 import json
 # ### ALTERAÇÃO: Adicionada a biblioteca JWT para gerar e verificar tokens da API
 import jwt
@@ -2476,7 +2477,7 @@ def relatorio_boletim_aluno():
     para um determinado ano letivo. Cada aluno em uma nova página.
     """
     try:
-        # 1. Obter os filtros do formulário (agora por Série)
+        # 1. Obter os filtros do formulário
         serie_id = request.form.get('serie_id', type=int)
         ano_letivo_id = request.form.get('ano_letivo_id', type=int)
 
@@ -2490,21 +2491,24 @@ def relatorio_boletim_aluno():
         if not ano_letivo or not serie or serie.escola_id != current_user.escola_id:
             abort(404)
 
-        # 3. Buscar todos os alunos da série selecionada
-        alunos_da_serie = Usuario.query.filter(
-            Usuario.serie_id == serie_id,
+        # 3. ### CORREÇÃO APLICADA AQUI ###
+        # Buscar todos os alunos da série usando um JOIN.
+        # Assumimos que a ligação é feita por um modelo 'Turma' que tem 'serie_id' e 'ano_letivo_id'.
+        # Se o seu modelo tiver outro nome, ajuste 'Turma' para o nome correto.
+        alunos_da_serie = Usuario.query.join(Turma).filter(
+            Turma.serie_id == serie_id,
+            Turma.ano_letivo_id == ano_letivo_id,
             Usuario.escola_id == current_user.escola_id,
-            Usuario.role == 'aluno' # Garantir que estamos pegando apenas alunos
+            Usuario.role == 'aluno'
         ).order_by(Usuario.nome).all()
 
         if not alunos_da_serie:
             flash(f'Nenhum aluno encontrado na série "{serie.nome}" para o ano de {ano_letivo.ano}.', 'warning')
             return redirect(url_for('main_routes.painel_relatorios'))
 
-        # 4. Processar o boletim para CADA aluno
+        # 4. Processar o boletim para CADA aluno (lógica mantida)
         todos_os_boletins = []
         for aluno in alunos_da_serie:
-            # Buscar todos os resultados finalizados do aluno no ano letivo
             resultados = Resultado.query.options(
                 joinedload(Resultado.avaliacao).joinedload(Avaliacao.disciplina)
             ).filter(
@@ -2514,20 +2518,14 @@ def relatorio_boletim_aluno():
                 Resultado.nota.isnot(None)
             ).all()
             
-            # Se o aluno não tiver resultados, podemos pulá-lo ou mostrar um boletim vazio
             if not resultados:
-                # Opção 1: Pular o aluno
-                # continue
-                # Opção 2: Adicionar com dados vazios para que ele apareça no PDF
                  todos_os_boletins.append({
                     'aluno': aluno,
                     'boletim_data': {},
-                    'sem_resultados': True # Flag para o template saber
+                    'sem_resultados': True
                 })
                  continue
 
-
-            # Agrupar os resultados por disciplina
             boletim_data = {}
             for res in resultados:
                 if res.avaliacao and res.avaliacao.disciplina:
@@ -2543,29 +2541,27 @@ def relatorio_boletim_aluno():
                         'nota': res.nota
                     })
             
-            # Calcular a média final para cada disciplina
             for disc_id in boletim_data:
                 notas = [av['nota'] for av in boletim_data[disc_id]['avaliacoes']]
                 if notas:
                     boletim_data[disc_id]['media_final'] = round(sum(notas) / len(notas), 2)
             
-            # Adicionar os dados processados do aluno à lista principal
             todos_os_boletins.append({
                 'aluno': aluno,
                 'boletim_data': sorted(boletim_data.values(), key=lambda x: x['nome_disciplina']),
                 'sem_resultados': False
             })
 
-        # 5. Renderizar o template HTML com os dados de TODOS os alunos
+        # 5. Renderizar o template HTML (lógica mantida)
         html_renderizado = render_template(
-            'app/reports/boletim_aluno_pdf.html',
+            'app/reports/boletim_aluno_pdf.html', # Use o seu template para o PDF
             todos_os_boletins=todos_os_boletins,
             serie=serie,
             ano_letivo=ano_letivo,
             data_geracao=datetime.now()
         )
 
-        # 6. Gerar o PDF e retornar a resposta
+        # 6. Gerar o PDF (lógica mantida)
         pdf = HTML(string=html_renderizado).write_pdf()
         response = make_response(pdf)
         response.headers['Content-Type'] = 'application/pdf'
@@ -2575,8 +2571,11 @@ def relatorio_boletim_aluno():
         return response
 
     except Exception as e:
+        # Imprime o erro detalhado no console para facilitar a depuração
         print(f"ERRO ao gerar boletim da turma: {e}")
-        flash("Ocorreu um erro inesperado ao gerar o relatório. Tente novamente.", "danger")
+        import traceback
+        traceback.print_exc()
+        flash("Ocorreu um erro inesperado ao gerar o relatório. Verifique os logs.", "danger")
         return redirect(url_for('main_routes.painel_relatorios'))
 
 @main_routes.route('/responder_avaliacao/<int:avaliacao_id>', methods=['GET', 'POST'])
