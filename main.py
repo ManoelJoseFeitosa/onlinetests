@@ -2388,7 +2388,7 @@ def relatorio_professores():
 
         # 2. Renderizar o template HTML para o PDF
         html_renderizado = render_template(
-            'app/reports/lista_professores_pdf.html',
+            'app/relatorios/lista_professores.html',
             professores=professores,
             escola_nome=current_user.escola.nome,
             data_geracao=datetime.now()
@@ -2450,7 +2450,7 @@ def relatorio_resultado_simulado():
 
         # 4. Renderizar o template HTML para o PDF
         html_renderizado = render_template(
-            'app/reports/resultado_simulado_pdf.html',
+            'app/relatorios/resultado_simulado.html',
             modelo=modelo,
             ano_letivo=ano_letivo,
             resultados=resultados,
