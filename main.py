@@ -2050,7 +2050,7 @@ def relatorio_desempenho_por_nivel():
 
         # 4. Renderizar um template HTML específico para este relatório
         html_renderizado = render_template(
-            'app/reports/desempenho_nivel_pdf.html',
+            'app/relatorios/desempenho_nivel.html',
             serie=serie,
             disciplina=disciplina,
             ano_letivo=ano_letivo,
@@ -2115,6 +2115,10 @@ def relatorio_analise_de_itens():
             Resposta.resultado_id.in_(resultado_ids)
         ).all()
 
+        if not respostas:
+            flash('Nenhuma resposta foi encontrada para as avaliações deste modelo. Não é possível gerar a análise.', 'warning')
+            return redirect(url_for('main_routes.painel_relatorios'))
+
         # 4. Processar os dados em Python para fazer a análise
         analise_itens = {}
         # Primeiro, inicializamos a estrutura de dados para cada questão
@@ -2145,8 +2149,10 @@ def relatorio_analise_de_itens():
                 stats['distratores']['NULA'] += 1 # Respostas em branco ou inválidas
 
         # 5. Renderizar o template HTML para o PDF
+        # ### CORREÇÃO APLICADA AQUI ###
+        # O nome do arquivo foi corrigido para 'analise_de_itens.html'.
         html_renderizado = render_template(
-            'app/relatorios/analise_itens_pdf.html',
+            'app/relatorios/analise_de_itens.html',
             modelo=modelo,
             ano_letivo=ano_letivo,
             analise_data=analise_itens.values(), # Passa a lista de análises
@@ -2206,7 +2212,7 @@ def relatorio_saude_banco_questoes():
 
         # 5. Renderizar o template HTML para o PDF
         html_renderizado = render_template(
-            'app/relatorios/saude_banco_questoes_pdf.html',
+            'app/relatorios/saude_banco_questoes.html',
             total_questoes=total_questoes,
             stats_por_disciplina=stats_por_disciplina,
             stats_por_serie=stats_por_serie,
@@ -2278,7 +2284,7 @@ def relatorio_comparativo_turmas():
 
         # 4. Renderizar o template HTML para o PDF
         html_renderizado = render_template(
-            'app/relatorios/comparativo_turmas_pdf.html',
+            'app/relatorios/comparativo_turmas.html',
             modelo=modelo,
             ano_letivo=ano_letivo,
             stats_data=stats_por_turma,
