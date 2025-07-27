@@ -2676,6 +2676,34 @@ def api_alunos_por_serie(serie_id):
     except Exception as e:
         print(f"ERRO em /api/alunos_por_serie: {e}")
         return jsonify({'error': 'Erro ao buscar alunos'}), 500
+    
+@main_routes.route('/api/matricula/<int:user_id>/<int:ano_letivo_id>')
+@login_required
+@role_required('coordenador')
+def get_matricula_por_ano(user_id, ano_letivo_id):
+    """
+    API para buscar a matrícula de um aluno em um ano letivo específico.
+    Retorna o ID da série em que o aluno estava matriculado.
+    """
+    try:
+        # Valida se o aluno pertence à escola do coordenador logado
+        aluno = Usuario.query.filter_by(id=user_id, escola_id=current_user.escola_id).first_or_404()
+
+        matricula = Matricula.query.filter_by(
+            aluno_id=aluno.id,
+            ano_letivo_id=ano_letivo_id
+        ).first()
+
+        if matricula:
+            # Retorna o ID da série se a matrícula for encontrada
+            return jsonify({'serie_id': matricula.serie_id})
+        else:
+            # Retorna null se não houver matrícula para aquele ano
+            return jsonify({'serie_id': None}), 404
+
+    except Exception as e:
+        print(f"ERRO em /api/matricula: {e}")
+        return jsonify({'error': 'Erro ao buscar matrícula'}), 500
 
 # ===================================================================
 # SEÇÃO 7: REGISTRO DOS BLUEPRINTS E EXECUÇÃO
