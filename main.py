@@ -7,7 +7,6 @@ from dotenv import load_dotenv
 load_dotenv()
 import resend
 from PIL import Image
-# ### ALTERAÇÃO: Adicionado Blueprint para organizar as rotas
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, abort, make_response, Blueprint
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
@@ -18,14 +17,12 @@ from wtforms.validators import DataRequired, Email, EqualTo
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from functools import wraps
-# ### ALTERAÇÃO: Adicionado timedelta para definir a validade do token
 from datetime import datetime, timedelta
 import random
 from weasyprint import HTML, CSS
 from sqlalchemy.orm import joinedload
 from sqlalchemy import or_, UniqueConstraint, func, and_
 import json
-# ### ALTERAÇÃO: Adicionada a biblioteca JWT para gerar e verificar tokens da API
 import jwt
 
 # ===================================================================
@@ -2490,13 +2487,13 @@ def relatorio_boletim_aluno():
         if not ano_letivo or not serie or serie.escola_id != current_user.escola_id:
             abort(404)
 
-        # 3. ### CORREÇÃO APLICADA AQUI ###
-        # Buscar todos os alunos da série usando um JOIN.
-        # Assumimos que a ligação é feita por um modelo 'Turma' que tem 'serie_id' e 'ano_letivo_id'.
-        # Se o seu modelo tiver outro nome, ajuste 'Turma' para o nome correto.
-        alunos_da_serie = Usuario.query.join(Turma).filter(
-            Turma.serie_id == serie_id,
-            Turma.ano_letivo_id == ano_letivo_id,
+        # 3. Buscar todos os alunos da série usando um JOIN com a tabela Matricula.
+        #    Esta é a correção principal.
+        alunos_da_serie = Usuario.query.join(
+            Matricula, Usuario.id == Matricula.aluno_id
+        ).filter(
+            Matricula.serie_id == serie_id,
+            Matricula.ano_letivo_id == ano_letivo_id,
             Usuario.escola_id == current_user.escola_id,
             Usuario.role == 'aluno'
         ).order_by(Usuario.nome).all()
@@ -2505,7 +2502,7 @@ def relatorio_boletim_aluno():
             flash(f'Nenhum aluno encontrado na série "{serie.nome}" para o ano de {ano_letivo.ano}.', 'warning')
             return redirect(url_for('main_routes.painel_relatorios'))
 
-        # 4. Processar o boletim para CADA aluno (lógica mantida)
+        # 4. Processar o boletim para CADA aluno
         todos_os_boletins = []
         for aluno in alunos_da_serie:
             resultados = Resultado.query.options(
@@ -2551,16 +2548,16 @@ def relatorio_boletim_aluno():
                 'sem_resultados': False
             })
 
-        # 5. Renderizar o template HTML (lógica mantida)
+        # 5. Renderizar o template HTML para o PDF
         html_renderizado = render_template(
-            'app/reports/boletim_aluno_pdf.html', # Use o seu template para o PDF
+            'app/reports/boletim_aluno_pdf.html',
             todos_os_boletins=todos_os_boletins,
             serie=serie,
             ano_letivo=ano_letivo,
             data_geracao=datetime.now()
         )
 
-        # 6. Gerar o PDF (lógica mantida)
+        # 6. Gerar o PDF
         pdf = HTML(string=html_renderizado).write_pdf()
         response = make_response(pdf)
         response.headers['Content-Type'] = 'application/pdf'
