@@ -654,10 +654,19 @@ def contato():
         try:
             resend.api_key = resend_api_key
             params = {
-                "from": "Online Tests <onboarding@resend.dev>",
+                # ### CORREÇÃO APLICADA AQUI ###
+                # Alterado o remetente para um e-mail do seu domínio verificado.
+                "from": "Contato OnlineTests <contato@onlinetests.com.br>", 
                 "to": ["contato@onlinetests.com.br"],
                 "subject": f"Nova Mensagem de Contato de {nome}",
-                "html": f"""...""", # Omitido para brevidade
+                "html": f"""
+                    <p>Você recebeu uma nova mensagem de contato através do site Online Tests.</p>
+                    <p><strong>Nome:</strong> {nome}</p>
+                    <p><strong>Email para resposta:</strong> {email_remetente}</p>
+                    <hr>
+                    <p><strong>Mensagem:</strong></p>
+                    <p>{mensagem}</p>
+                """,
                 "reply_to": email_remetente
             }
             resend.Emails.send(params)
