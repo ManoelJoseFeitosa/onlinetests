@@ -1,55 +1,97 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Lista de Alunos por Turma</title>
+    <title>Lista de Alunos - {{ serie.nome }}</title>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; margin: 1.5cm; color: #333; }
-        header { text-align: center; margin-bottom: 20px; }
-        h1 { border-bottom: 2px solid #eee; padding-bottom: 10px; font-size: 24px; }
-        .header-info { background-color: #f8f9fa; padding: 15px; border: 1px solid #dee2e6; border-radius: 5px; margin-bottom: 25px; font-size: 14px; text-align: center;}
-        .header-info p { margin: 5px 0; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; }
-        th, td { border: 1px solid #dee2e6; padding: 12px; text-align: left; }
-        th { background-color: #e9ecef; font-weight: 600; }
-        tbody tr:nth-child(even) { background-color: #f8f9fa; }
-        td.numero { text-align: center; width: 5%; }
-        footer { text-align: center; font-size: 12px; color: #6c757d; margin-top: 40px; border-top: 1px solid #eee; padding-top: 15px; }
+        @page {
+            size: A4;
+            margin: 1.5cm;
+        }
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            font-size: 10pt;
+            color: #333;
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+            margin-bottom: 5px;
+        }
+        h2 {
+            text-align: center;
+            color: #7f8c8d;
+            font-size: 12pt;
+            margin-top: 0;
+            margin-bottom: 30px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        .footer {
+            position: fixed;
+            bottom: -1cm; /* Posição ajustada para ficar fora da margem */
+            left: 0;
+            right: 0;
+            height: 1cm;
+            text-align: center;
+            font-size: 8pt;
+            color: #aaa;
+        }
+        .footer .page-number:after {
+            content: counter(page);
+        }
     </style>
 </head>
 <body>
-    <header>
-        <h1>Lista de Alunos</h1>
-    </header>
-
-    <div class="header-info">
-        <p><strong>Turma (Série):</strong> {{ serie.nome }}</p>
-        <p><strong>Ano Letivo:</strong> {{ ano_letivo.ano }}</p>
-        <p><strong>Total de Alunos:</strong> {{ matriculas|length }}</p>
-        <p><strong>Data de Geração:</strong> {{ data_geracao.strftime('%d/%m/%Y às %H:%M') }}</p>
+    <div class="footer">
+        Relatório gerado em {{ data_geracao.strftime('%d/%m/%Y às %H:%M') }} | OnlineTests | Página <span class="page-number"></span>
     </div>
 
-    <table>
-        <thead>
-            <tr>
-                <th class="numero">Nº</th>
-                <th>Nome Completo do Aluno</th>
-                <th>E-mail</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for matricula in matriculas %}
-            <tr>
-                <td class="numero">{{ loop.index }}</td>
-                <td>{{ matricula.aluno.nome }}</td>
-                <td>{{ matricula.aluno.email }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <header>
+        <h1>Lista de Alunos</h1>
+        <h2>{{ serie.nome }} - Ano Letivo de {{ ano_letivo.ano }}</h2>
+    </header>
 
-    <footer>
-        <p>OnlineTests - Relatório gerado automaticamente.</p>
-    </footer>
+    <main>
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 5%;">#</th>
+                    <th style="width: 65%;">Nome Completo do Aluno</th>
+                    <th>E-mail</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for matricula in matriculas %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ matricula.aluno.nome }}</td>
+                    <td>{{ matricula.aluno.email }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="3" style="text-align: center;">Nenhum aluno encontrado para estes filtros.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <p style="margin-top: 15px;">
+            <strong>Total de alunos na turma:</strong> {{ matriculas|length }}
+        </p>
+    </main>
 </body>
 </html>
