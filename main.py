@@ -2146,7 +2146,7 @@ def relatorio_analise_de_itens():
 
         # 5. Renderizar o template HTML para o PDF
         html_renderizado = render_template(
-            'app/reports/analise_itens_pdf.html',
+            'app/relatorios/analise_itens_pdf.html',
             modelo=modelo,
             ano_letivo=ano_letivo,
             analise_data=analise_itens.values(), # Passa a lista de análises
@@ -2206,7 +2206,7 @@ def relatorio_saude_banco_questoes():
 
         # 5. Renderizar o template HTML para o PDF
         html_renderizado = render_template(
-            'app/reports/saude_banco_questoes_pdf.html',
+            'app/relatorios/saude_banco_questoes_pdf.html',
             total_questoes=total_questoes,
             stats_por_disciplina=stats_por_disciplina,
             stats_por_serie=stats_por_serie,
@@ -2278,7 +2278,7 @@ def relatorio_comparativo_turmas():
 
         # 4. Renderizar o template HTML para o PDF
         html_renderizado = render_template(
-            'app/reports/comparativo_turmas_pdf.html',
+            'app/relatorios/comparativo_turmas_pdf.html',
             modelo=modelo,
             ano_letivo=ano_letivo,
             stats_data=stats_por_turma,
