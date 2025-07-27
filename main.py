@@ -1975,9 +1975,10 @@ def relatorio_desempenho_por_assunto():
             return redirect(url_for('main_routes.painel_relatorios'))
 
         # 4. Renderizar um template HTML que servirá de base para o PDF
-        #    (Este template é apenas para a geração do PDF, não para ser exibido diretamente)
+        # ### CORREÇÃO APLICADA AQUI ###
+        # O caminho do template foi ajustado para corresponder à sua estrutura de pastas.
         html_renderizado = render_template(
-            'app/reports/desempenho_assunto_pdf.html',
+            'app/relatorios/desempenho_por_assunto.html',
             serie=serie,
             disciplina=disciplina,
             ano_letivo=ano_letivo,
