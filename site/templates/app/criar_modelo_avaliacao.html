@@ -55,7 +55,6 @@
 {% block scripts %}
 {{ super() }}
 <script>
-// SEU CÓDIGO JAVASCRIPT PERMANECE O MESMO - NENHUMA ALTERAÇÃO NECESSÁRIA AQUI
 (function() {
     document.addEventListener('DOMContentLoaded', function() {
         const form = document.getElementById('modelo-form');
@@ -139,7 +138,9 @@
                     assuntosSelect.innerHTML = '';
                     if (data.assuntos && data.assuntos.length > 0) {
                         data.assuntos.forEach(assunto => {
-                            assuntosSelect.add(new Option(assunto.nome, assunto));
+                            // ### CORREÇÃO APLICADA AQUI ###
+                            // A API retorna uma lista de strings, então 'assunto' é a string, não um objeto.
+                            assuntosSelect.add(new Option(assunto, assunto));
                         });
                     } else {
                         assuntosSelect.innerHTML = '<option disabled>Nenhum assunto encontrado</option>';
@@ -188,7 +189,6 @@
 
         tipoSelect.addEventListener('change', atualizarUI);
         serieSelect.addEventListener('change', atualizarUI);
-        // Garante que o estado inicial seja limpo se nenhuma série estiver selecionada
         if (!serieSelect.value) {
              regrasContainer.innerHTML = '<div class="alert alert-info mt-3">Por favor, selecione uma série para continuar.</div>';
         } else {
