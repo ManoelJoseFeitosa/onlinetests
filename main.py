@@ -1457,7 +1457,6 @@ def listar_modelos_avaliacao():
 
     # --- LÓGICA PARA PROFESSORES E COORDENADORES (sem alterações) ---
     if current_user.role in ['coordenador', 'professor']:
-        # A lógica para coordenador e professor permanece a mesma
         if not ano_letivo_ativo:
             flash('Não há um ano letivo ativo. A funcionalidade de avaliações está limitada.', 'warning')
         
@@ -1494,31 +1493,29 @@ def listar_modelos_avaliacao():
                 ).order_by(Avaliacao.nome).all()
             return render_template('app/listar_avaliacoes_geradas.html', modelos=modelos_filtrados, recuperacoes=recuperacoes_filtradas)
     
-    # --- LÓGICA CORRIGIDA E MAIS ROBUSTA PARA ALUNOS ---
+    # --- LÓGICA FINAL E CORRIGIDA PARA ALUNOS ---
     else: # Papel 'aluno'
-        # 1. Verifica se existe um ano letivo ativo
         if not ano_letivo_ativo:
             flash('Não há um ano letivo ativo configurado para a escola. Por favor, contate a coordenação.', 'warning')
             return render_template('app/listar_modelos_avaliacao.html', avaliacoes_disponiveis=[])
 
-        # 2. Verifica se o aluno está matriculado no ano letivo ativo
         matricula_ativa = Matricula.query.filter_by(aluno_id=current_user.id, ano_letivo_id=ano_letivo_ativo.id).first()
         if not matricula_ativa:
             flash(f'Você não está matriculado em nenhuma série para o ano letivo de {ano_letivo_ativo.ano}. Por favor, contate a secretaria.', 'warning')
             return render_template('app/listar_modelos_avaliacao.html', avaliacoes_disponiveis=[])
         
-        serie_aluno = matricula_ativa.serie
+        # ### CORREÇÃO PRINCIPAL AQUI ###
+        # Usamos o ID da série diretamente da matrícula ativa para a busca.
+        serie_aluno_id = matricula_ativa.serie_id
         
-        # 3. Busca as avaliações (a lógica principal permanece, mas agora temos certeza que o aluno está matriculado)
-        modelos_disponiveis = ModeloAvaliacao.query.filter_by(serie_id=serie_aluno.id).order_by(ModeloAvaliacao.nome).all()
+        # Busca os modelos de avaliação que correspondem exatamente à série do aluno.
+        modelos_disponiveis = ModeloAvaliacao.query.filter_by(serie_id=serie_aluno_id).order_by(ModeloAvaliacao.nome).all()
+        
         recuperacoes_designadas = Avaliacao.query.join(avaliacao_alunos_designados).filter(
             avaliacao_alunos_designados.c.usuario_id == current_user.id,
             Avaliacao.ano_letivo_id == ano_letivo_ativo.id
         ).order_by(Avaliacao.nome).all()
 
-        # Se mesmo assim não encontrar nada, a mensagem padrão "Nenhuma avaliação disponível" será exibida,
-        # mas agora temos certeza que é porque nenhuma foi criada para a série do aluno.
-        
         # O restante da lógica para mapear os resultados e status continua a mesma
         resultados_do_aluno = Resultado.query.options(
             joinedload(Resultado.avaliacao)
