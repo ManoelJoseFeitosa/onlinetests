@@ -31,6 +31,13 @@ import jwt
 app = Flask(__name__,
             static_folder='site/static')
 
+# Esta configuração diz ao Flask para procurar templates em duas pastas, nesta ordem:
+# 1. Na pasta 'templates' na raiz (para os arquivos da aplicação como 'app/base.html')
+# 2. Na pasta 'site/templates' (para os arquivos públicos como 'home_vendas.html')
+app.jinja_loader = ChoiceLoader([
+    FileSystemLoader('templates'),
+    FileSystemLoader('site/templates')
+])
 
 UPLOAD_FOLDER = os.path.join(app.static_folder, 'uploads/questoes')
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
