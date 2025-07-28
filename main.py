@@ -1182,11 +1182,12 @@ def banco_questoes():
 @login_required
 @role_required('professor', 'coordenador')
 def editar_questao(questao_id):
-    # 1. Busca a questão no banco de dados, garantindo que ela pertence ao criador ou à escola do coordenador.
+    # Busca a questão no banco de dados, garantindo que o usuário tem permissão para editá-la.
     query = Questao.query.filter_by(id=questao_id)
     if current_user.role == 'professor':
+        # Professor só pode editar as próprias questões.
         query = query.filter_by(criador_id=current_user.id)
-    else: # Coordenador
+    else: # Coordenador pode editar qualquer questão da escola.
         query = query.join(Disciplina).filter(Disciplina.escola_id == current_user.escola_id)
     
     questao = query.first_or_404()
@@ -1194,16 +1195,31 @@ def editar_questao(questao_id):
     # --- LÓGICA DO POST (SALVAR AS ALTERAÇÕES) ---
     if request.method == 'POST':
         try:
+            # Atualiza os dados da questão com as informações do formulário
             questao.disciplina_id = request.form.get('disciplina_id', type=int)
             questao.serie_id = request.form.get('serie_id', type=int)
             questao.assunto = request.form.get('assunto')
             questao.texto = request.form.get('texto_questao')
             questao.nivel = request.form.get('nivel')
-            questao.opcao_a = request.form.get('opcao_a')
-            questao.opcao_b = request.form.get('opcao_b')
-            questao.opcao_c = request.form.get('opcao_c')
-            questao.opcao_d = request.form.get('opcao_d')
+            questao.tipo = request.form.get('tipo')
             questao.gabarito = request.form.get('gabarito')
+            questao.justificativa_gabarito = request.form.get('justificativa_gabarito')
+            questao.imagem_alt = request.form.get('imagem_alt')
+
+            if questao.tipo == 'multipla_escolha':
+                questao.opcao_a = request.form.get('opcao_a')
+                questao.opcao_b = request.form.get('opcao_b')
+                questao.opcao_c = request.form.get('opcao_c')
+                questao.opcao_d = request.form.get('opcao_d')
+
+            # Lógica para salvar a nova imagem, se uma for enviada
+            if 'imagem_questao' in request.files:
+                file = request.files['imagem_questao']
+                if file and allowed_file(file.filename):
+                    filename = secure_filename(file.filename)
+                    unique_filename = f"{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{filename}"
+                    file.save(os.path.join(app.config['UPLOAD_FOLDER'], unique_filename))
+                    questao.imagem_nome = unique_filename
             
             db.session.commit()
             log_audit('QUESTION_UPDATED', target_obj=questao)
@@ -1214,7 +1230,7 @@ def editar_questao(questao_id):
             db.session.rollback()
             flash(f'Ocorreu um erro ao atualizar a questão: {e}', 'danger')
 
-    # --- LÓGICA DO GET (EXIBIR O FORMULÁRIO) ---
+    # --- LÓGICA DO GET (EXIBIR O FORMULÁRIO DE EDIÇÃO) ---
     # Busca as listas de disciplinas e séries para popular os menus de seleção.
     if current_user.role == 'professor':
         disciplinas = current_user.disciplinas_lecionadas
@@ -1223,7 +1239,7 @@ def editar_questao(questao_id):
         disciplinas = Disciplina.query.filter_by(escola_id=current_user.escola_id).order_by(Disciplina.nome).all()
         series = Serie.query.filter_by(escola_id=current_user.escola_id).order_by(Serie.nome).all()
 
-    # 2. Passa a questão e as listas para o template.
+    # Renderiza o template de EDIÇÃO, passando a questão e as listas.
     return render_template('app/editar_questao.html', questao=questao, disciplinas=disciplinas, series=series)
 
 # --- Rotas de Avaliação ---
