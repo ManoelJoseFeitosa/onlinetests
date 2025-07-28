@@ -10,7 +10,6 @@
     </div>
     <p class="text-muted">Gerencie os modelos de avaliação e as recuperações criadas. Clique em "Gerenciar" para ver os resultados e fazer correções.</p>
 
-    <!-- Verifica se ambas as listas estão vazias para mostrar a mensagem -->
     {% if not modelos and not recuperacoes %}
         <div class="alert alert-info text-center mt-3">
             <i class="bi bi-info-circle-fill me-2"></i>
@@ -19,12 +18,11 @@
     {% else %}
     <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
         
-        <!-- ### CORREÇÃO 1: Loop para a lista de 'modelos' ### -->
+        <!-- Loop para a lista de 'modelos' -->
         {% for item in modelos %}
             <div class="col">
                 <div class="card h-100 shadow-sm">
                     <div class="card-body d-flex flex-column">
-                        <!-- Card para um Modelo de Avaliação (Prova, Simulado) -->
                         <h5 class="card-title">{{ item.nome }}</h5>
                         <span class="badge mb-2 align-self-start 
                             {% if item.tipo == 'prova' %} bg-primary 
@@ -35,7 +33,6 @@
                         <p class="card-text small text-muted mb-3 flex-grow-1">
                             <strong>Série:</strong> {{ item.serie.nome }} <br>
                             
-                            <!-- ### CORREÇÃO 2: Lógica correta para somar as questões ### -->
                             {% set total_questoes = namespace(value=0) %}
                             {% if item.regras_selecao and item.regras_selecao.disciplinas %}
                                 {% for disc in item.regras_selecao.disciplinas %}
@@ -47,26 +44,35 @@
                             <strong>Questões:</strong> {{ total_questoes.value }} <br>
                             <strong>Tempo:</strong> {{ item.tempo_limite or 'Livre' }}{% if item.tempo_limite %} minutos{% endif %}
                         </p>
-                        <div class="mt-auto">
-                            <a href="{{ url_for('main_routes.detalhes_modelo_avaliacao', modelo_id=item.id) }}" class="btn btn-dark w-100">
+                        
+                        <!-- BOTÕES DE AÇÃO -->
+                        <div class="mt-auto d-grid gap-2">
+                            <a href="{{ url_for('main_routes.detalhes_modelo_avaliacao', modelo_id=item.id) }}" class="btn btn-dark">
                                 <i class="bi bi-gear-fill me-1"></i> Gerenciar Modelo
                             </a>
+                            <!-- BOTÃO DE EXCLUSÃO ADICIONADO AQUI -->
+                            <button type="button" class="btn btn-outline-danger" 
+                                    data-bs-toggle="modal" 
+                                    data-bs-target="#deleteModal" 
+                                    data-modelo-id="{{ item.id }}" 
+                                    data-modelo-nome="{{ item.nome }}">
+                                <i class="bi bi-trash-fill me-1"></i> Excluir
+                            </button>
                         </div>
                         
-                        <div class="card-footer bg-transparent border-0 text-muted small text-center pt-3">
-                            Criada por: {{ item.criador.nome if item.criador else 'N/A' }}
-                        </div>
+                    </div>
+                    <div class="card-footer bg-transparent border-0 text-muted small text-center pt-3">
+                        Criada por: {{ item.criador.nome if item.criador else 'N/A' }}
                     </div>
                 </div>
             </div>
         {% endfor %}
 
-        <!-- ### CORREÇÃO 3: Loop para a lista de 'recuperacoes' ### -->
+        <!-- Loop para a lista de 'recuperacoes' -->
         {% for item in recuperacoes %}
             <div class="col">
                 <div class="card h-100 shadow-sm">
                     <div class="card-body d-flex flex-column">
-                        <!-- Card para uma Avaliação Estática (Recuperação) -->
                         <h5 class="card-title">{{ item.nome }}</h5>
                         <span class="badge bg-warning text-dark mb-2 align-self-start">{{ item.tipo|capitalize }}</span>
                          <p class="card-text small text-muted mb-3 flex-grow-1">
@@ -90,4 +96,50 @@
     </div>
     {% endif %}
 </div>
+
+<!-- Modal de Confirmação de Exclusão -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="deleteModalLabel">Confirmar Exclusão</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p>Você tem certeza que deseja excluir o modelo de avaliação <strong id="modeloNameToDelete"></strong>?</p>
+        <p class="text-danger"><small>Esta ação não pode ser desfeita. As avaliações já realizadas pelos alunos a partir deste modelo serão mantidas, mas desvinculadas dele.</small></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <form id="deleteForm" method="POST" action="">
+            <button type="submit" class="btn btn-danger">Sim, Excluir</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var deleteModal = document.getElementById('deleteModal');
+    if (deleteModal) {
+        deleteModal.addEventListener('show.bs.modal', function (event) {
+            var button = event.relatedTarget;
+            var modeloId = button.getAttribute('data-modelo-id');
+            var modeloNome = button.getAttribute('data-modelo-nome');
+            
+            var modalBodyName = deleteModal.querySelector('#modeloNameToDelete');
+            var deleteForm = deleteModal.querySelector('#deleteForm');
+            
+            modalBodyName.textContent = '"' + modeloNome + '"';
+            
+            var actionUrl = "{{ url_for('main_routes.excluir_modelo_avaliacao', modelo_id=0) }}".replace('0', modeloId);
+            deleteForm.setAttribute('action', actionUrl);
+        });
+    }
+});
+</script>
 {% endblock %}

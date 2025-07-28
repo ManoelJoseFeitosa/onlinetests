@@ -78,45 +78,25 @@ login_manager.login_message = "Por favor, faça o login para acessar esta págin
 login_manager.login_message_category = "info"
 
 # --- CONFIGURAÇÃO DOS PLANOS DE ASSINATURA ---
-# Centraliza as regras de cada plano para fácil manutenção.
 PLANS = {
     'essencial': {
-        'questoes': 1000,
-        'coordenador': 2,
-        'professor': 50,
-        'aluno': 500,
-        'display_name': 'Plano Essencial'
+        'questoes': 1000, 'coordenador': 2, 'professor': 50, 'aluno': 500, 'display_name': 'Plano Essencial'
     },
     'profissional': {
-        'questoes': 2000,
-        'coordenador': 4,
-        'professor': 100,
-        'aluno': 1000,
-        'display_name': 'Plano Profissional'
+        'questoes': 2000, 'coordenador': 4, 'professor': 100, 'aluno': 1000, 'display_name': 'Plano Profissional'
     },
     'enterprise': {
-        'questoes': float('inf'),  # 'inf' representa infinito (ilimitado)
-        'coordenador': float('inf'),
-        'professor': float('inf'),
-        'aluno': float('inf'),
-        'display_name': 'Plano Enterprise'
+        'questoes': float('inf'), 'coordenador': float('inf'), 'professor': float('inf'), 'aluno': float('inf'), 'display_name': 'Plano Enterprise'
     }
 }
 
 # ===================================================================
 # SEÇÃO 3: DECORATOR DE AUTORIZAÇÃO (WEB E API)
 # ===================================================================
-
-# Decorator para autenticação via Token JWT para a API
 def token_required(f):
-    """
-    Verifica a validade de um token JWT enviado no cabeçalho da requisição.
-    Se o token for válido, o usuário correspondente é passado para a rota.
-    """
     @wraps(f)
     def decorated(*args, **kwargs):
         token = None
-        # O token deve ser enviado no cabeçalho 'x-access-token'
         if 'x-access-token' in request.headers:
             token = request.headers['x-access-token']
         
@@ -124,36 +104,27 @@ def token_required(f):
             return jsonify({'message': 'Token de acesso não encontrado!'}), 401
         
         try:
-            # Decodifica o token usando a chave secreta da aplicação
             data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
             current_api_user = Usuario.query.get(data['id'])
             if not current_api_user:
-                 return jsonify({'message': 'Usuário do token não encontrado!'}), 401
+               return jsonify({'message': 'Usuário do token não encontrado!'}), 401
         except jwt.ExpiredSignatureError:
             return jsonify({'message': 'Token expirado!'}), 401
         except Exception as e:
             return jsonify({'message': 'Token inválido!', 'error': str(e)}), 401
         
-        # Passa o objeto do usuário para a rota protegida
         return f(current_api_user, *args, **kwargs)
     return decorated
 
 def role_required(*roles):
-    """
-    Decorator que verifica se o usuário tem um dos perfis necessários.
-    Funciona tanto para a sessão web (current_user) quanto para a API (token).
-    """
     def wrapper(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
-            # Tenta identificar se o usuário veio de um token (primeiro argumento da rota)
             user_from_token = args[0] if args and isinstance(args[0], Usuario) else None
 
             if user_from_token:
-                # Lógica para a API
                 if user_from_token.role not in roles:
                     return jsonify({'error': 'Acesso não autorizado para este perfil.'}), 403
-            # Lógica original para a aplicação web
             elif not current_user.is_authenticated or current_user.role not in roles:
                 if request.accept_mimetypes.best_match(['application/json']):
                     return jsonify({'error': 'Acesso não autorizado para este perfil.'}), 403
@@ -174,14 +145,9 @@ def superadmin_required(f):
     return decorated_function
 
 def check_plan_limit(resource_type):
-    """
-    Decorator que verifica se a escola atingiu o limite de um recurso.
-    Atualmente focado na aplicação web.
-    """
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
-            # O superadmin não tem limites
             if current_user.is_superadmin:
                 return f(*args, **kwargs)
 
@@ -193,19 +159,16 @@ def check_plan_limit(resource_type):
             plan_limits = PLANS[escola.plano]
             limit = plan_limits.get(resource_type)
             
-            # Se o limite for infinito, permite a ação imediatamente
             if limit == float('inf'):
                 return f(*args, **kwargs)
 
-            # Conta a quantidade atual de recursos no banco de dados
             if resource_type in ['aluno', 'professor', 'coordenador']:
                 current_count = Usuario.query.filter_by(escola_id=escola.id, role=resource_type).count()
             elif resource_type == 'questoes':
                 current_count = db.session.query(Questao.id).join(Disciplina, Questao.disciplina_id == Disciplina.id).filter(Disciplina.escola_id == escola.id).count()
             else:
-                return f(*args, **kwargs) # Tipo de recurso desconhecido, permite a passagem
+                return f(*args, **kwargs)
 
-            # Se o limite foi atingido, bloqueia e exibe uma mensagem
             if current_count >= limit:
                 resource_name = resource_type.replace('_', ' ').capitalize() + 's'
                 flash(f'Limite de {resource_name} ({int(limit)}) para o {plan_limits["display_name"]} foi atingido. Para adicionar mais, peça ao administrador para fazer um upgrade do plano.', 'warning')
@@ -218,7 +181,6 @@ def check_plan_limit(resource_type):
 # ===================================================================
 # SEÇÃO 4: MODELOS DO BANCO DE DADOS
 # ===================================================================
-
 simulado_disciplinas = db.Table('simulado_disciplinas',
     db.Column('avaliacao_id', db.Integer, db.ForeignKey('avaliacao.id'), primary_key=True),
     db.Column('disciplina_id', db.Integer, db.ForeignKey('disciplina.id'), primary_key=True)
@@ -321,7 +283,10 @@ class Avaliacao(db.Model):
     escola_id = db.Column(db.Integer, db.ForeignKey('escola.id'), nullable=False)
     ano_letivo_id = db.Column(db.Integer, db.ForeignKey('ano_letivo.id'), nullable=True)
     is_dinamica = db.Column(db.Boolean, default=False, nullable=False)
-    modelo_id = db.Column(db.Integer, db.ForeignKey('modelo_avaliacao.id'), nullable=True)
+    # ### ALTERAÇÃO NO MODELO AQUI ###
+    # Adicionado ondelete='SET NULL' para que, ao excluir um modelo, as avaliações
+    # já realizadas não sejam perdidas, apenas desvinculadas.
+    modelo_id = db.Column(db.Integer, db.ForeignKey('modelo_avaliacao.id', ondelete='SET NULL'), nullable=True)
     alunos_designados = db.relationship('Usuario', secondary=avaliacao_alunos_designados, lazy='subquery',
                                         backref=db.backref('avaliacoes_designadas', lazy=True))
     ano_letivo = db.relationship('AnoLetivo', backref='avaliacoes')
@@ -412,14 +377,12 @@ class AuditLog(db.Model):
     timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     user_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=True)
     user_email = db.Column(db.String(150), nullable=False)
-    action = db.Column(db.String(100), nullable=False, index=True) # Ex: 'LOGIN_SUCCESS', 'QUESTION_CREATE'
-    target_type = db.Column(db.String(50), nullable=True, index=True) # Ex: 'Usuario', 'Questao'
+    action = db.Column(db.String(100), nullable=False, index=True)
+    target_type = db.Column(db.String(50), nullable=True, index=True)
     target_id = db.Column(db.Integer, nullable=True)
-    details = db.Column(db.JSON, nullable=True) # Para armazenar dados extras, como 'antes' e 'depois'
+    details = db.Column(db.JSON, nullable=True)
     ip_address = db.Column(db.String(45), nullable=True)
-
     user = db.relationship('Usuario', backref='audit_logs')
-
     def __repr__(self):
         return f'<AuditLog {self.timestamp} - {self.user_email} - {self.action}>'
 
@@ -431,7 +394,6 @@ class Documento(db.Model):
     caminho_arquivo = db.Column(db.String(300), nullable=False)
     data_upload = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     ativo = db.Column(db.Boolean, default=True, nullable=False)
-
     def __repr__(self):
         return f'<Documento {self.titulo}>'
 
@@ -1596,6 +1558,36 @@ def detalhes_modelo_avaliacao(modelo_id):
         stats=stats, 
         disciplinas_map=disciplinas_map
     )
+
+@main_routes.route('/modelo-avaliacao/<int:modelo_id>/excluir', methods=['POST'])
+@login_required
+@role_required('coordenador', 'professor')
+def excluir_modelo_avaliacao(modelo_id):
+    """
+    Exclui um Modelo de Avaliação.
+    Apenas o criador ou um coordenador da escola podem excluir.
+    """
+    # Busca o modelo, garantindo que ele pertence à escola do usuário.
+    modelo = ModeloAvaliacao.query.filter_by(id=modelo_id, escola_id=current_user.escola_id).first_or_404()
+
+    # Regra de permissão: Coordenadores podem excluir qualquer modelo da escola.
+    # Professores só podem excluir os modelos que eles mesmos criaram.
+    if current_user.role == 'professor' and modelo.criador_id != current_user.id:
+        flash('Você não tem permissão para excluir um modelo que não criou.', 'danger')
+        return redirect(url_for('main_routes.listar_modelos_avaliacao'))
+
+    try:
+        nome_modelo = modelo.nome
+        db.session.delete(modelo)
+        db.session.commit()
+        log_audit('ASSESSMENT_MODEL_DELETED', target_obj=modelo)
+        flash(f'O modelo de avaliação "{nome_modelo}" foi excluído com sucesso.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Não foi possível excluir o modelo. Pode haver avaliações de alunos associadas a ele. Erro: {e}', 'danger')
+        print(f"ERRO AO EXCLUIR MODELO DE AVALIAÇÃO: {e}")
+
+    return redirect(url_for('main_routes.listar_modelos_avaliacao'))
 
 @main_routes.route('/api/buscar-questoes')
 @login_required
