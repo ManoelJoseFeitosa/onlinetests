@@ -1916,9 +1916,6 @@ def corrigir_respostas(resultado_id):
     Exibe a interface de correção para um resultado específico (GET) e
     processa o envio da correção (POST).
     """
-    # ### CORREÇÃO APLICADA AQUI ###
-    # A linha 'joinedload(Resultado.respostas)' foi removida porque é incompatível
-    # com a configuração 'lazy="dynamic"' no modelo Resultado.
     resultado = Resultado.query.options(
         joinedload(Resultado.aluno),
         joinedload(Resultado.avaliacao).subqueryload(Avaliacao.questoes)
@@ -1927,22 +1924,44 @@ def corrigir_respostas(resultado_id):
         Avaliacao.escola_id == current_user.escola_id
     ).first_or_404()
 
-    # --- LÓGICA DO POST: Salvar a correção ---
+    # --- LÓGICA DO POST: Salvar a correção detalhada ---
     if request.method == 'POST':
         try:
             total_nota = 0
-            # Como 'respostas' é dynamic, a query para buscar as respostas acontece aqui.
-            for resposta in resultado.respostas:
-                questao_id = resposta.questao_id
+            # Itera sobre todas as questões da avaliação para calcular a nota final
+            for questao in resultado.avaliacao.questoes:
+                # Busca a resposta do aluno para esta questão
+                resposta = Resposta.query.filter_by(resultado_id=resultado.id, questao_id=questao.id).first()
                 
-                pontos = request.form.get(f'pontos_{questao_id}', type=float, default=0.0)
-                feedback = request.form.get(f'feedback_{questao_id}', '')
+                # Se o aluno não respondeu, cria uma resposta em branco para registro
+                if not resposta:
+                    resposta = Resposta(resultado_id=resultado.id, questao_id=questao.id, resposta_aluno="[NÃO RESPONDIDA]")
+                    db.session.add(resposta)
 
-                resposta.pontos = pontos
-                resposta.feedback_professor = feedback
-                resposta.status_correcao = 'avaliada'
+                # Lógica de correção para questões discursivas
+                if questao.tipo == 'discursiva':
+                    status_correcao = request.form.get(f'status_correcao_{questao.id}')
+                    feedback = request.form.get(f'feedback_{questao.id}', '')
+                    
+                    pontos = 0.0
+                    if status_correcao == 'correta':
+                        pontos = 1.0  # Assumindo 1 ponto por questão correta
+                    elif status_correcao == 'parcial':
+                        pontos = 0.5  # Assumindo 0.5 para parcial
+                    
+                    resposta.pontos = pontos
+                    resposta.feedback_professor = feedback
+                    resposta.status_correcao = status_correcao
+                    total_nota += pontos
                 
-                total_nota += pontos
+                # Lógica de autocorreção para questões de múltipla escolha
+                elif questao.tipo == 'multipla_escolha':
+                    if resposta.resposta_aluno == questao.gabarito:
+                        resposta.pontos = 1.0
+                    else:
+                        resposta.pontos = 0.0
+                    resposta.status_correcao = 'avaliada'
+                    total_nota += resposta.pontos
 
             resultado.nota = total_nota
             resultado.status = 'Finalizado'
@@ -1961,15 +1980,25 @@ def corrigir_respostas(resultado_id):
             db.session.rollback()
             flash(f"Ocorreu um erro ao salvar a correção: {e}", "danger")
 
-    # --- LÓGICA DO GET: Exibir a página para correção ---
-    # Para otimizar a exibição, carregamos as respostas com suas questões de uma só vez.
-    respostas_com_questoes = resultado.respostas.options(joinedload(Resposta.questao)).all()
-    respostas_map = {resposta.questao_id: resposta for resposta in respostas_com_questoes}
+    # --- LÓGICA DO GET: Preparar dados para a página de correção ---
+    itens_para_corrigir = []
+    # Cria um mapa com as respostas do aluno para busca rápida
+    respostas_map = {resp.questao_id: resp for resp in resultado.respostas.all()}
+
+    # Itera sobre todas as questões da prova
+    for questao in resultado.avaliacao.questoes:
+        # Adiciona apenas as questões discursivas à lista de correção manual
+        if questao.tipo == 'discursiva':
+            resposta_aluno = respostas_map.get(questao.id)
+            itens_para_corrigir.append({
+                'questao': questao,
+                'resposta': resposta_aluno
+            })
     
     return render_template(
         'app/correcao_respostas.html',
         resultado=resultado,
-        respostas_map=respostas_map
+        itens_para_corrigir=itens_para_corrigir
     )
 
 @main_routes.route('/admin/relatorios')
