@@ -4,6 +4,20 @@
 
 {% block content %}
 <div class="container mt-4">
+
+    <!-- ================================================================== -->
+    <!-- BLOCO DE DEPURAÇÃO TEMPORÁRIO -->
+    <!-- Este bloco irá mostrar o conteúdo exato que o template está a receber. -->
+    <!-- ================================================================== -->
+    <div class="alert alert-danger">
+        <h4>INFORMAÇÃO DE DEPURAÇÃO</h4>
+        <p><strong>Conteúdo da variável 'avaliacoes_disponiveis':</strong></p>
+        <pre style="white-space: pre-wrap; word-wrap: break-word;">{{ avaliacoes_disponiveis }}</pre>
+        <hr>
+        <p><strong>Total de itens recebidos pelo template:</strong> {{ avaliacoes_disponiveis|length }}</p>
+    </div>
+    <!-- ================================================================== -->
+
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="mb-0">Avaliações Disponíveis</h2>
         <a href="{{ url_for('main_routes.dashboard') }}" class="btn btn-outline-secondary">&larr; Voltar ao Painel</a>
