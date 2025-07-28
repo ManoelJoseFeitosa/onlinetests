@@ -1095,36 +1095,45 @@ def criar_questao():
     # --- LÓGICA DO POST (SALVAR A QUESTÃO) ---
     if request.method == 'POST':
         try:
-            # Captura todos os dados do formulário
+            # --- VALIDAÇÃO DETALHADA ---
+            erros = []
             disciplina_id = request.form.get('disciplina_id', type=int)
             serie_id = request.form.get('serie_id', type=int)
             assunto = request.form.get('assunto')
-            texto_questao = request.form.get('texto_questao') # Corresponde ao name="texto_questao" no HTML
+            texto_questao = request.form.get('texto_questao')
             nivel = request.form.get('nivel')
             tipo = request.form.get('tipo')
             gabarito = request.form.get('gabarito')
-            
-            # Captura as opções
-            opcao_a = request.form.get('opcao_a')
-            opcao_b = request.form.get('opcao_b')
-            opcao_c = request.form.get('opcao_c')
-            opcao_d = request.form.get('opcao_d')
 
-            # ### CORREÇÃO APLICADA AQUI ###
-            # A validação agora verifica todos os campos necessários, incluindo as opções
-            # se o tipo for múltipla escolha.
-            campos_base = [disciplina_id, serie_id, assunto, texto_questao, nivel, gabarito]
-            campos_multipla_escolha = [opcao_a, opcao_b, opcao_c, opcao_d]
+            if not disciplina_id: erros.append("Disciplina")
+            if not serie_id: erros.append("Série")
+            if not assunto: erros.append("Assunto")
+            if not texto_questao: erros.append("Enunciado da Questão")
+            if not nivel: erros.append("Nível")
+            if not tipo: erros.append("Tipo de Questão")
+            if not gabarito: erros.append("Gabarito")
 
-            validacao_ok = all(campos_base)
+            # Captura e valida as opções apenas se for múltipla escolha
             if tipo == 'multipla_escolha':
-                validacao_ok = all(campos_base) and all(campos_multipla_escolha)
+                opcao_a = request.form.get('opcao_a')
+                opcao_b = request.form.get('opcao_b')
+                opcao_c = request.form.get('opcao_c')
+                opcao_d = request.form.get('opcao_d')
+                if not opcao_a: erros.append("Opção A")
+                if not opcao_b: erros.append("Opção B")
+                if not opcao_c: erros.append("Opção C")
+                if not opcao_d: erros.append("Opção D")
+            else:
+                # Define as opções como None se não for múltipla escolha
+                opcao_a, opcao_b, opcao_c, opcao_d = None, None, None, None
 
-            if not validacao_ok:
-                flash('Todos os campos são obrigatórios.', 'danger')
-                # Retorna para a mesma página, mas sem salvar
+            # Se a lista de erros não estiver vazia, exibe a mensagem e retorna
+            if erros:
+                mensagem_erro = "Os seguintes campos são obrigatórios: " + ", ".join(erros) + "."
+                flash(mensagem_erro, 'danger')
                 return redirect(url_for('main_routes.criar_questao'))
 
+            # Se a validação passar, cria o objeto Questao
             nova_questao = Questao(
                 disciplina_id=disciplina_id,
                 serie_id=serie_id,
