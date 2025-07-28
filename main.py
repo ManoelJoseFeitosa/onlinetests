@@ -1095,27 +1095,43 @@ def criar_questao():
     # --- LÓGICA DO POST (SALVAR A QUESTÃO) ---
     if request.method == 'POST':
         try:
+            # Captura todos os dados do formulário
             disciplina_id = request.form.get('disciplina_id', type=int)
             serie_id = request.form.get('serie_id', type=int)
             assunto = request.form.get('assunto')
-            texto = request.form.get('texto_questao')
+            texto_questao = request.form.get('texto_questao') # Corresponde ao name="texto_questao" no HTML
             nivel = request.form.get('nivel')
+            tipo = request.form.get('tipo')
+            gabarito = request.form.get('gabarito')
+            
+            # Captura as opções
             opcao_a = request.form.get('opcao_a')
             opcao_b = request.form.get('opcao_b')
             opcao_c = request.form.get('opcao_c')
             opcao_d = request.form.get('opcao_d')
-            gabarito = request.form.get('gabarito')
-            
-            if not all([disciplina_id, serie_id, assunto, texto, nivel, gabarito]):
+
+            # ### CORREÇÃO APLICADA AQUI ###
+            # A validação agora verifica todos os campos necessários, incluindo as opções
+            # se o tipo for múltipla escolha.
+            campos_base = [disciplina_id, serie_id, assunto, texto_questao, nivel, gabarito]
+            campos_multipla_escolha = [opcao_a, opcao_b, opcao_c, opcao_d]
+
+            validacao_ok = all(campos_base)
+            if tipo == 'multipla_escolha':
+                validacao_ok = all(campos_base) and all(campos_multipla_escolha)
+
+            if not validacao_ok:
                 flash('Todos os campos são obrigatórios.', 'danger')
+                # Retorna para a mesma página, mas sem salvar
                 return redirect(url_for('main_routes.criar_questao'))
 
             nova_questao = Questao(
                 disciplina_id=disciplina_id,
                 serie_id=serie_id,
                 assunto=assunto,
-                texto=texto,
+                texto=texto_questao, # O campo no modelo é 'texto'
                 nivel=nivel,
+                tipo=tipo,
                 opcao_a=opcao_a,
                 opcao_b=opcao_b,
                 opcao_c=opcao_c,
@@ -1134,22 +1150,16 @@ def criar_questao():
             flash(f'Ocorreu um erro ao criar a questão: {e}', 'danger')
 
     # --- LÓGICA DO GET (EXIBIR O FORMULÁRIO) ---
-    # Para um professor, busca apenas as disciplinas e séries associadas a ele.
     if current_user.role == 'professor':
         disciplinas = current_user.disciplinas_lecionadas
         series = current_user.series_lecionadas
-        
-        # Se o professor não tiver disciplinas OU séries, ele não pode criar questões.
         if not disciplinas or not series:
             flash('Você precisa estar associado a pelo menos uma disciplina e uma série para criar questões. Por favor, contate o coordenador.', 'warning')
             return redirect(url_for('main_routes.banco_questoes'))
-            
-    # Para um coordenador, busca todas as disciplinas e séries da escola.
-    else: # Papel 'coordenador'
+    else: # Coordenador
         disciplinas = Disciplina.query.filter_by(escola_id=current_user.escola_id).order_by(Disciplina.nome).all()
         series = Serie.query.filter_by(escola_id=current_user.escola_id).order_by(Serie.nome).all()
 
-    # Passa as listas de disciplinas e séries para o template preencher os menus
     return render_template('app/criar_questao.html', disciplinas=disciplinas, series=series)
 
 @main_routes.route('/professor/banco-questoes')
