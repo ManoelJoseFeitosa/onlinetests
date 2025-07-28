@@ -1815,57 +1815,87 @@ def detalhes_avaliacao(avaliacao_id):
 def meus_resultados():
     """
     Exibe a lista de todos os resultados de avaliações (iniciadas ou finalizadas)
-    para o aluno logado no ano letivo corrente.
+    para o aluno logado no ano letivo corrente, agrupados por disciplina.
     """
     ano_letivo_ativo = AnoLetivo.query.filter_by(escola_id=current_user.escola_id, status='ativo').first()
 
     if not ano_letivo_ativo:
         flash("Nenhum ano letivo ativo encontrado. Não é possível exibir seus resultados.", "warning")
-        return render_template('app/meus_resultados.html', resultados=[])
+        return render_template('app/meus_resultados.html', dados_por_disciplina={}, total_provas=0, total_simulados=0, total_recuperacao=0)
 
     resultados_aluno = Resultado.query.options(
-        joinedload(Resultado.avaliacao).joinedload(Avaliacao.disciplina),
-        joinedload(Resultado.avaliacao).joinedload(Avaliacao.serie)
+        joinedload(Resultado.avaliacao).joinedload(Avaliacao.disciplina)
     ).filter(
         Resultado.aluno_id == current_user.id,
         Resultado.ano_letivo_id == ano_letivo_ativo.id
     ).order_by(Resultado.data_realizacao.desc()).all()
 
     # ### CORREÇÃO FINAL APLICADA AQUI ###
-    # Calcula as estatísticas para todos os tipos de avaliação que o template espera.
-    total_provas = 0
-    total_simulados = 0
-    total_recuperacao = 0
-    soma_notas_provas = 0
-    soma_notas_simulados = 0
-    soma_notas_recuperacao = 0
+    # Agrupa os resultados e calcula todas as estatísticas e dados para os gráficos.
+    dados_por_disciplina = {}
+    total_provas, total_simulados, total_recuperacao = 0, 0, 0
+    soma_notas_provas, soma_notas_simulados, soma_notas_recuperacao = 0, 0, 0
+    provas_por_disciplina, simulados_data, recuperacao_data = {}, [], []
 
     for res in resultados_aluno:
         if res.avaliacao and res.status == 'Finalizado' and res.nota is not None:
+            # Agrupamento por disciplina
+            if res.avaliacao.disciplina:
+                disciplina_nome = res.avaliacao.disciplina.nome
+                if disciplina_nome not in dados_por_disciplina:
+                    dados_por_disciplina[disciplina_nome] = {'resultados': [], 'soma_notas': 0, 'contagem': 0}
+                dados_por_disciplina[disciplina_nome]['resultados'].append(res)
+                dados_por_disciplina[disciplina_nome]['soma_notas'] += res.nota
+                dados_por_disciplina[disciplina_nome]['contagem'] += 1
+
+            # Contagem e soma para as médias gerais e gráficos
             if res.avaliacao.tipo == 'prova':
                 total_provas += 1
                 soma_notas_provas += res.nota
+                disc_nome = res.avaliacao.disciplina.nome if res.avaliacao.disciplina else "Outras"
+                if disc_nome not in provas_por_disciplina: provas_por_disciplina[disc_nome] = []
+                provas_por_disciplina[disc_nome].append({'label': res.avaliacao.nome, 'nota': res.nota})
             elif res.avaliacao.tipo == 'simulado':
                 total_simulados += 1
                 soma_notas_simulados += res.nota
+                simulados_data.append({'label': res.avaliacao.nome, 'nota': res.nota})
             elif res.avaliacao.tipo == 'recuperacao':
                 total_recuperacao += 1
                 soma_notas_recuperacao += res.nota
-    
-    media_provas = (soma_notas_provas / total_provas) if total_provas > 0 else 0
-    media_simulados = (soma_notas_simulados / total_simulados) if total_simulados > 0 else 0
-    media_recuperacao = (soma_notas_recuperacao / total_recuperacao) if total_recuperacao > 0 else 0
+                recuperacao_data.append({'label': res.avaliacao.nome, 'nota': res.nota})
 
-    # Envia os resultados e todas as variáveis de estatísticas para o template.
+    # Calcula a média para cada disciplina
+    for disciplina in dados_por_disciplina:
+        contagem = dados_por_disciplina[disciplina]['contagem']
+        soma_notas = dados_por_disciplina[disciplina]['soma_notas']
+        dados_por_disciplina[disciplina]['media'] = round((soma_notas / contagem), 2) if contagem > 0 else 0
+
+    # Calcula as médias gerais
+    media_provas = round((soma_notas_provas / total_provas), 2) if total_provas > 0 else 0
+    media_simulados = round((soma_notas_simulados / total_simulados), 2) if total_simulados > 0 else 0
+    media_recuperacao = round((soma_notas_recuperacao / total_recuperacao), 2) if total_recuperacao > 0 else 0
+
+    # Prepara dados para os gráficos
+    chart_data_provas_por_disciplina = {'labels': sorted(list({p['label'] for provas in provas_por_disciplina.values() for p in provas})), 'datasets': []}
+    colors = ['rgba(54, 162, 235, 1)', 'rgba(255, 99, 132, 1)', 'rgba(75, 192, 192, 1)', 'rgba(255, 206, 86, 1)', 'rgba(153, 102, 255, 1)']
+    for i, (disciplina, provas) in enumerate(provas_por_disciplina.items()):
+        dataset = {'label': disciplina, 'data': [next((p['nota'] for p in provas if p['label'] == label), None) for label in chart_data_provas_por_disciplina['labels']], 'borderColor': colors[i % len(colors)], 'backgroundColor': colors[i % len(colors)].replace('1)', '0.2)'), 'fill': True, 'tension': 0.1}
+        chart_data_provas_por_disciplina['datasets'].append(dataset)
+
+    chart_labels_simulados = [s['label'] for s in simulados_data]
+    chart_data_simulados = [s['nota'] for s in simulados_data]
+    chart_labels_recuperacao = [r['label'] for r in recuperacao_data]
+    chart_data_recuperacao = [r['nota'] for r in recuperacao_data]
+
     return render_template(
         'app/meus_resultados.html', 
-        resultados=resultados_aluno,
-        total_provas=total_provas,
-        media_provas=media_provas,
-        total_simulados=total_simulados,
-        media_simulados=media_simulados,
-        total_recuperacao=total_recuperacao,
-        media_recuperacao=media_recuperacao
+        dados_por_disciplina=dados_por_disciplina,
+        total_provas=total_provas, media_provas=media_provas,
+        total_simulados=total_simulados, media_simulados=media_simulados,
+        total_recuperacao=total_recuperacao, media_recuperacao=media_recuperacao,
+        chart_data_provas_por_disciplina=chart_data_provas_por_disciplina,
+        chart_labels_simulados=chart_labels_simulados, chart_data_simulados=chart_data_simulados,
+        chart_labels_recuperacao=chart_labels_recuperacao, chart_data_recuperacao=chart_data_recuperacao
     )
 
 @main_routes.route('/resultado/<int:resultado_id>')
