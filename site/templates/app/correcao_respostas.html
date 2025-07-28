@@ -7,43 +7,55 @@
         <p class="text-muted mb-0"><strong>Aluno:</strong> {{ resultado.aluno.nome }} | <strong>Avaliação:</strong> {{ resultado.avaliacao.nome }}</p>
     </div>
     
-    <form method="POST">
-        {% for resposta in respostas %}
+    <!-- O formulário agora aponta para a rota correta -->
+    <form method="POST" action="{{ url_for('main_routes.corrigir_respostas', resultado_id=resultado.id) }}">
+        
+        <!-- CORREÇÃO: O loop agora itera sobre 'itens_para_corrigir' -->
+        {% for item in itens_para_corrigir %}
             <div class="card shadow-sm mb-4">
                 <div class="card-header bg-light">
                     <strong>Questão {{ loop.index }}:</strong>
                     
-                    {% if resposta.questao.imagem_nome %}
+                    {% if item.questao.imagem_nome %}
                         <div class="my-3 text-center">
-                            <img src="{{ url_for('static', filename='uploads/questoes/' + resposta.questao.imagem_nome) }}"
-                                 alt="{{ resposta.questao.imagem_alt or 'Imagem da questão' }}"
+                            <img src="{{ url_for('static', filename='uploads/questoes/' + item.questao.imagem_nome) }}"
+                                 alt="{{ item.questao.imagem_alt or 'Imagem da questão' }}"
                                  class="img-fluid rounded border"
                                  style="max-height: 350px;">
                         </div>
                     {% endif %}
-                    <div style="white-space: pre-wrap;">{{ resposta.questao.texto | safe }}</div>
+                    <div style="white-space: pre-wrap;">{{ item.questao.texto | safe }}</div>
                 </div>
                 <div class="card-body">
                     <h6 class="card-subtitle mb-2 text-muted">Resposta do Aluno:</h6>
-                    <p class="card-text" style="background-color: #fffbe6; border: 1px solid #ffeeba; padding: 1rem; border-radius: .25rem; white-space: pre-wrap;">{{ resposta.resposta_aluno }}</p>
+                    <p class="card-text" style="background-color: #fffbe6; border: 1px solid #ffeeba; padding: 1rem; border-radius: .25rem; white-space: pre-wrap;">
+                        <!-- CORREÇÃO: Acessa a resposta através de 'item.resposta' e verifica se existe -->
+                        {{ item.resposta.resposta_aluno if item.resposta else '[NÃO RESPONDIDA]' }}
+                    </p>
                 </div>
                 <div class="card-footer">
                     <div class="form-group">
                         <label class="mb-2"><strong>Avaliar Resposta:</strong></label>
-                        <div class="form-check"><input class="form-check-input" type="radio" name="status_{{ resposta.id }}" value="correta" required><label class="form-check-label text-success">Correta (Nota máxima)</label></div>
-                        <div class="form-check"><input class="form-check-input" type="radio" name="status_{{ resposta.id }}" value="parcial"><label class="form-check-label text-warning">Parcialmente Correta (Metade da nota)</label></div>
-                        <div class="form-check"><input class="form-check-input" type="radio" name="status_{{ resposta.id }}" value="incorreta"><label class="form-check-label text-danger">Incorreta (Zero)</label></div>
+                        <!-- CORREÇÃO: O 'name' dos campos agora usa 'item.questao.id' -->
+                        <div class="form-check"><input class="form-check-input" type="radio" name="status_correcao_{{ item.questao.id }}" value="correta" required><label class="form-check-label text-success">Correta (Nota máxima)</label></div>
+                        <div class="form-check"><input class="form-check-input" type="radio" name="status_correcao_{{ item.questao.id }}" value="parcial"><label class="form-check-label text-warning">Parcialmente Correta (Metade da nota)</label></div>
+                        <div class="form-check"><input class="form-check-input" type="radio" name="status_correcao_{{ item.questao.id }}" value="incorreta"><label class="form-check-label text-danger">Incorreta (Zero)</label></div>
                     </div>
                     <div class="form-group mt-3">
-                        <label for="feedback_{{ resposta.id }}"><strong>Feedback (Opcional):</strong></label>
-                        <textarea class="form-control" name="feedback_{{ resposta.id }}" id="feedback_{{ resposta.id }}" rows="2"></textarea>
+                        <!-- CORREÇÃO: O 'name' e 'id' dos campos agora usam 'item.questao.id' -->
+                        <label for="feedback_{{ item.questao.id }}"><strong>Feedback (Opcional):</strong></label>
+                        <textarea class="form-control" name="feedback_{{ item.questao.id }}" id="feedback_{{ item.questao.id }}" rows="2"></textarea>
                     </div>
                 </div>
             </div>
+        {% else %}
+            <div class="alert alert-info text-center">
+                Não há questões discursivas para corrigir nesta avaliação. As notas das questões de múltipla escolha foram calculadas automaticamente.
+            </div>
         {% endfor %}
+
         <div class="d-flex justify-content-end mt-4">
-            <!-- CORREÇÃO APLICADA AQUI -->
-            <a href="{{ url_for('main_routes.correcao_lista_alunos', avaliacao_id=resultado.avaliacao_id) }}" class="btn btn-secondary btn-lg me-2">Cancelar</a>
+            <a href="{{ url_for('main_routes.detalhes_modelo_avaliacao', modelo_id=resultado.avaliacao.modelo_id) if resultado.avaliacao.is_dinamica else url_for('main_routes.detalhes_avaliacao', avaliacao_id=resultado.avaliacao_id) }}" class="btn btn-secondary btn-lg me-2">Cancelar</a>
             <button type="submit" class="btn btn-success btn-lg">Salvar Correção e Finalizar Nota</button>
         </div>
     </form>
