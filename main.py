@@ -1817,16 +1817,12 @@ def meus_resultados():
     Exibe a lista de todos os resultados de avaliações (iniciadas ou finalizadas)
     para o aluno logado no ano letivo corrente.
     """
-    # Busca o ano letivo ativo para a escola do aluno.
     ano_letivo_ativo = AnoLetivo.query.filter_by(escola_id=current_user.escola_id, status='ativo').first()
 
     if not ano_letivo_ativo:
         flash("Nenhum ano letivo ativo encontrado. Não é possível exibir seus resultados.", "warning")
         return render_template('app/meus_resultados.html', resultados=[])
 
-    # Busca todos os resultados do aluno no ano letivo ativo.
-    # Usamos joinedload para carregar de forma otimizada os dados da avaliação
-    # e da disciplina associada a cada avaliação, evitando múltiplas queries.
     resultados_aluno = Resultado.query.options(
         joinedload(Resultado.avaliacao).joinedload(Avaliacao.disciplina),
         joinedload(Resultado.avaliacao).joinedload(Avaliacao.serie)
@@ -1835,8 +1831,34 @@ def meus_resultados():
         Resultado.ano_letivo_id == ano_letivo_ativo.id
     ).order_by(Resultado.data_realizacao.desc()).all()
 
-    # Renderiza o template, passando a lista de resultados encontrados.
-    return render_template('app/meus_resultados.html', resultados=resultados_aluno)
+    # ### CORREÇÃO APLICADA AQUI ###
+    # Calcula as estatísticas que o template 'meus_resultados.html' espera receber.
+    total_provas = 0
+    total_simulados = 0
+    soma_notas_provas = 0
+    soma_notas_simulados = 0
+
+    for res in resultados_aluno:
+        if res.avaliacao and res.status == 'Finalizado' and res.nota is not None:
+            if res.avaliacao.tipo == 'prova':
+                total_provas += 1
+                soma_notas_provas += res.nota
+            elif res.avaliacao.tipo == 'simulado':
+                total_simulados += 1
+                soma_notas_simulados += res.nota
+    
+    media_provas = (soma_notas_provas / total_provas) if total_provas > 0 else 0
+    media_simulados = (soma_notas_simulados / total_simulados) if total_simulados > 0 else 0
+
+    # Envia os resultados e as novas variáveis de estatísticas para o template.
+    return render_template(
+        'app/meus_resultados.html', 
+        resultados=resultados_aluno,
+        total_provas=total_provas,
+        media_provas=media_provas,
+        total_simulados=total_simulados,
+        media_simulados=media_simulados
+    )
 
 @main_routes.route('/resultado/<int:resultado_id>')
 @login_required
