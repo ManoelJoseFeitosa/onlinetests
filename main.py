@@ -1092,11 +1092,65 @@ def gerenciar_academico():
 @role_required('professor', 'coordenador')
 @check_plan_limit('questoes')
 def criar_questao():
+    # --- LÓGICA DO POST (SALVAR A QUESTÃO) ---
     if request.method == 'POST':
-        # ... Lógica de criar questão ...
-        return redirect(url_for('main_routes.banco_questoes'))
-    # ... Lógica GET ...
-    return render_template('app/criar_questao.html') # Simplificado
+        try:
+            disciplina_id = request.form.get('disciplina_id', type=int)
+            serie_id = request.form.get('serie_id', type=int)
+            assunto = request.form.get('assunto')
+            texto = request.form.get('texto_questao')
+            nivel = request.form.get('nivel')
+            opcao_a = request.form.get('opcao_a')
+            opcao_b = request.form.get('opcao_b')
+            opcao_c = request.form.get('opcao_c')
+            opcao_d = request.form.get('opcao_d')
+            gabarito = request.form.get('gabarito')
+            
+            if not all([disciplina_id, serie_id, assunto, texto, nivel, gabarito]):
+                flash('Todos os campos são obrigatórios.', 'danger')
+                return redirect(url_for('main_routes.criar_questao'))
+
+            nova_questao = Questao(
+                disciplina_id=disciplina_id,
+                serie_id=serie_id,
+                assunto=assunto,
+                texto=texto,
+                nivel=nivel,
+                opcao_a=opcao_a,
+                opcao_b=opcao_b,
+                opcao_c=opcao_c,
+                opcao_d=opcao_d,
+                gabarito=gabarito,
+                criador_id=current_user.id
+            )
+            db.session.add(nova_questao)
+            db.session.commit()
+            log_audit('QUESTION_CREATED', target_obj=nova_questao)
+            flash('Questão criada com sucesso!', 'success')
+            return redirect(url_for('main_routes.banco_questoes'))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Ocorreu um erro ao criar a questão: {e}', 'danger')
+
+    # --- LÓGICA DO GET (EXIBIR O FORMULÁRIO) ---
+    # Para um professor, busca apenas as disciplinas e séries associadas a ele.
+    if current_user.role == 'professor':
+        disciplinas = current_user.disciplinas_lecionadas
+        series = current_user.series_lecionadas
+        
+        # Se o professor não tiver disciplinas OU séries, ele não pode criar questões.
+        if not disciplinas or not series:
+            flash('Você precisa estar associado a pelo menos uma disciplina e uma série para criar questões. Por favor, contate o coordenador.', 'warning')
+            return redirect(url_for('main_routes.banco_questoes'))
+            
+    # Para um coordenador, busca todas as disciplinas e séries da escola.
+    else: # Papel 'coordenador'
+        disciplinas = Disciplina.query.filter_by(escola_id=current_user.escola_id).order_by(Disciplina.nome).all()
+        series = Serie.query.filter_by(escola_id=current_user.escola_id).order_by(Serie.nome).all()
+
+    # Passa as listas de disciplinas e séries para o template preencher os menus
+    return render_template('app/criar_questao.html', disciplinas=disciplinas, series=series)
 
 @main_routes.route('/professor/banco-questoes')
 @login_required
