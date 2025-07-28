@@ -1457,16 +1457,12 @@ def listar_modelos_avaliacao():
 
     if not ano_letivo_ativo:
         flash('Não há um ano letivo ativo. A funcionalidade de avaliações está limitada.', 'warning')
-        # Para o coordenador, é melhor mostrar a página vazia do que redirecionar
         if current_user.role == 'aluno':
             return redirect(url_for('main_routes.dashboard'))
 
-    # --- LÓGICA PARA PROFESSORES E COORDENADORES ---
-    if current_user.role in ['coordenador', 'professor']:
-        # Carrega todos os modelos de avaliação da escola
+    # --- LÓGICA PARA COORDENADORES (vê tudo da escola) ---
+    if current_user.role == 'coordenador':
         modelos = ModeloAvaliacao.query.filter_by(escola_id=escola_id).order_by(ModeloAvaliacao.nome).all()
-        
-        # Carrega todas as avaliações estáticas (recuperações) da escola no ano ativo
         recuperacoes = []
         if ano_letivo_ativo:
             recuperacoes = Avaliacao.query.filter(
@@ -1474,8 +1470,39 @@ def listar_modelos_avaliacao():
                 Avaliacao.ano_letivo_id == ano_letivo_ativo.id,
                 Avaliacao.is_dinamica == False
             ).order_by(Avaliacao.nome).all()
-
         return render_template('app/listar_avaliacoes_geradas.html', modelos=modelos, recuperacoes=recuperacoes)
+
+    # --- LÓGICA CORRIGIDA PARA PROFESSORES ---
+    if current_user.role == 'professor':
+        # 1. Pega os IDs das disciplinas que o professor leciona.
+        disciplinas_ids = [d.id for d in current_user.disciplinas_lecionadas]
+        disciplinas_ids_set = set(disciplinas_ids)
+
+        if not disciplinas_ids:
+            flash('Você não está associado a nenhuma disciplina.', 'info')
+            return render_template('app/listar_avaliacoes_geradas.html', modelos=[], recuperacoes=[])
+
+        # 2. Filtra os Modelos de Avaliação (Provas e Simulados) em Python
+        todos_os_modelos = ModeloAvaliacao.query.filter_by(escola_id=escola_id).order_by(ModeloAvaliacao.nome).all()
+        modelos_filtrados = []
+        for modelo in todos_os_modelos:
+            regras_disciplinas = modelo.regras_selecao.get('disciplinas', [])
+            for regra in regras_disciplinas:
+                if regra.get('id') in disciplinas_ids_set:
+                    modelos_filtrados.append(modelo)
+                    break # Se encontrou uma disciplina, já pode adicionar o modelo e ir para o próximo.
+
+        # 3. Filtra as Recuperações (avaliações estáticas) diretamente no banco
+        recuperacoes_filtradas = []
+        if ano_letivo_ativo:
+            recuperacoes_filtradas = Avaliacao.query.filter(
+                Avaliacao.escola_id == escola_id,
+                Avaliacao.ano_letivo_id == ano_letivo_ativo.id,
+                Avaliacao.is_dinamica == False,
+                Avaliacao.disciplina_id.in_(disciplinas_ids) # Filtra pelo ID da disciplina
+            ).order_by(Avaliacao.nome).all()
+
+        return render_template('app/listar_avaliacoes_geradas.html', modelos=modelos_filtrados, recuperacoes=recuperacoes_filtradas)
     
     # --- LÓGICA PARA ALUNOS (permanece a mesma) ---
     else: # Papel 'aluno'
