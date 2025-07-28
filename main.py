@@ -2052,7 +2052,7 @@ def relatorio_desempenho_por_nivel():
         # ### CORREÇÃO APLICADA AQUI ###
         # O caminho do template foi corrigido para o correto.
         html_renderizado = render_template(
-            'relatorios/desempenho_nivel.html',
+            'app/relatorios/desempenho_nivel.html',
             serie=serie,
             disciplina=disciplina,
             ano_letivo=ano_letivo,
@@ -2287,7 +2287,7 @@ def relatorio_comparativo_por_disciplina():
         # 4. Renderizar o template HTML para o PDF
         #    (Você precisará de um template para isso, ex: 'comparativo_disciplina.html')
         html_renderizado = render_template(
-            'relatorios/comparativo_disciplina.html', # Sugestão de novo nome para o template
+            'app/relatorios/comparativo_turmas.html',
             disciplina=disciplina,
             ano_letivo=ano_letivo,
             stats_data=stats_por_turma,
