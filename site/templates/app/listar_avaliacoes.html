@@ -11,14 +11,14 @@
     
     <hr class="mt-0">
     
-    <!-- CORREÇÃO: A variável principal agora é 'avaliacoes_disponiveis' -->
+    <!-- A variável correta 'avaliacoes_disponiveis' é usada aqui -->
     {% if avaliacoes_disponiveis %}
         <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
             {% for item in avaliacoes_disponiveis %}
             <div class="col">
                 <div class="card h-100 shadow-sm">
                     <div class="card-body d-flex flex-column">
-                        <!-- CORREÇÃO: Acessando as propriedades através de 'item.objeto' -->
+                        <!-- Acessa as propriedades através de 'item.objeto' -->
                         <h5 class="card-title">{{ item.objeto.nome }}</h5>
                         <div class="mb-3">
                             {% if item.objeto.tipo == 'simulado' %}
@@ -35,7 +35,7 @@
                         </p>
 
                         <div class="mt-auto text-center">
-                            <!-- CORREÇÃO: Verificando o status através de 'item.status' -->
+                            <!-- Verifica o status através de 'item.status' -->
                             {% if item.status == 'Finalizado' %}
                                 <a href="{{ url_for('main_routes.ver_resultado_detalhado', resultado_id=item.resultado.id) }}" class="btn btn-success w-100">
                                     <i class="bi bi-check-circle-fill"></i> Ver Resultado
@@ -45,7 +45,7 @@
                                     <i class="bi bi-pencil-square"></i> Continuar Avaliação
                                 </a>
                             {% else %} <!-- Status 'Não Iniciada' -->
-                                <!-- CORREÇÃO: Usando 'item.tipo_obj' para decidir a rota -->
+                                <!-- Usa 'item.tipo_obj' para decidir a rota -->
                                 {% if item.tipo_obj == 'modelo' %}
                                     <a href="{{ url_for('main_routes.iniciar_avaliacao_dinamica', modelo_id=item.objeto.id) }}" class="btn btn-primary w-100">
                                         <i class="bi bi-play-circle-fill"></i> Iniciar Agora
