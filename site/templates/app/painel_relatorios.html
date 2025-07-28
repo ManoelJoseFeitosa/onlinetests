@@ -37,13 +37,9 @@
             </div>
         </div>
 
-        <!-- ================================================================== -->
-        <!-- ### INÍCIO DA CORREÇÃO ### -->
-        <!-- O bloco abaixo foi modificado. -->
-        <!-- ================================================================== -->
+        <!-- Bloco Boletim por Turma (Sem alterações) -->
         <div class="col-md-6 col-lg-4">
             <div class="card h-100 shadow-sm">
-                <!-- Título alterado para refletir a nova funcionalidade -->
                 <div class="card-header"><h5 class="mb-0"><i class="bi bi-file-earmark-text-fill me-2"></i>Boletim por Turma</h5></div>
                 <div class="card-body d-flex flex-column">
                      <form action="{{ url_for('main_routes.relatorio_boletim_aluno') }}" method="POST" target="_blank" class="d-flex flex-column flex-grow-1">
@@ -54,12 +50,10 @@
                                 {% for ano in anos_letivos %}<option value="{{ ano.id }}">{{ ano.ano }}</option>{% endfor %}
                             </select>
                         </div>
-                        <!-- Campo de ALUNO foi substituído pelo campo de SÉRIE -->
                         <div class="mb-3 flex-grow-1">
                             <label for="serie_id_boletim" class="form-label">Série</label>
                             <select class="form-select" name="serie_id" id="serie_id_boletim" required>
                                 <option value="" disabled selected>-- Selecione uma Série --</option>
-                                <!-- O loop agora itera sobre 'series', não 'alunos' -->
                                 {% for serie in series %}<option value="{{ serie.id }}">{{ serie.nome }}</option>{% endfor %}
                             </select>
                         </div>
@@ -68,10 +62,7 @@
                 </div>
             </div>
         </div>
-        <!-- ================================================================== -->
-        <!-- ### FIM DA CORREÇÃO ### -->
-        <!-- ================================================================== -->
-
+        
         <!-- Bloco Desempenho por Assunto (Sem alterações) -->
         <div class="col-md-6 col-lg-4">
             <div class="card h-100 shadow-sm">
@@ -105,7 +96,7 @@
             </div>
         </div>
 
-        <!-- Demais blocos de relatórios (sem alterações) -->
+        <!-- Bloco Análise de Itens (Sem alterações) -->
         <div class="col-md-6 col-lg-4">
             <div class="card h-100 shadow-sm">
                 <div class="card-header"><h5 class="mb-0"><i class="bi bi-search me-2"></i>Análise de Itens (Questões)</h5></div>
@@ -132,6 +123,7 @@
             </div>
         </div>
 
+        <!-- Bloco Desempenho por Nível (Sem alterações) -->
         <div class="col-md-6 col-lg-4">
             <div class="card h-100 shadow-sm">
                 <div class="card-header"><h5 class="mb-0"><i class="bi bi-layers-fill me-2"></i>Desempenho por Nível</h5></div>
@@ -166,22 +158,24 @@
 
         <div class="col-md-6 col-lg-4">
             <div class="card h-100 shadow-sm">
-                <div class="card-header"><h5 class="mb-0"><i class="bi bi-diagram-3-fill me-2"></i>Comparativo entre Turmas</h5></div>
+                <div class="card-header"><h5 class="mb-0"><i class="bi bi-diagram-3-fill me-2"></i>Comparativo por Disciplina</h5></div>
                 <div class="card-body d-flex flex-column">
-                    <p class="small text-muted">Compare o desempenho de diferentes turmas na mesma avaliação.</p>
-                     <form action="{{ url_for('main_routes.relatorio_comparativo_turmas') }}" method="POST" target="_blank" class="d-flex flex-column flex-grow-1">
+                    <p class="small text-muted">Compare o desempenho de diferentes turmas na mesma disciplina.</p>
+                    <!-- O 'action' aponta para a nova rota -->
+                    <form action="{{ url_for('main_routes.relatorio_comparativo_por_disciplina') }}" method="POST" target="_blank" class="d-flex flex-column flex-grow-1">
                         <div class="mb-3">
-                             <label for="ano_letivo_comparativo" class="form-label">Ano Letivo</label>
-                            <select name="ano_letivo_id" id="ano_letivo_comparativo" class="form-select" required>
+                            <label for="ano_letivo_comparativo_disc" class="form-label">Ano Letivo</label>
+                            <select name="ano_letivo_id" id="ano_letivo_comparativo_disc" class="form-select" required>
                                 <option value="" disabled selected>-- Selecione um Ano --</option>
                                 {% for ano in anos_letivos %}<option value="{{ ano.id }}">{{ ano.ano }}</option>{% endfor %}
                             </select>
                         </div>
+                        <!-- O select de 'Modelo de Avaliação' foi substituído por 'Disciplina' -->
                         <div class="mb-3 flex-grow-1">
-                            <label for="modelo_id_comparativo" class="form-label">Modelo de Avaliação</label>
-                            <select name="modelo_id" id="modelo_id_comparativo" class="form-select" required>
-                                <option value="" disabled selected>-- Selecione uma Avaliação --</option>
-                                {% for modelo in modelos_avaliacao %}<option value="{{ modelo.id }}">{{ modelo.nome }}</option>{% endfor %}
+                            <label for="disciplina_id_comparativo" class="form-label">Disciplina</label>
+                            <select name="disciplina_id" id="disciplina_id_comparativo" class="form-select" required>
+                                <option value="" disabled selected>-- Selecione uma Disciplina --</option>
+                                {% for disciplina in disciplinas %}<option value="{{ disciplina.id }}">{{ disciplina.nome }}</option>{% endfor %}
                             </select>
                         </div>
                         <div class="d-grid mt-auto">
@@ -191,6 +185,8 @@
                 </div>
             </div>
         </div>
+        
+        <!-- Bloco Saúde do Banco de Questões (Sem alterações) -->
         <div class="col-md-6 col-lg-4">
             <div class="card h-100 shadow-sm">
                 <div class="card-header"><h5 class="mb-0"><i class="bi bi-clipboard-data-fill me-2"></i>Saúde do Banco de Questões</h5></div>
@@ -201,6 +197,7 @@
             </div>
         </div>
         
+        <!-- Bloco Lista de Professores (Sem alterações) -->
         <div class="col-md-6 col-lg-4">
             <div class="card h-100 shadow-sm">
                 <div class="card-header"><h5 class="mb-0"><i class="bi bi-person-video3 me-2"></i>Lista de Professores</h5></div>
@@ -211,6 +208,7 @@
             </div>
         </div>
 
+        <!-- Bloco Resultados de Simulado (Sem alterações) -->
         <div class="col-md-6 col-lg-4">
             <div class="card h-100 shadow-sm">
                 <div class="card-header"><h5 class="mb-0"><i class="bi bi-graph-up-arrow me-2"></i>Resultados de Simulado</h5></div>
@@ -243,6 +241,6 @@
 {% block scripts %}
 {{ super() }}
 <script>
-    // Este script foi removido pois não era mais necessário com a correção da lógica dos formulários.
+    // Nenhum script adicional necessário para esta página.
 </script>
 {% endblock %}

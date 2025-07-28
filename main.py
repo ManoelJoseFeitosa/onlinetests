@@ -20,7 +20,7 @@ from functools import wraps
 from datetime import datetime, timedelta
 import random
 from weasyprint import HTML, CSS
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, subqueryload
 from sqlalchemy import or_, UniqueConstraint, func, and_, case
 import json
 import jwt
@@ -2038,7 +2038,7 @@ def relatorio_desempenho_por_nivel():
             Questao.disciplina_id == disciplina_id,
             Resultado.ano_letivo_id == ano_letivo_id,
             Avaliacao.escola_id == current_user.escola_id
-        ).group_by(Questao.nivel).all() # <<< A MUDANÇA PRINCIPAL ESTÁ AQUI
+        ).group_by(Questao.nivel).all()
 
         if not desempenho_por_nivel:
             flash('Nenhum dado encontrado para os filtros selecionados. Não é possível gerar o relatório.', 'warning')
@@ -2049,8 +2049,10 @@ def relatorio_desempenho_por_nivel():
         desempenho_ordenado = sorted(desempenho_por_nivel, key=lambda x: ordem_niveis.get(x.nivel, 99))
 
         # 4. Renderizar um template HTML específico para este relatório
+        # ### CORREÇÃO APLICADA AQUI ###
+        # O caminho do template foi corrigido para o correto.
         html_renderizado = render_template(
-            'app/relatorios/desempenho_nivel.html',
+            'relatorios/desempenho_nivel.html',
             serie=serie,
             disciplina=disciplina,
             ano_letivo=ano_letivo,
@@ -2235,33 +2237,31 @@ def relatorio_saude_banco_questoes():
         flash("Ocorreu um erro inesperado ao gerar o relatório. Tente novamente.", "danger")
         return redirect(url_for('main_routes.painel_relatorios'))
 
-@main_routes.route('/admin/relatorios/comparativo_turmas', methods=['POST'])
+@main_routes.route('/admin/relatorios/comparativo_por_disciplina', methods=['POST'])
 @login_required
 @role_required('coordenador')
-def relatorio_comparativo_turmas():
+def relatorio_comparativo_por_disciplina():
     """
     Gera um relatório PDF comparando o desempenho de diferentes turmas
-    em um mesmo Modelo de Avaliação.
+    com base nos resultados de uma disciplina específica.
     """
     try:
-        # 1. Obter os filtros do formulário
-        modelo_id = request.form.get('modelo_id', type=int)
+        # 1. Obter os filtros do formulário (agora por DISCIPLINA)
+        disciplina_id = request.form.get('disciplina_id', type=int)
         ano_letivo_id = request.form.get('ano_letivo_id', type=int)
 
-        if not all([modelo_id, ano_letivo_id]):
-            flash('Modelo de avaliação e ano letivo são obrigatórios para gerar este relatório.', 'danger')
+        if not all([disciplina_id, ano_letivo_id]):
+            flash('Disciplina e ano letivo são obrigatórios para gerar este relatório.', 'danger')
             return redirect(url_for('main_routes.painel_relatorios'))
 
         # 2. Buscar informações para o cabeçalho do relatório
-        modelo = ModeloAvaliacao.query.get(modelo_id)
+        disciplina = Disciplina.query.get(disciplina_id)
         ano_letivo = AnoLetivo.query.get(ano_letivo_id)
-        if not modelo or not ano_letivo or modelo.escola_id != current_user.escola_id:
+        if not disciplina or not ano_letivo or disciplina.escola_id != current_user.escola_id:
             abort(404)
 
         # 3. Consulta agregada para calcular as estatísticas por turma (Série)
-        #    Apenas resultados 'Finalizado' são considerados para as estatísticas.
-        #    A função stddev_samp calcula o desvio padrão (sample standard deviation).
-        #    Nota: A disponibilidade de func.stddev_samp pode depender do seu banco de dados (funciona no PostgreSQL).
+        #    A principal mudança está no filtro: usamos Avaliacao.disciplina_id
         stats_por_turma = db.session.query(
             Serie.nome,
             func.count(Resultado.id).label('num_participantes'),
@@ -2269,12 +2269,14 @@ def relatorio_comparativo_turmas():
             func.max(Resultado.nota).label('maior_nota'),
             func.min(Resultado.nota).label('menor_nota'),
             func.stddev_samp(Resultado.nota).label('desvio_padrao')
+        ).join(Matricula, Serie.id == Matricula.serie_id
+        ).join(Usuario, Matricula.aluno_id == Usuario.id
+        ).join(Resultado, Usuario.id == Resultado.aluno_id
         ).join(Avaliacao, Resultado.avaliacao_id == Avaliacao.id
-        ).join(Serie, Avaliacao.serie_id == Serie.id
         ).filter(
-            Avaliacao.modelo_id == modelo_id,
+            Avaliacao.disciplina_id == disciplina_id, # <<< FILTRO PRINCIPAL ALTERADO
             Resultado.ano_letivo_id == ano_letivo_id,
-            Avaliacao.escola_id == current_user.escola_id,
+            Serie.escola_id == current_user.escola_id,
             Resultado.status == 'Finalizado'
         ).group_by(Serie.id).order_by(Serie.nome).all()
 
@@ -2283,9 +2285,10 @@ def relatorio_comparativo_turmas():
             return redirect(url_for('main_routes.painel_relatorios'))
 
         # 4. Renderizar o template HTML para o PDF
+        #    (Você precisará de um template para isso, ex: 'comparativo_disciplina.html')
         html_renderizado = render_template(
-            'app/relatorios/comparativo_turmas.html',
-            modelo=modelo,
+            'relatorios/comparativo_disciplina.html', # Sugestão de novo nome para o template
+            disciplina=disciplina,
             ano_letivo=ano_letivo,
             stats_data=stats_por_turma,
             data_geracao=datetime.now()
@@ -2295,13 +2298,13 @@ def relatorio_comparativo_turmas():
         pdf = HTML(string=html_renderizado).write_pdf()
         response = make_response(pdf)
         response.headers['Content-Type'] = 'application/pdf'
-        response.headers['Content-Disposition'] = f'inline; filename=comparativo_turmas_{modelo.nome}.pdf'
+        response.headers['Content-Disposition'] = f'inline; filename=comparativo_disciplina_{disciplina.nome}.pdf'
         
-        log_audit('REPORT_GENERATED', details={'report_type': 'comparativo_turmas', 'filters': f'Modelo ID: {modelo_id}'})
+        log_audit('REPORT_GENERATED', details={'report_type': 'comparativo_por_disciplina', 'filters': f'Disciplina ID: {disciplina_id}'})
         return response
 
     except Exception as e:
-        print(f"ERRO ao gerar relatório comparativo de turmas: {e}")
+        print(f"ERRO ao gerar relatório comparativo por disciplina: {e}")
         flash("Ocorreu um erro inesperado ao gerar o relatório. Tente novamente.", "danger")
         return redirect(url_for('main_routes.painel_relatorios'))
 
@@ -2433,16 +2436,19 @@ def relatorio_resultado_simulado():
             abort(404)
 
         # 3. Buscar todos os resultados finalizados para este simulado, ordenados por nota.
-        #    A ordenação é a chave para este relatório.
+        #    ### CORREÇÃO APLICADA AQUI ###
+        #    Adicionado um JOIN explícito com a tabela Usuario para permitir a ordenação por nome.
         resultados = Resultado.query.options(
             joinedload(Resultado.aluno),
             joinedload(Resultado.avaliacao)
-        ).join(Avaliacao).filter(
+        ).join(Avaliacao, Resultado.avaliacao_id == Avaliacao.id
+        ).join(Usuario, Resultado.aluno_id == Usuario.id  # <-- JOIN ADICIONADO
+        ).filter(
             Avaliacao.modelo_id == modelo_id,
             Resultado.ano_letivo_id == ano_letivo_id,
             Avaliacao.escola_id == current_user.escola_id,
             Resultado.status == 'Finalizado'
-        ).order_by(Resultado.nota.desc(), Usuario.nome.asc()).all() # Ordena por nota (maior primeiro), e nome como desempate
+        ).order_by(Resultado.nota.desc(), Usuario.nome.asc()).all() # Esta linha agora funciona
 
         if not resultados:
             flash(f'Nenhum resultado finalizado encontrado para o simulado "{modelo.nome}".', 'warning')
