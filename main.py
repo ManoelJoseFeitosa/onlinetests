@@ -29,7 +29,7 @@ import jwt
 # SEÇÃO 2: CONFIGURAÇÃO DO APLICATIVO E EXTENSÕES
 # ===================================================================
 app = Flask(__name__,
-            # A pasta static_folder continua a mesma
+            template_folder='site/templates',
             static_folder='site/static')
 
 # ### CORREÇÃO APLICADA AQUI ###
