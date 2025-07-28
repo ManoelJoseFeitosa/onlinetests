@@ -57,7 +57,6 @@
                     </div>
                 </div>
                 
-                <!-- CORREÇÃO APLICADA AQUI: O 'name' deve ser 'texto_questao' -->
                 <div class="mb-3">
                     <label for="texto_questao" class="form-label">Enunciado da Questão</label>
                     <textarea id="texto_questao" name="texto_questao" rows="4" class="form-control" required></textarea>
@@ -84,7 +83,6 @@
                     </div>
                 </div>
 
-                <!-- CORREÇÃO APLICADA AQUI: O 'name' de ambos os selects de gabarito deve ser 'gabarito' -->
                 <div id="gabarito_fields" class="mt-3">
                     <label for="gabarito" class="form-label fw-bold">Gabarito</label>
                     <div id="gabarito_multipla_escolha">
@@ -103,6 +101,12 @@
                     </div>
                 </div>
 
+                <!-- CAMPO DE JUSTIFICATIVA ADICIONADO AQUI -->
+                <div class="mt-4">
+                    <label for="justificativa_gabarito" class="form-label">Justificativa do Gabarito (Opcional)</label>
+                    <textarea name="justificativa_gabarito" id="justificativa_gabarito" class="form-control" rows="3"></textarea>
+                </div>
+
                 <div class="text-center mt-4">
                     <button type="submit" class="btn btn-primary btn-lg">Salvar Nova Questão</button>
                 </div>
@@ -117,35 +121,27 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const tipoQuestaoSelect = document.getElementById('tipo');
-    
-    // Campos de Múltipla Escolha
     const multiplaEscolhaContainer = document.getElementById('multipla_escolha_fields');
     const multiplaEscolhaInputs = multiplaEscolhaContainer.querySelectorAll('input');
     const gabaritoMultiplaSelect = document.getElementById('gabarito_multipla_escolha').querySelector('select');
-
-    // Campos de Verdadeiro/Falso
     const gabaritoVfContainer = document.getElementById('gabarito_vf');
     const gabaritoVfSelect = gabaritoVfContainer.querySelector('select');
 
     function toggleFields() {
         const selectedType = tipoQuestaoSelect.value;
-
         if (selectedType === 'multipla_escolha') {
             multiplaEscolhaContainer.style.display = 'block';
             gabaritoMultiplaSelect.parentElement.style.display = 'block';
             gabaritoVfContainer.style.display = 'none';
-
             multiplaEscolhaInputs.forEach(input => input.required = true);
             gabaritoMultiplaSelect.required = true;
             gabaritoVfSelect.required = false;
             gabaritoVfSelect.disabled = true;
             gabaritoMultiplaSelect.disabled = false;
-
         } else if (selectedType === 'verdadeiro_falso') {
             multiplaEscolhaContainer.style.display = 'none';
             gabaritoMultiplaSelect.parentElement.style.display = 'none';
             gabaritoVfContainer.style.display = 'block';
-
             multiplaEscolhaInputs.forEach(input => input.required = false);
             gabaritoMultiplaSelect.required = false;
             gabaritoVfSelect.required = true;
@@ -153,7 +149,6 @@ document.addEventListener('DOMContentLoaded', function() {
             gabaritoMultiplaSelect.disabled = true;
         }
     }
-
     tipoQuestaoSelect.addEventListener('change', toggleFields);
     toggleFields(); 
 });
