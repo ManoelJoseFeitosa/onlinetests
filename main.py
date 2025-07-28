@@ -28,10 +28,8 @@ import jwt
 # ===================================================================
 # SEÇÃO 2: CONFIGURAÇÃO DO APLICATIVO E EXTENSÕES
 # ===================================================================
-basedir = os.path.abspath(os.path.dirname(__file__))
 app = Flask(__name__,
-            template_folder=os.path.join(basedir, 'site/templates/'),
-            static_folder=os.path.join(basedir, 'site/static/'))
+            static_folder='site/static')
 
 
 UPLOAD_FOLDER = os.path.join(app.static_folder, 'uploads/questoes')
