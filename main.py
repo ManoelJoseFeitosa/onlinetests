@@ -1828,10 +1828,8 @@ def meus_resultados():
     ).filter(
         Resultado.aluno_id == current_user.id,
         Resultado.ano_letivo_id == ano_letivo_ativo.id
-    ).order_by(Resultado.data_realizacao.desc()).all()
+    ).order_by(Resultado.data_realizacao.asc()).all() # Ordena do mais antigo para o mais novo para o gráfico
 
-    # ### CORREÇÃO FINAL APLICADA AQUI ###
-    # Agrupa os resultados e calcula todas as estatísticas e dados para os gráficos.
     dados_por_disciplina = {}
     total_provas, total_simulados, total_recuperacao = 0, 0, 0
     soma_notas_provas, soma_notas_simulados, soma_notas_recuperacao = 0, 0, 0
@@ -1839,7 +1837,10 @@ def meus_resultados():
 
     for res in resultados_aluno:
         if res.avaliacao and res.status == 'Finalizado' and res.nota is not None:
-            # Agrupamento por disciplina
+            # ### CORREÇÃO DO RÓTULO DO GRÁFICO APLICADA AQUI ###
+            # O nome do aluno foi removido e a data foi adicionada no formato (DD/MM)
+            label_formatado = f"{res.avaliacao.nome.split(' - ')[0]} ({res.data_realizacao.strftime('%d/%m')})"
+
             if res.avaliacao.disciplina:
                 disciplina_nome = res.avaliacao.disciplina.nome
                 if disciplina_nome not in dados_por_disciplina:
@@ -1848,35 +1849,34 @@ def meus_resultados():
                 dados_por_disciplina[disciplina_nome]['soma_notas'] += res.nota
                 dados_por_disciplina[disciplina_nome]['contagem'] += 1
 
-            # Contagem e soma para as médias gerais e gráficos
             if res.avaliacao.tipo == 'prova':
                 total_provas += 1
                 soma_notas_provas += res.nota
                 disc_nome = res.avaliacao.disciplina.nome if res.avaliacao.disciplina else "Outras"
                 if disc_nome not in provas_por_disciplina: provas_por_disciplina[disc_nome] = []
-                provas_por_disciplina[disc_nome].append({'label': res.avaliacao.nome, 'nota': res.nota})
+                provas_por_disciplina[disc_nome].append({'label': label_formatado, 'nota': res.nota})
             elif res.avaliacao.tipo == 'simulado':
                 total_simulados += 1
                 soma_notas_simulados += res.nota
-                simulados_data.append({'label': res.avaliacao.nome, 'nota': res.nota})
+                simulados_data.append({'label': label_formatado, 'nota': res.nota})
             elif res.avaliacao.tipo == 'recuperacao':
                 total_recuperacao += 1
                 soma_notas_recuperacao += res.nota
-                recuperacao_data.append({'label': res.avaliacao.nome, 'nota': res.nota})
+                recuperacao_data.append({'label': label_formatado, 'nota': res.nota})
 
-    # Calcula a média para cada disciplina
     for disciplina in dados_por_disciplina:
         contagem = dados_por_disciplina[disciplina]['contagem']
         soma_notas = dados_por_disciplina[disciplina]['soma_notas']
         dados_por_disciplina[disciplina]['media'] = round((soma_notas / contagem), 2) if contagem > 0 else 0
 
-    # Calcula as médias gerais
     media_provas = round((soma_notas_provas / total_provas), 2) if total_provas > 0 else 0
     media_simulados = round((soma_notas_simulados / total_simulados), 2) if total_simulados > 0 else 0
     media_recuperacao = round((soma_notas_recuperacao / total_recuperacao), 2) if total_recuperacao > 0 else 0
 
     # Prepara dados para os gráficos
-    chart_data_provas_por_disciplina = {'labels': sorted(list({p['label'] for provas in provas_por_disciplina.values() for p in provas})), 'datasets': []}
+    chart_data_provas_por_disciplina = {'labels': [p['label'] for provas in provas_por_disciplina.values() for p in provas], 'datasets': []}
+    chart_data_provas_por_disciplina['labels'] = sorted(list(set(chart_data_provas_por_disciplina['labels']))) # Remove duplicatas e ordena
+
     colors = ['rgba(54, 162, 235, 1)', 'rgba(255, 99, 132, 1)', 'rgba(75, 192, 192, 1)', 'rgba(255, 206, 86, 1)', 'rgba(153, 102, 255, 1)']
     for i, (disciplina, provas) in enumerate(provas_por_disciplina.items()):
         dataset = {'label': disciplina, 'data': [next((p['nota'] for p in provas if p['label'] == label), None) for label in chart_data_provas_por_disciplina['labels']], 'borderColor': colors[i % len(colors)], 'backgroundColor': colors[i % len(colors)].replace('1)', '0.2)'), 'fill': True, 'tension': 0.1}
@@ -1906,25 +1906,24 @@ def ver_resultado_detalhado(resultado_id):
     Exibe a página de detalhes de um resultado de avaliação específico para o aluno,
     mostrando cada questão, a resposta do aluno, o gabarito e o feedback (se houver).
     """
-    # 1. Carrega o resultado e todos os dados relacionados de forma otimizada.
-    #    - Garante que o resultado pertence ao aluno logado (verificação de segurança).
-    #    - Usa joinedload para carregar a avaliação, suas questões, e as respostas do aluno
-    #      com suas respectivas questões, tudo em uma consulta eficiente.
+    # ### CORREÇÃO APLICADA AQUI ###
+    # A linha 'joinedload(Resultado.respostas)' foi removida para ser compatível
+    # com a configuração 'lazy="dynamic"' do modelo.
     resultado = Resultado.query.options(
-        joinedload(Resultado.avaliacao).subqueryload(Avaliacao.questoes),
-        joinedload(Resultado.respostas).joinedload(Resposta.questao)
+        joinedload(Resultado.avaliacao).subqueryload(Avaliacao.questoes)
     ).filter(
         Resultado.id == resultado_id,
         Resultado.aluno_id == current_user.id
     ).first_or_404()
 
-    # 2. Cria um dicionário para mapear o ID de cada questão à resposta dada pelo aluno.
-    #    Isso simplifica muito a lógica no template, evitando buscas dentro de loops.
-    respostas_map = {resposta.questao_id: resposta for resposta in resultado.respostas}
+    # Como 'respostas' é uma relação dinâmica, buscamos os dados aqui de forma otimizada.
+    respostas_com_questoes = resultado.respostas.options(joinedload(Resposta.questao)).all()
+    
+    # Cria um dicionário para mapear o ID de cada questão à resposta dada pelo aluno.
+    # Isso simplifica muito a lógica no template.
+    respostas_map = {resposta.questao_id: resposta for resposta in respostas_com_questoes}
 
-    # 3. Renderiza o template, passando o resultado completo e o mapa de respostas.
-    #    O template irá iterar sobre `resultado.avaliacao.questoes` e, para cada questão,
-    #    usará o `respostas_map` para encontrar a resposta do aluno correspondente.
+    # Renderiza o template, passando o resultado completo e o mapa de respostas.
     return render_template(
         'app/ver_resultado.html', 
         resultado=resultado, 
