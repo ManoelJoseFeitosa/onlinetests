@@ -6,22 +6,15 @@
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2>Criar Nova Questão</h2>
-        <!-- CORREÇÃO APLICADA AQUI -->
-        <a href="{{ url_for('main_routes.dashboard') }}" class="btn btn-outline-secondary">&larr; Voltar ao Painel</a>
+        <a href="{{ url_for('main_routes.banco_questoes') }}" class="btn btn-outline-secondary">&larr; Voltar ao Banco de Questões</a>
     </div>
 
-    {% if not disciplinas and current_user.role == 'professor' %}
-        <div class="alert alert-warning">
-            Você ainda não foi associado a nenhuma disciplina. Por favor, contate o coordenador para poder cadastrar questões.
-        </div>
-    {% else %}
-    <!-- CORREÇÃO APLICADA AQUI -->
-    <form method="POST" action="{{ url_for('main_routes.criar_questao') }}" enctype="multipart/form-data">
+    <form method="POST" action="{{ url_for('main_routes.criar_questao') }}">
         <div class="card shadow-sm">
             <div class="card-body p-4">
                 <div class="row">
                     <div class="col-md-6 mb-3">
-                        <label for="disciplina_id" class="form-label">1. Disciplina</label>
+                        <label for="disciplina_id" class="form-label">Disciplina</label>
                         <select id="disciplina_id" name="disciplina_id" class="form-select" required>
                             <option value="" disabled selected>-- Selecione a Disciplina --</option>
                             {% for disciplina in disciplinas %}
@@ -30,7 +23,7 @@
                         </select>
                     </div>
                     <div class="col-md-6 mb-3">
-                        <label for="serie_id" class="form-label">2. Série de Aplicação</label>
+                        <label for="serie_id" class="form-label">Série de Aplicação</label>
                         <select id="serie_id" name="serie_id" class="form-select" required>
                             <option value="" disabled selected>-- Selecione a Série --</option>
                             {% for serie in series %}
@@ -41,47 +34,36 @@
                 </div>
 
                 <div class="mb-3">
-                    <label for="assunto" class="form-label">3. Assunto</label>
-                    <input type="text" id="assunto" name="assunto" class="form-control" placeholder="Ex: Análise Sintática, Álgebra, Renascimento" required>
+                    <label for="assunto" class="form-label">Assunto</label>
+                    <input type="text" id="assunto" name="assunto" class="form-control" placeholder="Ex: Genética, Ecologia, Análise Sintática" required>
                 </div>
 
                 <div class="row">
                     <div class="col-md-6 mb-3">
-                        <label for="tipo" class="form-label">4. Tipo de Questão</label>
+                        <label for="tipo" class="form-label">Tipo de Questão</label>
                         <select id="tipo" name="tipo" class="form-select" required>
                             <option value="multipla_escolha" selected>Múltipla Escolha</option>
                             <option value="verdadeiro_falso">Verdadeiro ou Falso</option>
-                            <option value="discursiva">Discursiva</option>
+                            <option value="discursiva" disabled>Discursiva (em breve)</option>
                         </select>
                     </div>
                     <div class="col-md-6 mb-3">
-                        <label for="nivel" class="form-label">5. Nível de Dificuldade</label>
+                        <label for="nivel" class="form-label">Nível de Dificuldade</label>
                         <select id="nivel" name="nivel" class="form-select" required>
-                            <option value="" disabled>-- Selecione o Nível --</option>
                             <option value="facil">Fácil</option>
                             <option value="media" selected>Média</option>
                             <option value="dificil">Difícil</option>
                         </select>
                     </div>
                 </div>
+                
+                <!-- CORREÇÃO APLICADA AQUI: O 'name' deve ser 'texto_questao' -->
                 <div class="mb-3">
-                     <label for="texto" class="form-label">6. Enunciado da Questão</label>
-                    <textarea id="texto" name="texto" rows="4" class="form-control" required></textarea>
+                    <label for="texto_questao" class="form-label">Enunciado da Questão</label>
+                    <textarea id="texto_questao" name="texto_questao" rows="4" class="form-control" required></textarea>
                 </div>
 
-                <div class="border rounded p-3 mb-4 bg-light">
-                    <div class="mb-3">
-                         <label for="imagem_questao" class="form-label fw-bold">7. Imagem da Questão (Opcional)</label>
-                        <input class="form-control" type="file" id="imagem_questao" name="imagem_questao" accept="image/png, image/jpeg, image/gif">
-                        <small class="form-text text-muted">Envie uma imagem para complementar o enunciado. Formatos permitidos: PNG, JPG, GIF.</small>
-                    </div>
-                    
-                    <div class="mb-2">
-                        <label for="imagem_alt" class="form-label">Descrição da Imagem (para acessibilidade)</label>
-                        <input type="text" id="imagem_alt" name="imagem_alt" class="form-control" placeholder="Descreva a imagem para quem não pode vê-la">
-                        <small class="form-text text-muted">Ex: "Mapa do Brasil destacando a Região Nordeste." ou "Gráfico de barras crescente."</small>
-                    </div>
-                </div>
+                <!-- Campos de Resposta -->
                 <div id="multipla_escolha_fields">
                     <h6>Opções de Resposta (Múltipla Escolha)</h6>
                     <div class="input-group mb-2">
@@ -100,32 +82,33 @@
                         <span class="input-group-text">D</span>
                         <input type="text" name="opcao_d" class="form-control" required>
                     </div>
-                    <div class="form-group mt-2">
-                        <label for="gabarito_multipla">Gabarito (A, B, C ou D):</label>
-                        <input type="text" id="gabarito_multipla" name="gabarito_multipla" class="form-control" style="width: 80px;" required>
+                </div>
+
+                <!-- CORREÇÃO APLICADA AQUI: O 'name' de ambos os selects de gabarito deve ser 'gabarito' -->
+                <div id="gabarito_fields" class="mt-3">
+                    <label for="gabarito" class="form-label fw-bold">Gabarito</label>
+                    <div id="gabarito_multipla_escolha">
+                        <select name="gabarito" class="form-select" style="width: 150px;" required>
+                            <option value="A" selected>A</option>
+                            <option value="B">B</option>
+                            <option value="C">C</option>
+                            <option value="D">D</option>
+                        </select>
+                    </div>
+                    <div id="gabarito_vf" style="display: none;">
+                        <select name="gabarito" class="form-select" style="width: 200px;" disabled>
+                            <option value="A" selected>Verdadeiro</option>
+                            <option value="B">Falso</option>
+                        </select>
                     </div>
                 </div>
 
-                <div id="vf_fields" style="display: none;">
-                    <h6>Gabarito (Verdadeiro ou Falso)</h6>
-                    <select name="gabarito_vf" class="form-select" style="width: 200px;">
-                        <option value="A">Verdadeiro</option>
-                        <option value="B">Falso</option>
-                    </select>
-                </div>
-
-                <div class="mt-4">
-                    <label for="justificativa_gabarito" class="form-label">Justificativa do Gabarito (Opcional)</label>
-                    <textarea name="justificativa_gabarito" id="justificativa_gabarito" class="form-control" rows="3"></textarea>
-                </div>
-
                 <div class="text-center mt-4">
-                    <button type="submit" class="btn btn-primary btn-lg">Salvar Questão</button>
+                    <button type="submit" class="btn btn-primary btn-lg">Salvar Nova Questão</button>
                 </div>
             </div>
         </div>
     </form>
-    {% endif %}
 </div>
 {% endblock %}
 
@@ -135,31 +118,44 @@
 document.addEventListener('DOMContentLoaded', function() {
     const tipoQuestaoSelect = document.getElementById('tipo');
     
+    // Campos de Múltipla Escolha
     const multiplaEscolhaContainer = document.getElementById('multipla_escolha_fields');
     const multiplaEscolhaInputs = multiplaEscolhaContainer.querySelectorAll('input');
-    
-    const vfContainer = document.getElementById('vf_fields');
-    const vfInput = vfContainer.querySelector('select');
+    const gabaritoMultiplaSelect = document.getElementById('gabarito_multipla_escolha').querySelector('select');
 
-    function toggleRequiredFields() {
+    // Campos de Verdadeiro/Falso
+    const gabaritoVfContainer = document.getElementById('gabarito_vf');
+    const gabaritoVfSelect = gabaritoVfContainer.querySelector('select');
+
+    function toggleFields() {
         const selectedType = tipoQuestaoSelect.value;
 
-        // Múltipla Escolha
-        const isMultiplaEscolha = selectedType === 'multipla_escolha';
-        multiplaEscolhaContainer.style.display = isMultiplaEscolha ? 'block' : 'none';
-        multiplaEscolhaInputs.forEach(input => input.required = isMultiplaEscolha);
+        if (selectedType === 'multipla_escolha') {
+            multiplaEscolhaContainer.style.display = 'block';
+            gabaritoMultiplaSelect.parentElement.style.display = 'block';
+            gabaritoVfContainer.style.display = 'none';
 
-        // Verdadeiro ou Falso
-        const isVf = selectedType === 'verdadeiro_falso';
-        vfContainer.style.display = isVf ? 'block' : 'none';
-        vfInput.required = isVf;
+            multiplaEscolhaInputs.forEach(input => input.required = true);
+            gabaritoMultiplaSelect.required = true;
+            gabaritoVfSelect.required = false;
+            gabaritoVfSelect.disabled = true;
+            gabaritoMultiplaSelect.disabled = false;
+
+        } else if (selectedType === 'verdadeiro_falso') {
+            multiplaEscolhaContainer.style.display = 'none';
+            gabaritoMultiplaSelect.parentElement.style.display = 'none';
+            gabaritoVfContainer.style.display = 'block';
+
+            multiplaEscolhaInputs.forEach(input => input.required = false);
+            gabaritoMultiplaSelect.required = false;
+            gabaritoVfSelect.required = true;
+            gabaritoVfSelect.disabled = false;
+            gabaritoMultiplaSelect.disabled = true;
+        }
     }
 
-    // Adiciona o listener para o evento de mudança
-    tipoQuestaoSelect.addEventListener('change', toggleRequiredFields);
-
-    // Chama a função inicialmente para configurar o estado correto no carregamento da página
-    toggleRequiredFields();
+    tipoQuestaoSelect.addEventListener('change', toggleFields);
+    toggleFields(); 
 });
 </script>
 {% endblock %}
