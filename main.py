@@ -593,6 +593,11 @@ def funcionalidades():
 def planos():
     return render_template('planos.html')
 
+@main_routes.route('/politica-de-privacidade')
+def politica_privacidade():
+    """Exibe a página de Política de Privacidade e Termos de Uso."""
+    return render_template('politica_privacidade.html')
+
 @main_routes.route('/contato', methods=['GET', 'POST'])
 def contato():
     if request.method == 'POST':
