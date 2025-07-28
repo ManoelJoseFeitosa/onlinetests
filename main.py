@@ -1457,6 +1457,7 @@ def listar_modelos_avaliacao():
 
     # --- LÓGICA PARA PROFESSORES E COORDENADORES (sem alterações) ---
     if current_user.role in ['coordenador', 'professor']:
+        # ... (a lógica para professor e coordenador, que já está funcionando, permanece a mesma) ...
         if not ano_letivo_ativo:
             flash('Não há um ano letivo ativo. A funcionalidade de avaliações está limitada.', 'warning')
         
@@ -1493,28 +1494,33 @@ def listar_modelos_avaliacao():
                 ).order_by(Avaliacao.nome).all()
             return render_template('app/listar_avaliacoes_geradas.html', modelos=modelos_filtrados, recuperacoes=recuperacoes_filtradas)
     
-    # --- LÓGICA FINAL E CORRIGIDA PARA ALUNOS ---
+    # --- LÓGICA FINAL E DEPURADA PARA ALUNOS ---
     else: # Papel 'aluno'
+        print("--- INICIANDO BUSCA DE AVALIAÇÕES PARA ALUNO ---")
         if not ano_letivo_ativo:
+            print(f"DEBUG: Nenhum ano letivo ativo encontrado para escola ID {escola_id}.")
             flash('Não há um ano letivo ativo configurado para a escola. Por favor, contate a coordenação.', 'warning')
             return render_template('app/listar_modelos_avaliacao.html', avaliacoes_disponiveis=[])
+        print(f"DEBUG: Ano letivo ativo encontrado: ID {ano_letivo_ativo.id} ({ano_letivo_ativo.ano})")
 
         matricula_ativa = Matricula.query.filter_by(aluno_id=current_user.id, ano_letivo_id=ano_letivo_ativo.id).first()
         if not matricula_ativa:
+            print(f"DEBUG: Nenhuma matrícula ativa encontrada para o aluno ID {current_user.id} no ano letivo ID {ano_letivo_ativo.id}.")
             flash(f'Você não está matriculado em nenhuma série para o ano letivo de {ano_letivo_ativo.ano}. Por favor, contate a secretaria.', 'warning')
             return render_template('app/listar_modelos_avaliacao.html', avaliacoes_disponiveis=[])
         
-        # ### CORREÇÃO PRINCIPAL AQUI ###
-        # Usamos o ID da série diretamente da matrícula ativa para a busca.
         serie_aluno_id = matricula_ativa.serie_id
+        print(f"DEBUG: Aluno matriculado na Série ID: {serie_aluno_id}")
         
         # Busca os modelos de avaliação que correspondem exatamente à série do aluno.
         modelos_disponiveis = ModeloAvaliacao.query.filter_by(serie_id=serie_aluno_id).order_by(ModeloAvaliacao.nome).all()
+        print(f"DEBUG: Encontrados {len(modelos_disponiveis)} modelos de avaliação para a Série ID {serie_aluno_id}.")
         
         recuperacoes_designadas = Avaliacao.query.join(avaliacao_alunos_designados).filter(
             avaliacao_alunos_designados.c.usuario_id == current_user.id,
             Avaliacao.ano_letivo_id == ano_letivo_ativo.id
         ).order_by(Avaliacao.nome).all()
+        print(f"DEBUG: Encontradas {len(recuperacoes_designadas)} recuperações designadas para o aluno.")
 
         # O restante da lógica para mapear os resultados e status continua a mesma
         resultados_do_aluno = Resultado.query.options(
@@ -1541,7 +1547,8 @@ def listar_modelos_avaliacao():
             avaliacoes_para_aluno.append({
                 'tipo_obj': 'recuperacao', 'objeto': recuperacao, 'resultado': resultado, 'status': status
             })
-            
+        
+        print(f"--- FIM DA BUSCA: Total de {len(avaliacoes_para_aluno)} avaliações para exibir. ---")
         return render_template('app/listar_modelos_avaliacao.html', avaliacoes_disponiveis=avaliacoes_para_aluno)
 
 @main_routes.route('/modelo-avaliacao/<int:modelo_id>/detalhes')
