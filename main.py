@@ -1163,12 +1163,49 @@ def banco_questoes():
 @login_required
 @role_required('professor', 'coordenador')
 def editar_questao(questao_id):
-    # ... Lógica de permissão ...
+    # 1. Busca a questão no banco de dados, garantindo que ela pertence ao criador ou à escola do coordenador.
+    query = Questao.query.filter_by(id=questao_id)
+    if current_user.role == 'professor':
+        query = query.filter_by(criador_id=current_user.id)
+    else: # Coordenador
+        query = query.join(Disciplina).filter(Disciplina.escola_id == current_user.escola_id)
+    
+    questao = query.first_or_404()
+
+    # --- LÓGICA DO POST (SALVAR AS ALTERAÇÕES) ---
     if request.method == 'POST':
-        # ... Lógica de edição de questão ...
-        return redirect(url_for('main_routes.banco_questoes'))
-    # ... Lógica GET ...
-    return render_template('app/editar_questao.html') # Simplificado
+        try:
+            questao.disciplina_id = request.form.get('disciplina_id', type=int)
+            questao.serie_id = request.form.get('serie_id', type=int)
+            questao.assunto = request.form.get('assunto')
+            questao.texto = request.form.get('texto_questao')
+            questao.nivel = request.form.get('nivel')
+            questao.opcao_a = request.form.get('opcao_a')
+            questao.opcao_b = request.form.get('opcao_b')
+            questao.opcao_c = request.form.get('opcao_c')
+            questao.opcao_d = request.form.get('opcao_d')
+            questao.gabarito = request.form.get('gabarito')
+            
+            db.session.commit()
+            log_audit('QUESTION_UPDATED', target_obj=questao)
+            flash('Questão atualizada com sucesso!', 'success')
+            return redirect(url_for('main_routes.banco_questoes'))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Ocorreu um erro ao atualizar a questão: {e}', 'danger')
+
+    # --- LÓGICA DO GET (EXIBIR O FORMULÁRIO) ---
+    # Busca as listas de disciplinas e séries para popular os menus de seleção.
+    if current_user.role == 'professor':
+        disciplinas = current_user.disciplinas_lecionadas
+        series = current_user.series_lecionadas
+    else: # Coordenador
+        disciplinas = Disciplina.query.filter_by(escola_id=current_user.escola_id).order_by(Disciplina.nome).all()
+        series = Serie.query.filter_by(escola_id=current_user.escola_id).order_by(Serie.nome).all()
+
+    # 2. Passa a questão e as listas para o template.
+    return render_template('app/editar_questao.html', questao=questao, disciplinas=disciplinas, series=series)
 
 # --- Rotas de Avaliação ---
 @main_routes.route('/criar-modelo-avaliacao', methods=['GET', 'POST'])
