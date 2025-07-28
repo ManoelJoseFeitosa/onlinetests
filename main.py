@@ -1916,12 +1916,12 @@ def corrigir_respostas(resultado_id):
     Exibe a interface de correção para um resultado específico (GET) e
     processa o envio da correção (POST).
     """
-    # 1. Carrega o resultado e todos os dados relacionados de forma otimizada.
-    #    - A verificação de permissão é feita garantindo que a avaliação pertence à escola do usuário.
+    # ### CORREÇÃO APLICADA AQUI ###
+    # A linha 'joinedload(Resultado.respostas)' foi removida porque é incompatível
+    # com a configuração 'lazy="dynamic"' no modelo Resultado.
     resultado = Resultado.query.options(
         joinedload(Resultado.aluno),
-        joinedload(Resultado.avaliacao).subqueryload(Avaliacao.questoes),
-        joinedload(Resultado.respostas).joinedload(Resposta.questao)
+        joinedload(Resultado.avaliacao).subqueryload(Avaliacao.questoes)
     ).join(Avaliacao).filter(
         Resultado.id == resultado_id,
         Avaliacao.escola_id == current_user.escola_id
@@ -1931,22 +1931,19 @@ def corrigir_respostas(resultado_id):
     if request.method == 'POST':
         try:
             total_nota = 0
-            # Itera sobre as respostas dadas pelo aluno para atualizar cada uma.
+            # Como 'respostas' é dynamic, a query para buscar as respostas acontece aqui.
             for resposta in resultado.respostas:
                 questao_id = resposta.questao_id
                 
-                # Pega os pontos e o feedback do formulário
                 pontos = request.form.get(f'pontos_{questao_id}', type=float, default=0.0)
                 feedback = request.form.get(f'feedback_{questao_id}', '')
 
-                # Atualiza o objeto Resposta
                 resposta.pontos = pontos
                 resposta.feedback_professor = feedback
                 resposta.status_correcao = 'avaliada'
                 
                 total_nota += pontos
 
-            # Atualiza o objeto Resultado principal com a nota e o novo status
             resultado.nota = total_nota
             resultado.status = 'Finalizado'
 
@@ -1955,7 +1952,6 @@ def corrigir_respostas(resultado_id):
             log_audit('ASSESSMENT_GRADED', target_obj=resultado, details={'final_score': total_nota, 'grader_id': current_user.id})
             flash(f'Avaliação de {resultado.aluno.nome} corrigida e finalizada com sucesso!', 'success')
 
-            # Redireciona para a página de detalhes apropriada
             if resultado.avaliacao.is_dinamica and resultado.avaliacao.modelo_id:
                 return redirect(url_for('main_routes.detalhes_modelo_avaliacao', modelo_id=resultado.avaliacao.modelo_id))
             else:
@@ -1966,8 +1962,9 @@ def corrigir_respostas(resultado_id):
             flash(f"Ocorreu um erro ao salvar a correção: {e}", "danger")
 
     # --- LÓGICA DO GET: Exibir a página para correção ---
-    # Cria o mapa de respostas para facilitar a vida do template
-    respostas_map = {resposta.questao_id: resposta for resposta in resultado.respostas}
+    # Para otimizar a exibição, carregamos as respostas com suas questões de uma só vez.
+    respostas_com_questoes = resultado.respostas.options(joinedload(Resposta.questao)).all()
+    respostas_map = {resposta.questao_id: resposta for resposta in respostas_com_questoes}
     
     return render_template(
         'app/correcao_respostas.html',
