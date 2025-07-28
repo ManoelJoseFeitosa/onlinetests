@@ -1455,79 +1455,77 @@ def listar_modelos_avaliacao():
     escola_id = current_user.escola_id
     ano_letivo_ativo = AnoLetivo.query.filter_by(escola_id=escola_id, status='ativo').first()
 
-    if not ano_letivo_ativo:
-        flash('Não há um ano letivo ativo. A funcionalidade de avaliações está limitada.', 'warning')
-        if current_user.role == 'aluno':
-            return redirect(url_for('main_routes.dashboard'))
+    # --- LÓGICA PARA PROFESSORES E COORDENADORES (sem alterações) ---
+    if current_user.role in ['coordenador', 'professor']:
+        # A lógica para coordenador e professor permanece a mesma
+        if not ano_letivo_ativo:
+            flash('Não há um ano letivo ativo. A funcionalidade de avaliações está limitada.', 'warning')
+        
+        if current_user.role == 'coordenador':
+            modelos = ModeloAvaliacao.query.filter_by(escola_id=escola_id).order_by(ModeloAvaliacao.nome).all()
+            recuperacoes = []
+            if ano_letivo_ativo:
+                recuperacoes = Avaliacao.query.filter(
+                    Avaliacao.escola_id == escola_id,
+                    Avaliacao.ano_letivo_id == ano_letivo_ativo.id,
+                    Avaliacao.is_dinamica == False
+                ).order_by(Avaliacao.nome).all()
+            return render_template('app/listar_avaliacoes_geradas.html', modelos=modelos, recuperacoes=recuperacoes)
 
-    # --- LÓGICA PARA COORDENADORES (vê tudo da escola) ---
-    if current_user.role == 'coordenador':
-        modelos = ModeloAvaliacao.query.filter_by(escola_id=escola_id).order_by(ModeloAvaliacao.nome).all()
-        recuperacoes = []
-        if ano_letivo_ativo:
-            recuperacoes = Avaliacao.query.filter(
-                Avaliacao.escola_id == escola_id,
-                Avaliacao.ano_letivo_id == ano_letivo_ativo.id,
-                Avaliacao.is_dinamica == False
-            ).order_by(Avaliacao.nome).all()
-        return render_template('app/listar_avaliacoes_geradas.html', modelos=modelos, recuperacoes=recuperacoes)
+        if current_user.role == 'professor':
+            disciplinas_ids = {d.id for d in current_user.disciplinas_lecionadas}
+            if not disciplinas_ids:
+                flash('Você não está associado a nenhuma disciplina.', 'info')
+                return render_template('app/listar_avaliacoes_geradas.html', modelos=[], recuperacoes=[])
 
-    # --- LÓGICA CORRIGIDA PARA PROFESSORES ---
-    if current_user.role == 'professor':
-        # 1. Pega os IDs das disciplinas que o professor leciona.
-        disciplinas_ids = [d.id for d in current_user.disciplinas_lecionadas]
-        disciplinas_ids_set = set(disciplinas_ids)
+            todos_os_modelos = ModeloAvaliacao.query.filter_by(escola_id=escola_id).order_by(ModeloAvaliacao.nome).all()
+            modelos_filtrados = [
+                modelo for modelo in todos_os_modelos 
+                if any(regra.get('id') in disciplinas_ids for regra in modelo.regras_selecao.get('disciplinas', []))
+            ]
 
-        if not disciplinas_ids:
-            flash('Você não está associado a nenhuma disciplina.', 'info')
-            return render_template('app/listar_avaliacoes_geradas.html', modelos=[], recuperacoes=[])
-
-        # 2. Filtra os Modelos de Avaliação (Provas e Simulados) em Python
-        todos_os_modelos = ModeloAvaliacao.query.filter_by(escola_id=escola_id).order_by(ModeloAvaliacao.nome).all()
-        modelos_filtrados = []
-        for modelo in todos_os_modelos:
-            regras_disciplinas = modelo.regras_selecao.get('disciplinas', [])
-            for regra in regras_disciplinas:
-                if regra.get('id') in disciplinas_ids_set:
-                    modelos_filtrados.append(modelo)
-                    break # Se encontrou uma disciplina, já pode adicionar o modelo e ir para o próximo.
-
-        # 3. Filtra as Recuperações (avaliações estáticas) diretamente no banco
-        recuperacoes_filtradas = []
-        if ano_letivo_ativo:
-            recuperacoes_filtradas = Avaliacao.query.filter(
-                Avaliacao.escola_id == escola_id,
-                Avaliacao.ano_letivo_id == ano_letivo_ativo.id,
-                Avaliacao.is_dinamica == False,
-                Avaliacao.disciplina_id.in_(disciplinas_ids) # Filtra pelo ID da disciplina
-            ).order_by(Avaliacao.nome).all()
-
-        return render_template('app/listar_avaliacoes_geradas.html', modelos=modelos_filtrados, recuperacoes=recuperacoes_filtradas)
+            recuperacoes_filtradas = []
+            if ano_letivo_ativo:
+                recuperacoes_filtradas = Avaliacao.query.filter(
+                    Avaliacao.escola_id == escola_id,
+                    Avaliacao.ano_letivo_id == ano_letivo_ativo.id,
+                    Avaliacao.is_dinamica == False,
+                    Avaliacao.disciplina_id.in_(list(disciplinas_ids))
+                ).order_by(Avaliacao.nome).all()
+            return render_template('app/listar_avaliacoes_geradas.html', modelos=modelos_filtrados, recuperacoes=recuperacoes_filtradas)
     
-    # --- LÓGICA PARA ALUNOS (permanece a mesma) ---
+    # --- LÓGICA CORRIGIDA E MAIS ROBUSTA PARA ALUNOS ---
     else: # Papel 'aluno'
-        serie_aluno = current_user.serie_atual
-        if not serie_aluno:
-            flash('Você não está matriculado em uma série no ano letivo ativo. Contate a secretaria.', 'warning')
+        # 1. Verifica se existe um ano letivo ativo
+        if not ano_letivo_ativo:
+            flash('Não há um ano letivo ativo configurado para a escola. Por favor, contate a coordenação.', 'warning')
             return render_template('app/listar_modelos_avaliacao.html', avaliacoes_disponiveis=[])
 
-        modelos_disponiveis = ModeloAvaliacao.query.filter_by(serie_id=serie_aluno.id).order_by(ModeloAvaliacao.nome).all()
+        # 2. Verifica se o aluno está matriculado no ano letivo ativo
+        matricula_ativa = Matricula.query.filter_by(aluno_id=current_user.id, ano_letivo_id=ano_letivo_ativo.id).first()
+        if not matricula_ativa:
+            flash(f'Você não está matriculado em nenhuma série para o ano letivo de {ano_letivo_ativo.ano}. Por favor, contate a secretaria.', 'warning')
+            return render_template('app/listar_modelos_avaliacao.html', avaliacoes_disponiveis=[])
         
-        recuperacoes_designadas = []
-        if ano_letivo_ativo:
-            recuperacoes_designadas = Avaliacao.query.join(avaliacao_alunos_designados).filter(
-                avaliacao_alunos_designados.c.usuario_id == current_user.id,
-                Avaliacao.ano_letivo_id == ano_letivo_ativo.id
-            ).order_by(Avaliacao.nome).all()
+        serie_aluno = matricula_ativa.serie
+        
+        # 3. Busca as avaliações (a lógica principal permanece, mas agora temos certeza que o aluno está matriculado)
+        modelos_disponiveis = ModeloAvaliacao.query.filter_by(serie_id=serie_aluno.id).order_by(ModeloAvaliacao.nome).all()
+        recuperacoes_designadas = Avaliacao.query.join(avaliacao_alunos_designados).filter(
+            avaliacao_alunos_designados.c.usuario_id == current_user.id,
+            Avaliacao.ano_letivo_id == ano_letivo_ativo.id
+        ).order_by(Avaliacao.nome).all()
 
-        resultados_do_aluno = []
-        if ano_letivo_ativo:
-            resultados_do_aluno = Resultado.query.options(
-                joinedload(Resultado.avaliacao)
-            ).filter(
-                Resultado.aluno_id == current_user.id,
-                Resultado.ano_letivo_id == ano_letivo_ativo.id
-            ).all()
+        # Se mesmo assim não encontrar nada, a mensagem padrão "Nenhuma avaliação disponível" será exibida,
+        # mas agora temos certeza que é porque nenhuma foi criada para a série do aluno.
+        
+        # O restante da lógica para mapear os resultados e status continua a mesma
+        resultados_do_aluno = Resultado.query.options(
+            joinedload(Resultado.avaliacao)
+        ).filter(
+            Resultado.aluno_id == current_user.id,
+            Resultado.ano_letivo_id == ano_letivo_ativo.id
+        ).all()
         
         mapa_resultados_modelo = {res.avaliacao.modelo_id: res for res in resultados_do_aluno if res.avaliacao and res.avaliacao.is_dinamica}
         mapa_resultados_estatica = {res.avaliacao_id: res for res in resultados_do_aluno if res.avaliacao and not res.avaliacao.is_dinamica}
@@ -1537,20 +1535,14 @@ def listar_modelos_avaliacao():
             resultado = mapa_resultados_modelo.get(modelo.id)
             status = resultado.status if resultado else 'Não Iniciada'
             avaliacoes_para_aluno.append({
-                'tipo_obj': 'modelo',
-                'objeto': modelo,
-                'resultado': resultado,
-                'status': status
+                'tipo_obj': 'modelo', 'objeto': modelo, 'resultado': resultado, 'status': status
             })
 
         for recuperacao in recuperacoes_designadas:
             resultado = mapa_resultados_estatica.get(recuperacao.id)
             status = resultado.status if resultado else 'Não Iniciada'
             avaliacoes_para_aluno.append({
-                'tipo_obj': 'recuperacao',
-                'objeto': recuperacao,
-                'resultado': resultado,
-                'status': status
+                'tipo_obj': 'recuperacao', 'objeto': recuperacao, 'resultado': resultado, 'status': status
             })
             
         return render_template('app/listar_modelos_avaliacao.html', avaliacoes_disponiveis=avaliacoes_para_aluno)
