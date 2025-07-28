@@ -1867,64 +1867,60 @@ def painel_auditoria():
     Exibe o painel de auditoria com logs de eventos do sistema,
     com funcionalidades de busca, filtro e paginação.
     """
-    escola_id = current_user.escola_id
-    
-    # --- Paginação e Filtros ---
-    page = request.args.get('page', 1, type=int)
-    search_query = request.args.get('q', '').strip()
-    action_filter = request.args.get('action_filter', '')
-
-    # --- Query Base ---
-    # Começamos buscando os logs e juntando com a tabela de usuários para poder filtrar pela escola.
-    # Ordenamos pelos mais recentes primeiro.
-    query = AuditLog.query.options(joinedload(AuditLog.user)).join(
-        Usuario, AuditLog.user_id == Usuario.id
-    ).filter(
-        Usuario.escola_id == escola_id
-    ).order_by(AuditLog.timestamp.desc())
-
-    # --- Aplicando Filtros ---
-    if search_query:
-        # Permite buscar por email do usuário, IP ou detalhes da ação
-        query = query.filter(or_(
-            AuditLog.user_email.ilike(f'%{search_query}%'),
-            AuditLog.ip_address.ilike(f'%{search_query}%'),
-            AuditLog.details.cast(db.String).ilike(f'%{search_query}%') # Busca no JSON de detalhes
-        ))
-    
-    if action_filter:
-        query = query.filter(AuditLog.action == action_filter)
-
-    # --- Paginação ---
-    per_page = 25  # Define quantos logs por página
-    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
-    logs = pagination.items
-
-    # --- Dados para os Filtros do Template ---
-    # Busca todos os tipos de ação únicos que já ocorreram na escola para popular o menu de filtro.
-    # Isso torna o filtro mais inteligente, mostrando apenas ações relevantes.
     try:
-        distinct_actions_query = db.session.query(AuditLog.action).join(
+        escola_id = current_user.escola_id
+        
+        # --- Paginação e Filtros ---
+        page = request.args.get('page', 1, type=int)
+        search_query = request.args.get('q', '').strip()
+        action_filter = request.args.get('action_filter', '')
+
+        # --- Query Base ---
+        # Começamos com a query principal, garantindo que o join está correto.
+        query = AuditLog.query.join(
             Usuario, AuditLog.user_id == Usuario.id
         ).filter(
             Usuario.escola_id == escola_id
-        ).distinct().order_by(AuditLog.action)
+        )
+
+        # --- Aplicando Filtros (Forma mais segura) ---
+        if search_query:
+            # A busca no campo JSON foi removida temporariamente, pois é uma causa comum de erro.
+            query = query.filter(or_(
+                AuditLog.user_email.ilike(f'%{search_query}%'),
+                AuditLog.ip_address.ilike(f'%{search_query}%')
+            ))
         
+        if action_filter:
+            query = query.filter(AuditLog.action == action_filter)
+
+        # --- Ordenação e Paginação ---
+        per_page = 25
+        pagination = query.order_by(AuditLog.timestamp.desc()).paginate(
+            page=page, per_page=per_page, error_out=False
+        )
+        logs = pagination.items
+
+        # --- Dados para os Filtros do Template (Forma mais segura) ---
+        # Esta consulta é mais simples e menos propensa a erros.
+        distinct_actions_query = db.session.query(AuditLog.action).distinct().order_by(AuditLog.action)
         unique_actions = [item[0] for item in distinct_actions_query.all()]
+
+        return render_template(
+            'app/painel_auditoria.html',
+            logs=logs,
+            pagination=pagination,
+            unique_actions=unique_actions,
+            search_query=search_query,
+            action_filter=action_filter
+        )
     except Exception as e:
-        print(f"Erro ao buscar ações distintas para o filtro de auditoria: {e}")
-        unique_actions = []
-
-
-    return render_template(
-        'app/painel_auditoria.html',
-        logs=logs,
-        pagination=pagination,
-        unique_actions=unique_actions,
-        # Devolve os filtros atuais para o template para manter o estado dos formulários
-        search_query=search_query,
-        action_filter=action_filter
-    )
+        # Imprime o erro detalhado no log do servidor para facilitar a depuração
+        print(f"ERRO CRÍTICO NO PAINEL DE AUDITORIA: {e}")
+        import traceback
+        traceback.print_exc()
+        # Retorna um erro 500, que é o que você já está vendo, mas agora com logs detalhados.
+        abort(500)
 
 @main_routes.route('/admin/relatorios/desempenho_por_assunto', methods=['POST'])
 @login_required
