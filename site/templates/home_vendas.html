@@ -18,6 +18,10 @@
         max-height: 100%;
         object-fit: contain; /* Garante que a imagem inteira caiba no espaço, sem cortes */
     }
+    .app-highlight {
+        background: linear-gradient(45deg, #0d6efd, #0dcaf0);
+        color: white;
+    }
 </style>
 
 <div class="container py-5">
@@ -27,7 +31,8 @@
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <div>
                     <h1 class="display-4 fw-bold">OnlineTests</h1>
-                    <p class="lead text-muted mb-0">A solução completa para avaliações na sua instituição.</p>
+                    <!-- TEXTO ATUALIZADO -->
+                    <p class="lead text-muted mb-0">A solução completa para avaliações na sua instituição, agora com App para Android.</p>
                 </div>
                 <img src="{{ url_for('static', filename='images/onlinetests.jpg') }}" alt="Logo Online Tests" style="width: 180px; height: auto;" class="d-none d-md-block rounded">
             </div>
@@ -38,8 +43,9 @@
                 <img src="{{ url_for('static', filename='images/provaonline.jpg') }}" class="img-fluid rounded shadow-lg" alt="Alunos realizando prova online">
             </div>
 
+            <!-- TEXTO ATUALIZADO -->
             <p class="mt-5" style="text-align: justify; font-size: 1.15rem; line-height: 1.7;">
-                O OnlineTests é uma solução web moderna e robusta, projetada para transformar a maneira como instituições de ensino criam, gerenciam e aplicam avaliações. Com uma arquitetura segura e uma interface intuitiva, a plataforma centraliza todo o ciclo avaliativo, oferecendo ferramentas específicas e poderosas para cada perfil de usuário: Coordenadores, Professores e Alunos.
+                O OnlineTests é uma solução moderna e robusta, composta por uma plataforma web e um <strong>aplicativo para dispositivos móveis Android</strong>, projetada para transformar a maneira como instituições de ensino criam, gerenciam e aplicam avaliações. Com uma arquitetura segura e uma interface intuitiva, a plataforma centraliza todo o ciclo avaliativo, oferecendo ferramentas específicas e poderosas para cada perfil de usuário: Coordenadores, Professores e Alunos.
             </p>
             <p class="mt-4" style="text-align: justify; font-size: 1.15rem; line-height: 1.7;">
                 Para o corpo docente, a plataforma representa uma revolução na rotina diária. Ao automatizar a correção de provas e simulados, ela <strong>agiliza drasticamente o tempo do professor</strong>, permitindo que ele se dedique mais ao planejamento pedagógico e menos às tarefas repetitivas. Além disso, a digitalização <strong>evita que o professor precise carregar grandes volumes de papel</strong>, mantendo todas as avaliações organizadas e acessíveis em um único lugar.
@@ -48,14 +54,22 @@
                 O sistema foi construído sobre três pilares fundamentais: eficiência administrativa, autonomia pedagógica e desempenho do aluno. Como um benefício adicional, a plataforma é uma grande aliada do <strong>meio ambiente, pois por não necessitar de impressão, reduz significativamente o uso de papel</strong>, garantindo uma experiência integrada, otimizada e sustentável para todos.
             </p>
             
-            <div class="text-center bg-light p-5 rounded-3 shadow-sm my-5">
-                <h3 class="fw-bold">Explore Todas as Funcionalidades</h3>
-                <p class="lead text-muted my-3">
-                    Preparamos um manual completo detalhando o uso da plataforma para todos os perfis. Baixe agora e conheça todo o potencial do Online Tests.
-                </p>
-                <a href="{{ url_for('static', filename='docs/Manual_do_Usuario_Onlinetests.pdf') }}" class="btn btn-primary btn-lg" download>
-                    <i class="bi bi-download me-2"></i>Baixar Manual do Usuário (PDF)
-                </a>
+            <!-- NOVA SEÇÃO PARA O APLICATIVO -->
+            <div class="text-center app-highlight p-5 rounded-3 shadow-sm my-5">
+                <div class="row align-items-center">
+                    <div class="col-md-3 text-center mb-4 mb-md-0">
+                        <img src="{{ url_for('static', filename='images/android-logo.png') }}" alt="Logo Android" style="width: 120px; height: auto;">
+                    </div>
+                    <div class="col-md-9 text-md-start">
+                        <h3 class="fw-bold">Conheça nosso App para Aplicação de Provas</h3>
+                        <p class="lead my-3">
+                            Leve a segurança e o controle do OnlineTests para dentro da sala de aula com nosso <strong>aplicativo exclusivo para tablets e celulares Android</strong>. Crie um ambiente de provas controlado, seguro e livre de distrações, garantindo a integridade do processo avaliativo diretamente nos dispositivos da escola.
+                        </p>
+                        <a href="{{ url_for('main_routes.funcionalidades') }}" class="btn btn-light btn-lg">
+                            <i class="bi bi-arrow-right-circle me-2"></i>Saiba Mais
+                        </a>
+                    </div>
+                </div>
             </div>
 
             <hr class="my-5">

@@ -3,11 +3,51 @@
 {% block title %}Funcionalidades - OnlineTests{% endblock %}
 
 {% block content %}
+<style>
+    .feature-icon {
+        font-size: 3rem;
+        opacity: 0.8;
+    }
+    .app-feature-section {
+        background: linear-gradient(45deg, #198754, #146c43);
+        color: white;
+    }
+</style>
+
 <div class="container py-5">
     
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="display-4 fw-bold">OnlineTests</h1>
+            <p class="lead text-muted mb-0">Plataforma Web + App Android para Avaliações</p>
+        </div>
+        <img src="{{ url_for('static', filename='images/onlinetests.jpg') }}" alt="Logo Online Tests" style="width: 180px; height: auto;" class="d-none d-md-block rounded">
+    </div>
+
+    <hr class="mb-5">
+
     <div class="text-center mb-5">
-        <h1 class="display-4 fw-bold">Uma Plataforma Completa, Pensada para a Educação</h1>
-        <p class="lead text-muted col-lg-8 mx-auto">Do planejamento pedagógico à análise de dados, descubra as ferramentas que fazem do Online Tests a solução definitiva para a gestão de avaliações da sua escola.</p>
+        <h2 class="display-5 fw-bold">Uma Solução Completa, Pensada para a Educação</h2>
+        <p class="lead text-muted col-lg-8 mx-auto">Do planejamento na plataforma web à aplicação segura no App Android, descubra as ferramentas que fazem do OnlineTests a solução definitiva para a gestão de avaliações da sua escola.</p>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- NOVA SEÇÃO: APLICATIVO ANDROID -->
+    <!-- =================================================================== -->
+    <div class="row align-items-center mb-5 app-feature-section p-4 rounded-3 shadow-sm">
+        <div class="col-md-4 text-center d-none d-md-block">
+            <i class="bi bi-tablet-landscape-fill display-1"></i>
+        </div>
+        <div class="col-md-8">
+            <h3><i class="bi bi-google-play me-2"></i>Aplicativo Android para Provas na Escola</h3>
+            <p>Leve a segurança do OnlineTests para o ambiente presencial com nosso aplicativo exclusivo para tablets e celulares Android.</p>
+            <ul>
+                <li><strong>Ambiente Controlado e Seguro:</strong> O aplicativo opera em modo de tela cheia, bloqueando notificações e o acesso a outros apps para evitar fraudes e garantir a concentração total do aluno.</li>
+                <li><strong>Aplicação Offline:</strong> As provas podem ser baixadas previamente, permitindo que os alunos respondam mesmo em ambientes com conexão de internet instável. As respostas são sincronizadas assim que a conexão é restabelecida.</li>
+                <li><strong>Ideal para Dispositivos da Escola:</strong> Transforme os tablets da sua instituição em estações de avaliação seguras e fáceis de gerenciar.</li>
+                <li><strong>Integração Total:</strong> Todas as avaliações criadas na plataforma web ficam automaticamente disponíveis no aplicativo para os alunos designados.</li>
+            </ul>
+        </div>
     </div>
 
     <!-- =================================================================== -->
@@ -15,7 +55,7 @@
     <!-- =================================================================== -->
     <div class="row align-items-center mb-5 bg-light p-4 rounded-3 shadow-sm">
         <div class="col-md-8">
-            <h3><i class="bi bi-building-gear me-2 text-primary"></i>Painel do Coordenador</h3>
+            <h3><i class="bi bi-building-gear me-2 text-primary"></i>Plataforma Web: Painel do Coordenador</h3>
             <p class="text-muted">Visão estratégica e controle total sobre o ecossistema de avaliações da sua instituição.</p>
             <ul>
                 <li><strong>Gestão Acadêmica Centralizada:</strong> Crie e gerencie anos letivos, séries e disciplinas, montando a grade curricular de forma flexível e intuitiva.</li>
@@ -26,7 +66,7 @@
             </ul>
         </div>
         <div class="col-md-4 text-center d-none d-md-block">
-            <i class="bi bi-clipboard2-data-fill display-1 text-primary" style="opacity: 0.8;"></i>
+            <i class="bi bi-clipboard2-data-fill feature-icon text-primary"></i>
         </div>
     </div>
 
@@ -35,10 +75,10 @@
     <!-- =================================================================== -->
     <div class="row align-items-center mb-5 p-4">
         <div class="col-md-4 text-center order-md-2 d-none d-md-block">
-            <i class="bi bi-pencil-ruler display-1 text-success" style="opacity: 0.8;"></i>
+            <i class="bi bi-pencil-ruler feature-icon text-success"></i>
         </div>
         <div class="col-md-8 order-md-1">
-            <h3><i class="bi bi-person-workspace me-2 text-success"></i>Painel do Professor</h3>
+            <h3><i class="bi bi-person-workspace me-2 text-success"></i>Plataforma Web: Painel do Professor</h3>
             <p class="text-muted">Ferramentas poderosas para otimizar o tempo e focar no que realmente importa: o ensino.</p>
             <ul>
                 <li><strong>Banco de Questões Estratégico:</strong> Crie um acervo ilimitado, classificando cada questão por disciplina, assunto e **nível de dificuldade (Fácil, Médio, Difícil)**.</li>
@@ -54,17 +94,17 @@
     <!-- =================================================================== -->
     <div class="row align-items-center mb-5 bg-light p-4 rounded-3 shadow-sm">
         <div class="col-md-8">
-            <h3><i class="bi bi-backpack2-fill me-2 text-info"></i>Painel do Aluno</h3>
+            <h3><i class="bi bi-backpack2-fill me-2 text-info"></i>Painel do Aluno (Web e App)</h3>
             <p class="text-muted">Uma experiência de avaliação justa, focada e projetada para o sucesso do estudante.</p>
             <ul>
-                <li><strong>Ambiente de Prova Seguro e Focado:</strong> Realize avaliações em um design limpo e sem distrações para máxima concentração.</li>
+                <li><strong>Ambiente de Prova Seguro e Focado:</strong> Realize avaliações em um design limpo e sem distrações para máxima concentração, seja na web ou no aplicativo.</li>
                 <li><strong>Avaliações Justas e Individuais:</strong> Responda a provas geradas dinamicamente, garantindo um teste único para cada aluno e promovendo a integridade acadêmica.</li>
                 <li><strong>Acessibilidade por Padrão:</strong> Utilize leitores de tela (como NVDA) para navegar e responder às questões, incluindo a audição das descrições de imagens.</li>
-                <li><strong>Acompanhamento de Desempenho:</strong> Visualize gráficos intuitivos com sua evolução de notas e o desempenho detalhado por disciplina.</li>
+                <li><strong>Acompanhamento de Desempenho:</strong> Visualize gráficos intuitivos com sua evolução de notas e o desempenho detalhado por disciplina diretamente na plataforma web.</li>
             </ul>
         </div>
         <div class="col-md-4 text-center d-none d-md-block">
-            <i class="bi bi-graph-up-arrow display-1 text-info" style="opacity: 0.8;"></i>
+            <i class="bi bi-graph-up-arrow feature-icon text-info"></i>
         </div>
     </div>
 
