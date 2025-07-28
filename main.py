@@ -32,15 +32,6 @@ app = Flask(__name__,
             template_folder='site/templates',
             static_folder='site/static')
 
-# ### CORREÇÃO APLICADA AQUI ###
-# Esta nova configuração diz ao Flask para procurar templates em duas pastas:
-# 1. Na pasta 'templates' (para os ficheiros da aplicação como 'app/base.html')
-# 2. Na pasta 'site/templates' (para os ficheiros públicos como 'home_vendas.html')
-app.jinja_loader = ChoiceLoader([
-    FileSystemLoader('templates'),
-    FileSystemLoader('site/templates'),
-])
-
 
 UPLOAD_FOLDER = os.path.join(app.static_folder, 'uploads/questoes')
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
