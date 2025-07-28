@@ -2049,7 +2049,7 @@ def relatorio_desempenho_por_nivel():
         # ### CORREÇÃO APLICADA AQUI ###
         # O caminho do template foi corrigido para o correto.
         html_renderizado = render_template(
-            'app/relatorios/desempenho_nivel.html',
+            'app/relatorios/desempenho_por_nivel.html',
             serie=serie,
             disciplina=disciplina,
             ano_letivo=ano_letivo,
