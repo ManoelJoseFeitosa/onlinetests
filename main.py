@@ -715,7 +715,45 @@ def superadmin_gerenciar_documentos():
 @login_required
 @superadmin_required
 def superadmin_excluir_documento(documento_id):
-    # ... Lógica de exclusão ...
+    """
+    Rota para excluir um documento. Exclui o arquivo físico e o registro no banco.
+    """
+    # Busca o documento no banco de dados ou retorna um erro 404 se não encontrado.
+    documento = Documento.query.get_or_404(documento_id)
+    nome_documento = documento.titulo
+    caminho_arquivo = documento.caminho_arquivo
+    
+    try:
+        # 1. Excluir o arquivo físico do servidor
+        if caminho_arquivo:
+            # Monta o caminho completo para o arquivo na pasta de uploads de documentos.
+            caminho_completo = os.path.join(app.config['UPLOAD_FOLDER_DOCS'], caminho_arquivo)
+            # Verifica se o arquivo realmente existe antes de tentar apagar.
+            if os.path.exists(caminho_completo):
+                os.remove(caminho_completo)
+            else:
+                # Loga um aviso no console do servidor se o arquivo não for encontrado.
+                # Isso ajuda a depurar, mas não impede a exclusão do registro do banco.
+                print(f"AVISO: Arquivo físico não encontrado para exclusão: {caminho_completo}")
+
+        # 2. Excluir o registro do banco de dados
+        db.session.delete(documento)
+        db.session.commit()
+        
+        # Registra a ação no log de auditoria para rastreabilidade.
+        log_audit('DOCUMENT_DELETED', details={'deleted_title': nome_documento})
+        # Informa ao usuário que a operação foi bem-sucedida.
+        flash(f'Documento "{nome_documento}" foi excluído com sucesso.', 'success')
+
+    except Exception as e:
+        # Em caso de qualquer erro, desfaz as alterações no banco.
+        db.session.rollback()
+        # Informa ao usuário sobre o erro.
+        flash(f'Ocorreu um erro ao excluir o documento: {e}', 'danger')
+        # Loga o erro detalhado no console do servidor para o desenvolvedor.
+        print(f"ERRO AO EXCLUIR DOCUMENTO: {e}")
+
+    # Redireciona o usuário de volta para a página de gerenciamento de documentos.
     return redirect(url_for('main_routes.superadmin_gerenciar_documentos'))
 
 # --- Rotas de Autenticação e Dashboard ---
