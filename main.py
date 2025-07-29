@@ -706,8 +706,62 @@ def toggle_escola_status(escola_id):
 @superadmin_required
 def superadmin_gerenciar_documentos():
     if request.method == 'POST':
-        # ... Lógica de upload ...
+        # 1. Validação dos dados do formulário
+        titulo = request.form.get('titulo')
+        descricao = request.form.get('descricao')
+        if not titulo:
+            flash('O título do documento é obrigatório.', 'danger')
+            return redirect(url_for('main_routes.superadmin_gerenciar_documentos'))
+
+        # 2. Validação do arquivo
+        if 'arquivo' not in request.files:
+            flash('Nenhum arquivo foi enviado.', 'danger')
+            return redirect(url_for('main_routes.superadmin_gerenciar_documentos'))
+        
+        file = request.files['arquivo']
+        if file.filename == '':
+            flash('Nenhum arquivo selecionado.', 'danger')
+            return redirect(url_for('main_routes.superadmin_gerenciar_documentos'))
+
+        # 3. Processamento e salvamento do arquivo
+        if file and allowed_doc_file(file.filename):
+            try:
+                # Garante que a pasta de uploads de documentos exista
+                os.makedirs(app.config['UPLOAD_FOLDER_DOCS'], exist_ok=True)
+                
+                # Cria um nome de arquivo seguro para evitar problemas de segurança
+                filename = secure_filename(file.filename)
+                # Adiciona um timestamp para garantir que o nome seja único
+                unique_filename = f"{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{filename}"
+                caminho_completo = os.path.join(app.config['UPLOAD_FOLDER_DOCS'], unique_filename)
+                
+                # Salva o arquivo no servidor
+                file.save(caminho_completo)
+
+                # 4. Criação do registro no banco de dados
+                novo_documento = Documento(
+                    titulo=titulo,
+                    descricao=descricao,
+                    caminho_arquivo=unique_filename, # Salva apenas o nome do arquivo
+                    ativo=True
+                )
+                db.session.add(novo_documento)
+                db.session.commit()
+                
+                log_audit('DOCUMENT_UPLOADED', target_obj=novo_documento)
+                flash(f'Documento "{titulo}" enviado com sucesso!', 'success')
+            
+            except Exception as e:
+                db.session.rollback()
+                flash(f'Ocorreu um erro ao salvar o documento: {e}', 'danger')
+                print(f"ERRO NO UPLOAD DE DOCUMENTO: {e}")
+        else:
+            flash('Tipo de arquivo não permitido. Use apenas PDF, DOC ou DOCX.', 'danger')
+
+        # Redireciona de volta para a página de gerenciamento
         return redirect(url_for('main_routes.superadmin_gerenciar_documentos'))
+
+    # Lógica GET (quando a página é apenas carregada)
     documentos = Documento.query.order_by(Documento.data_upload.desc()).all()
     return render_template('app/superadmin_documentos.html', documentos=documentos)
 
