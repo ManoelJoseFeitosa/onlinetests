@@ -4,167 +4,180 @@
 
 {% block content %}
 <div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>Criar Nova Questão</h2>
-        <a href="{{ url_for('main_routes.banco_questoes') }}" class="btn btn-outline-secondary">&larr; Voltar ao Banco de Questões</a>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1 class="h3">Criar Nova Questão</h1>
+        <a href="{{ url_for('main_routes.banco_questoes') }}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left me-1"></i> Voltar ao Banco
+        </a>
     </div>
 
-    <!-- CORREÇÃO: Adicionado enctype="multipart/form-data" para permitir o upload de arquivos -->
-    <form method="POST" action="{{ url_for('main_routes.criar_questao') }}" enctype="multipart/form-data">
-        <div class="card shadow-sm">
-            <div class="card-body p-4">
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label for="disciplina_id" class="form-label">Disciplina</label>
-                        <select id="disciplina_id" name="disciplina_id" class="form-select" required>
-                            <option value="" disabled selected>-- Selecione a Disciplina --</option>
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('main_routes.criar_questao') }}" enctype="multipart/form-data">
+                
+                <!-- Linha 1: Disciplina e Série -->
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="disciplina_id" class="form-label">1. Disciplina *</label>
+                        <select class="form-select" id="disciplina_id" name="disciplina_id" required>
+                            <option value="" disabled selected>-- Selecione uma Disciplina --</option>
                             {% for disciplina in disciplinas %}
-                                <option value="{{ disciplina.id }}">{{ disciplina.nome }}</option>
+                            <option value="{{ disciplina.id }}">{{ disciplina.nome }}</option>
                             {% endfor %}
                         </select>
                     </div>
-                    <div class="col-md-6 mb-3">
-                        <label for="serie_id" class="form-label">Série de Aplicação</label>
-                        <select id="serie_id" name="serie_id" class="form-select" required>
-                            <option value="" disabled selected>-- Selecione a Série --</option>
+                    <div class="col-md-6">
+                        <label for="serie_id" class="form-label">2. Série de Aplicação *</label>
+                        <select class="form-select" id="serie_id" name="serie_id" required>
+                            <option value="" disabled selected>-- Selecione uma Série --</option>
                             {% for serie in series %}
-                                <option value="{{ serie.id }}">{{ serie.nome }}</option>
+                            <option value="{{ serie.id }}">{{ serie.nome }}</option>
                             {% endfor %}
                         </select>
                     </div>
                 </div>
 
-                <div class="mb-3">
-                    <label for="assunto" class="form-label">Assunto</label>
-                    <input type="text" id="assunto" name="assunto" class="form-control" placeholder="Ex: Genética, Ecologia, Análise Sintática" required>
+                <!-- Linha 2: Assunto -->
+                <div class="row mb-3">
+                    <div class="col-12">
+                        <label for="assunto" class="form-label">3. Assunto *</label>
+                        <input type="text" class="form-control" id="assunto" name="assunto" placeholder="Ex: Análise Sintática, Renascimento" required>
+                    </div>
                 </div>
 
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label for="tipo" class="form-label">Tipo de Questão</label>
-                        <select id="tipo" name="tipo" class="form-select" required>
-                            <option value="multipla_escolha" selected>Múltipla Escolha</option>
+                <!-- Linha 3: Tipo e Nível -->
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="tipo" class="form-label">4. Tipo de Questão *</label>
+                        <select class="form-select" id="tipo" name="tipo" required>
+                            <option value="multipla_escolha">Múltipla Escolha</option>
                             <option value="verdadeiro_falso">Verdadeiro ou Falso</option>
-                            <option value="discursiva" disabled>Discursiva (em breve)</option>
+                            <option value="discursiva">Discursiva</option>
                         </select>
                     </div>
-                    <div class="col-md-6 mb-3">
-                        <label for="nivel" class="form-label">Nível de Dificuldade</label>
-                        <select id="nivel" name="nivel" class="form-select" required>
+                    <div class="col-md-6">
+                        <label for="nivel" class="form-label">5. Nível de Dificuldade *</label>
+                        <select class="form-select" id="nivel" name="nivel" required>
                             <option value="facil">Fácil</option>
                             <option value="media" selected>Média</option>
                             <option value="dificil">Difícil</option>
                         </select>
                     </div>
                 </div>
-                
+
+                <!-- Linha 4: Enunciado -->
                 <div class="mb-3">
-                    <label for="texto_questao" class="form-label">Enunciado da Questão</label>
-                    <textarea id="texto_questao" name="texto_questao" rows="4" class="form-control" required></textarea>
+                    <label for="texto_questao" class="form-label">6. Enunciado da Questão *</label>
+                    <textarea class="form-control" id="texto_questao" name="texto_questao" rows="5" required></textarea>
                 </div>
 
-                <!-- Bloco de Imagem Reintroduzido -->
-                <div class="border rounded p-3 mb-4 bg-light">
-                    <div class="mb-3">
-                        <label for="imagem_questao" class="form-label fw-bold">Imagem da Questão (Opcional)</label>
-                        <input class="form-control" type="file" id="imagem_questao" name="imagem_questao" accept="image/png, image/jpeg, image/gif">
-                        <small class="form-text text-muted">Envie uma imagem para complementar o enunciado. Formatos permitidos: PNG, JPG, GIF.</small>
-                    </div>
+                <!-- Linha 5: Imagem (Opcional) -->
+                <div class="mb-3 p-3 border rounded bg-light">
+                    <label class="form-label fw-bold">7. Imagem da Questão (Opcional)</label>
                     <div class="mb-2">
-                        <label for="imagem_alt" class="form-label">Descrição da Imagem (para acessibilidade)</label>
-                        <input type="text" id="imagem_alt" name="imagem_alt" class="form-control" placeholder="Descreva a imagem para quem não pode vê-la">
-                        <small class="form-text text-muted">Ex: "Mapa do Brasil destacando a Região Nordeste." ou "Gráfico de barras crescente."</small>
+                        <label for="imagem_questao" class="form-label">Envie uma imagem para complementar o enunciado.</label>
+                        <input class="form-control" type="file" id="imagem_questao" name="imagem_questao" accept="image/png, image/jpeg, image/gif">
+                    </div>
+                    <div>
+                        <label for="imagem_alt" class="form-label">Descrição da imagem (para acessibilidade)</label>
+                        <input type="text" class="form-control" id="imagem_alt" name="imagem_alt" placeholder="Ex: Gráfico de barras crescente, Mapa do Brasil destacando a Região Nordeste.">
+                        <div class="form-text">Este texto é lido por leitores de tela para alunos com deficiência visual.</div>
                     </div>
                 </div>
 
-                <!-- Campos de Resposta -->
-                <div id="multipla_escolha_fields">
-                    <h6>Opções de Resposta (Múltipla Escolha)</h6>
-                    <div class="input-group mb-2">
-                        <span class="input-group-text">A</span>
-                        <input type="text" name="opcao_a" class="form-control" required>
+                <!-- Campos Dinâmicos: Opções de Resposta e Gabarito -->
+                <div id="campos-resposta">
+                    <!-- Container para Opções de Múltipla Escolha -->
+                    <div id="opcoes-multipla-escolha" class="mb-3">
+                        <label class="form-label fw-bold">Opções de Resposta</label>
+                        <div class="input-group mb-2">
+                            <span class="input-group-text">A</span>
+                            <input type="text" class="form-control" name="opcao_a" placeholder="Texto da opção A">
+                        </div>
+                        <div class="input-group mb-2">
+                            <span class="input-group-text">B</span>
+                            <input type="text" class="form-control" name="opcao_b" placeholder="Texto da opção B">
+                        </div>
+                        <div class="input-group mb-2">
+                            <span class="input-group-text">C</span>
+                            <input type="text" class="form-control" name="opcao_c" placeholder="Texto da opção C">
+                        </div>
+                        <div class="input-group">
+                            <span class="input-group-text">D</span>
+                            <input type="text" class="form-control" name="opcao_d" placeholder="Texto da opção D">
+                        </div>
                     </div>
-                    <div class="input-group mb-2">
-                        <span class="input-group-text">B</span>
-                        <input type="text" name="opcao_b" class="form-control" required>
-                    </div>
-                    <div class="input-group mb-2">
-                        <span class="input-group-text">C</span>
-                        <input type="text" name="opcao_c" class="form-control" required>
-                    </div>
-                    <div class="input-group mb-2">
-                        <span class="input-group-text">D</span>
-                        <input type="text" name="opcao_d" class="form-control" required>
+
+                    <!-- Container para o Gabarito -->
+                    <div id="campo-gabarito" class="mb-3">
+                        <label for="gabarito" class="form-label">Gabarito *</label>
+                        <input type="text" class="form-control" id="gabarito" name="gabarito" style="text-transform:uppercase" maxlength="1">
                     </div>
                 </div>
 
-                <div id="gabarito_fields" class="mt-3">
-                    <label for="gabarito" class="form-label fw-bold">Gabarito</label>
-                    <div id="gabarito_multipla_escolha">
-                        <select name="gabarito" class="form-select" style="width: 150px;" required>
-                            <option value="A" selected>A</option>
-                            <option value="B">B</option>
-                            <option value="C">C</option>
-                            <option value="D">D</option>
-                        </select>
-                    </div>
-                    <div id="gabarito_vf" style="display: none;">
-                        <select name="gabarito" class="form-select" style="width: 200px;" disabled>
-                            <option value="A" selected>Verdadeiro</option>
-                            <option value="B">Falso</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="mt-4">
+                <!-- Linha Final: Justificativa e Botão -->
+                <div class="mb-3">
                     <label for="justificativa_gabarito" class="form-label">Justificativa do Gabarito (Opcional)</label>
-                    <textarea name="justificativa_gabarito" id="justificativa_gabarito" class="form-control" rows="3"></textarea>
+                    <textarea class="form-control" id="justificativa_gabarito" name="justificativa_gabarito" rows="3" placeholder="Explique por que a alternativa correta é a certa. Isso pode ser exibido ao aluno após a correção."></textarea>
                 </div>
 
-                <div class="text-center mt-4">
-                    <button type="submit" class="btn btn-primary btn-lg">Salvar Nova Questão</button>
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="bi bi-check-circle me-2"></i>Salvar Questão
+                    </button>
                 </div>
-            </div>
+            </form>
         </div>
-    </form>
+    </div>
 </div>
-{% endblock %}
 
-{% block scripts %}
-{{ super() }}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const tipoQuestaoSelect = document.getElementById('tipo');
-    const multiplaEscolhaContainer = document.getElementById('multipla_escolha_fields');
-    const multiplaEscolhaInputs = multiplaEscolhaContainer.querySelectorAll('input');
-    const gabaritoMultiplaSelect = document.getElementById('gabarito_multipla_escolha').querySelector('select');
-    const gabaritoVfContainer = document.getElementById('gabarito_vf');
-    const gabaritoVfSelect = gabaritoVfContainer.querySelector('select');
+    const opcoesMultiplaEscolha = document.getElementById('opcoes-multipla-escolha');
+    const campoGabarito = document.getElementById('campo-gabarito');
+    const inputGabarito = document.getElementById('gabarito');
 
-    function toggleFields() {
-        const selectedType = tipoQuestaoSelect.value;
-        if (selectedType === 'multipla_escolha') {
-            multiplaEscolhaContainer.style.display = 'block';
-            gabaritoMultiplaSelect.parentElement.style.display = 'block';
-            gabaritoVfContainer.style.display = 'none';
-            multiplaEscolhaInputs.forEach(input => input.required = true);
-            gabaritoMultiplaSelect.required = true;
-            gabaritoVfSelect.required = false;
-            gabaritoVfSelect.disabled = true;
-            gabaritoMultiplaSelect.disabled = false;
-        } else if (selectedType === 'verdadeiro_falso') {
-            multiplaEscolhaContainer.style.display = 'none';
-            gabaritoMultiplaSelect.parentElement.style.display = 'none';
-            gabaritoVfContainer.style.display = 'block';
-            multiplaEscolhaInputs.forEach(input => input.required = false);
-            gabaritoMultiplaSelect.required = false;
-            gabaritoVfSelect.required = true;
-            gabaritoVfSelect.disabled = false;
-            gabaritoMultiplaSelect.disabled = true;
+    function toggleCamposPorTipo() {
+        const tipoSelecionado = tipoQuestaoSelect.value;
+
+        if (tipoSelecionado === 'multipla_escolha') {
+            opcoesMultiplaEscolha.style.display = 'block';
+            campoGabarito.style.display = 'block';
+            inputGabarito.placeholder = 'Gabarito (A, B, C ou D)';
+            // Torna os campos de múltipla escolha obrigatórios
+            document.getElementsByName('opcao_a')[0].required = true;
+            document.getElementsByName('opcao_b')[0].required = true;
+            document.getElementsByName('opcao_c')[0].required = true;
+            document.getElementsByName('opcao_d')[0].required = true;
+            inputGabarito.required = true;
+        } else if (tipoSelecionado === 'verdadeiro_falso') {
+            opcoesMultiplaEscolha.style.display = 'none';
+            campoGabarito.style.display = 'block';
+            inputGabarito.placeholder = 'Gabarito (V ou F)';
+            // Remove a obrigatoriedade dos campos de múltipla escolha
+            document.getElementsByName('opcao_a')[0].required = false;
+            document.getElementsByName('opcao_b')[0].required = false;
+            document.getElementsByName('opcao_c')[0].required = false;
+            document.getElementsByName('opcao_d')[0].required = false;
+            inputGabarito.required = true;
+        } else if (tipoSelecionado === 'discursiva') {
+            opcoesMultiplaEscolha.style.display = 'none';
+            campoGabarito.style.display = 'none';
+            // Remove a obrigatoriedade de todos os campos de resposta
+            document.getElementsByName('opcao_a')[0].required = false;
+            document.getElementsByName('opcao_b')[0].required = false;
+            document.getElementsByName('opcao_c')[0].required = false;
+            document.getElementsByName('opcao_d')[0].required = false;
+            inputGabarito.required = false;
         }
     }
-    tipoQuestaoSelect.addEventListener('change', toggleFields);
-    toggleFields(); 
+
+    // Adiciona o listener para o evento de mudança
+    tipoQuestaoSelect.addEventListener('change', toggleCamposPorTipo);
+
+    // Chama a função uma vez no carregamento da página para definir o estado inicial
+    toggleCamposPorTipo();
 });
 </script>
 {% endblock %}

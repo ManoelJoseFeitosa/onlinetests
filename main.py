@@ -1154,57 +1154,62 @@ def criar_questao():
     # --- LÓGICA DO POST (SALVAR A QUESTÃO) ---
     if request.method == 'POST':
         try:
-            # --- VALIDAÇÃO DETALHADA ---
             erros = []
             disciplina_id = request.form.get('disciplina_id', type=int)
             serie_id = request.form.get('serie_id', type=int)
-            assunto = request.form.get('assunto')
-            texto_questao = request.form.get('texto_questao')
+            assunto = request.form.get('assunto', '').strip()
+            texto_questao = request.form.get('texto_questao', '').strip()
             nivel = request.form.get('nivel')
             tipo = request.form.get('tipo')
-            gabarito = request.form.get('gabarito')
 
+            # Validações de campos obrigatórios
             if not disciplina_id: erros.append("Disciplina")
             if not serie_id: erros.append("Série")
             if not assunto: erros.append("Assunto")
             if not texto_questao: erros.append("Enunciado da Questão")
             if not nivel: erros.append("Nível")
             if not tipo: erros.append("Tipo de Questão")
-            if not gabarito: erros.append("Gabarito")
 
-            # Captura e valida as opções apenas se for múltipla escolha
+            # Validações específicas por tipo de questão
+            opcao_a, opcao_b, opcao_c, opcao_d = None, None, None, None
+            gabarito = None
+
             if tipo == 'multipla_escolha':
                 opcao_a = request.form.get('opcao_a')
                 opcao_b = request.form.get('opcao_b')
                 opcao_c = request.form.get('opcao_c')
                 opcao_d = request.form.get('opcao_d')
+                gabarito = request.form.get('gabarito')
                 if not opcao_a: erros.append("Opção A")
                 if not opcao_b: erros.append("Opção B")
                 if not opcao_c: erros.append("Opção C")
                 if not opcao_d: erros.append("Opção D")
-            else:
-                # Define as opções como None se não for múltipla escolha
-                opcao_a, opcao_b, opcao_c, opcao_d = None, None, None, None
+                if not gabarito: erros.append("Gabarito")
+            elif tipo == 'verdadeiro_falso':
+                gabarito = request.form.get('gabarito')
+                if not gabarito: erros.append("Gabarito")
+            
+            # Para 'discursiva', gabarito e opções permanecem None, sem validação de obrigatoriedade.
 
-            # Se a lista de erros não estiver vazia, exibe a mensagem e retorna
             if erros:
                 mensagem_erro = "Os seguintes campos são obrigatórios: " + ", ".join(erros) + "."
                 flash(mensagem_erro, 'danger')
+                # Redireciona de volta para a página de criação
                 return redirect(url_for('main_routes.criar_questao'))
 
-            # Se a validação passar, cria o objeto Questao
+            # Cria o objeto Questao
             nova_questao = Questao(
                 disciplina_id=disciplina_id,
                 serie_id=serie_id,
                 assunto=assunto,
-                texto=texto_questao, # O campo no modelo é 'texto'
+                texto=texto_questao,
                 nivel=nivel,
                 tipo=tipo,
                 opcao_a=opcao_a,
                 opcao_b=opcao_b,
                 opcao_c=opcao_c,
                 opcao_d=opcao_d,
-                gabarito=gabarito,
+                gabarito=gabarito.upper() if gabarito else None, # Salva gabarito em maiúsculo se existir
                 criador_id=current_user.id
             )
             db.session.add(nova_questao)
@@ -1216,6 +1221,7 @@ def criar_questao():
         except Exception as e:
             db.session.rollback()
             flash(f'Ocorreu um erro ao criar a questão: {e}', 'danger')
+            print(f"ERRO AO CRIAR QUESTÃO: {e}")
 
     # --- LÓGICA DO GET (EXIBIR O FORMULÁRIO) ---
     if current_user.role == 'professor':
