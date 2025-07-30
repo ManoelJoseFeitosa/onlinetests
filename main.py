@@ -874,21 +874,60 @@ def trocar_senha():
 @role_required('coordenador')
 def gerenciar_ciclo():
     escola_id = current_user.escola_id
+    # A busca dos anos letivos para exibição permanece a mesma
     anos_letivos = AnoLetivo.query.filter_by(escola_id=escola_id).order_by(AnoLetivo.ano.desc()).all()
-    if request.method == 'POST':
-        ano_novo = request.form.get('ano_novo', type=int)
-        if ano_novo:
-            existente = AnoLetivo.query.filter_by(ano=ano_novo, escola_id=escola_id).first()
-            if existente:
-                flash(f'O ano letivo {ano_novo} já existe.', 'danger')
-            else:
-                AnoLetivo.query.filter_by(escola_id=escola_id).update({'status': 'arquivado'})
-                novo_ano = AnoLetivo(ano=ano_novo, escola_id=escola_id, status='ativo')
-                db.session.add(novo_ano)
-                db.session.commit()
-                flash(f'Ano letivo {ano_novo} criado e definido como ativo!', 'success')
-                return redirect(url_for('main_routes.gerenciar_ciclo'))
+    
+    # Pega o ano corrente para as validações
     ano_atual = datetime.now().year
+
+    if request.method == 'POST':
+        ano_novo_str = request.form.get('ano_novo')
+        
+        # Validação para garantir que a entrada não é vazia ou inválida
+        if not ano_novo_str or not ano_novo_str.isdigit():
+            flash('Por favor, digite um ano válido.', 'danger')
+            return redirect(url_for('main_routes.gerenciar_ciclo'))
+
+        ano_novo = int(ano_novo_str)
+
+        # --- MUDANÇA 1: Validação para não permitir anos anteriores ao ano corrente ---
+        if ano_novo < ano_atual:
+            flash(f'Não é permitido criar um ano letivo anterior ao ano corrente ({ano_atual}).', 'danger')
+            return redirect(url_for('main_routes.gerenciar_ciclo'))
+
+        # A verificação de existência continua igual
+        existente = AnoLetivo.query.filter_by(ano=ano_novo, escola_id=escola_id).first()
+        if existente:
+            flash(f'O ano letivo {ano_novo} já existe.', 'danger')
+        else:
+            # --- MUDANÇA 2: Lógica de status para manter apenas o ano corrente como ativo ---
+            # Determina o status do novo ano a ser criado.
+            # Ele só será 'ativo' se for igual ao ano calendário atual.
+            status_novo_ano = 'ativo' if ano_novo == ano_atual else 'arquivado'
+
+            # Se o novo ano a ser criado for o ano corrente, precisamos garantir
+            # que qualquer outro ano que esteja 'ativo' seja arquivado.
+            if status_novo_ano == 'ativo':
+                AnoLetivo.query.filter(
+                    AnoLetivo.escola_id == escola_id,
+                    AnoLetivo.status == 'ativo'
+                ).update({'status': 'arquivado'})
+
+            # --- MUDANÇA 3: Cria o novo ano com o status correto ---
+            novo_ano = AnoLetivo(ano=ano_novo, escola_id=escola_id, status=status_novo_ano)
+            db.session.add(novo_ano)
+            db.session.commit()
+            log_audit('ACADEMIC_YEAR_CREATED', target_obj=novo_ano, details={'status': status_novo_ano})
+
+            # Mensagem de sucesso dinâmica
+            if status_novo_ano == 'ativo':
+                flash(f'Ano letivo {ano_novo} criado e definido como ativo!', 'success')
+            else:
+                flash(f'Ano letivo futuro {ano_novo} foi criado como arquivado.', 'success')
+
+            return redirect(url_for('main_routes.gerenciar_ciclo'))
+            
+    # A renderização do template no método GET continua a mesma
     return render_template('app/gerenciar_ciclo.html', anos_letivos=anos_letivos, ano_atual=ano_atual)
 
 @main_routes.route('/admin/gerenciar_usuarios', methods=['GET', 'POST'])
