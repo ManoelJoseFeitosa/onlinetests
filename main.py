@@ -44,7 +44,7 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 # Pasta para upload dos documentos (manuais, etc.)
-UPLOAD_FOLDER_DOCS = os.path.join(app.static_folder, 'uploads/documentos')
+UPLOAD_FOLDER_DOCS = os.path.join(app.static_folder, 'docs') # <-- LINHA CORRIGIDA
 ALLOWED_EXTENSIONS_DOCS = {'pdf', 'doc', 'docx'} # Defina as extensões permitidas
 app.config['UPLOAD_FOLDER_DOCS'] = UPLOAD_FOLDER_DOCS
 
@@ -874,60 +874,81 @@ def trocar_senha():
 @role_required('coordenador')
 def gerenciar_ciclo():
     escola_id = current_user.escola_id
-    # A busca dos anos letivos para exibição permanece a mesma
-    anos_letivos = AnoLetivo.query.filter_by(escola_id=escola_id).order_by(AnoLetivo.ano.desc()).all()
-    
-    # Pega o ano corrente para as validações
     ano_atual = datetime.now().year
+    
+    # --- BLOCO DE AUTO-CORREÇÃO ADICIONADO ---
+    # Este bloco executa sempre que a página é carregada (método GET)
+    # para garantir que os status dos anos letivos estejam sempre corretos.
+    if request.method == 'GET':
+        anos_da_escola = AnoLetivo.query.filter_by(escola_id=escola_id).all()
+        
+        ano_corrente_obj = None
+        outro_ano_ativo = None
+        
+        for ano_obj in anos_da_escola:
+            if ano_obj.ano == ano_atual:
+                ano_corrente_obj = ano_obj
+            elif ano_obj.status == 'ativo':
+                outro_ano_ativo = ano_obj
 
+        mudanca_realizada = False
+        # 1. Corrige se um ano errado (ex: 56638) estiver ativo
+        if outro_ano_ativo:
+            outro_ano_ativo.status = 'arquivado'
+            mudanca_realizada = True
+            print(f"CORREÇÃO: Ano {outro_ano_ativo.ano} foi arquivado.")
+
+        # 2. Ativa o ano corrente se ele existir mas estiver arquivado
+        if ano_corrente_obj and ano_corrente_obj.status != 'ativo':
+            ano_corrente_obj.status = 'ativo'
+            mudanca_realizada = True
+            print(f"CORREÇÃO: Ano {ano_corrente_obj.ano} foi definido como ativo.")
+        
+        # 3. Se o ano corrente não existir no banco, ele é criado automaticamente
+        if not ano_corrente_obj:
+            novo_ano = AnoLetivo(ano=ano_atual, escola_id=escola_id, status='ativo')
+            db.session.add(novo_ano)
+            mudanca_realizada = True
+            flash(f'O ano letivo de {ano_atual} não existia e foi criado como ativo.', 'info')
+            print(f"CRIAÇÃO AUTO: Ano {ano_atual} foi criado como ativo.")
+
+        # Se qualquer correção foi feita, salva no banco e recarrega a página
+        if mudanca_realizada:
+            db.session.commit()
+            return redirect(url_for('main_routes.gerenciar_ciclo'))
+
+    # --- LÓGICA DE CRIAÇÃO MANUAL (MÉTODO POST) ---
+    # Esta parte permanece como antes, pois já estava correta.
     if request.method == 'POST':
         ano_novo_str = request.form.get('ano_novo')
         
-        # Validação para garantir que a entrada não é vazia ou inválida
         if not ano_novo_str or not ano_novo_str.isdigit():
             flash('Por favor, digite um ano válido.', 'danger')
             return redirect(url_for('main_routes.gerenciar_ciclo'))
 
         ano_novo = int(ano_novo_str)
 
-        # --- MUDANÇA 1: Validação para não permitir anos anteriores ao ano corrente ---
         if ano_novo < ano_atual:
             flash(f'Não é permitido criar um ano letivo anterior ao ano corrente ({ano_atual}).', 'danger')
             return redirect(url_for('main_routes.gerenciar_ciclo'))
 
-        # A verificação de existência continua igual
         existente = AnoLetivo.query.filter_by(ano=ano_novo, escola_id=escola_id).first()
         if existente:
             flash(f'O ano letivo {ano_novo} já existe.', 'danger')
         else:
-            # --- MUDANÇA 2: Lógica de status para manter apenas o ano corrente como ativo ---
-            # Determina o status do novo ano a ser criado.
-            # Ele só será 'ativo' se for igual ao ano calendário atual.
-            status_novo_ano = 'ativo' if ano_novo == ano_atual else 'arquivado'
-
-            # Se o novo ano a ser criado for o ano corrente, precisamos garantir
-            # que qualquer outro ano que esteja 'ativo' seja arquivado.
-            if status_novo_ano == 'ativo':
-                AnoLetivo.query.filter(
-                    AnoLetivo.escola_id == escola_id,
-                    AnoLetivo.status == 'ativo'
-                ).update({'status': 'arquivado'})
-
-            # --- MUDANÇA 3: Cria o novo ano com o status correto ---
+            # Anos futuros são sempre criados como 'arquivado'
+            status_novo_ano = 'arquivado'
+            
             novo_ano = AnoLetivo(ano=ano_novo, escola_id=escola_id, status=status_novo_ano)
             db.session.add(novo_ano)
             db.session.commit()
             log_audit('ACADEMIC_YEAR_CREATED', target_obj=novo_ano, details={'status': status_novo_ano})
+            flash(f'Ano letivo futuro {ano_novo} foi criado como arquivado.', 'success')
 
-            # Mensagem de sucesso dinâmica
-            if status_novo_ano == 'ativo':
-                flash(f'Ano letivo {ano_novo} criado e definido como ativo!', 'success')
-            else:
-                flash(f'Ano letivo futuro {ano_novo} foi criado como arquivado.', 'success')
-
-            return redirect(url_for('main_routes.gerenciar_ciclo'))
+        return redirect(url_for('main_routes.gerenciar_ciclo'))
             
-    # A renderização do template no método GET continua a mesma
+    # Busca final dos anos letivos para exibir na página
+    anos_letivos = AnoLetivo.query.filter_by(escola_id=escola_id).order_by(AnoLetivo.ano.desc()).all()
     return render_template('app/gerenciar_ciclo.html', anos_letivos=anos_letivos, ano_atual=ano_atual)
 
 @main_routes.route('/admin/gerenciar_usuarios', methods=['GET', 'POST'])
