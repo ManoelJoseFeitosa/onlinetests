@@ -14,7 +14,6 @@
 
     <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm sticky-top">
         <div class="container">
-            <!-- CORREÇÃO APLICADA AQUI -->
             <a class="navbar-brand fw-bold" href="{{ url_for('main_routes.pagina_inicial_vendas') }}">
                 <i class="bi bi-pencil-square"></i>
                 OnlineTests
@@ -24,7 +23,6 @@
             </button>
             <div class="collapse navbar-collapse" id="main-nav">
                 <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
-                    <!-- CORREÇÃO APLICADA AQUI -->
                     <li class="nav-item"><a class="nav-link" href="{{ url_for('main_routes.pagina_inicial_vendas') }}">Início</a></li>
                     <li class="nav-item"><a class="nav-link" href="{{ url_for('main_routes.funcionalidades') }}">Funcionalidades</a></li>
                     <li class="nav-item"><a class="nav-link" href="{{ url_for('main_routes.planos') }}">Planos</a></li>
@@ -34,11 +32,9 @@
                 
                 <div class="ms-lg-3">
                     {% if current_user.is_authenticated %}
-                        <!-- CORREÇÃO APLICADA AQUI -->
                         <a href="{{ url_for('main_routes.dashboard') }}" class="btn btn-outline-primary me-2">Painel</a>
                         <a href="{{ url_for('main_routes.logout') }}" class="btn btn-danger">Sair</a>
                     {% else %}
-                        <!-- CORREÇÃO APLICADA AQUI -->
                         <a href="{{ url_for('main_routes.login') }}" class="btn btn-primary">Acessar Sistema</a>
                     {% endif %}
                 </div>
@@ -59,7 +55,6 @@
                 </div>
                 <div class="col-md-2 col-lg-2 col-xl-2 mx-auto mt-3">
                     <h5 class="text-uppercase mb-4 fw-bold">Navegação</h5>
-                    <!-- CORREÇÃO APLICADA AQUI -->
                     <p><a href="{{ url_for('main_routes.funcionalidades') }}" class="text-white" style="text-decoration: none;">Funcionalidades</a></p>
                     <p><a href="{{ url_for('main_routes.planos') }}" class="text-white" style="text-decoration: none;">Planos</a></p>
                     <p><a href="{{ url_for('main_routes.contato') }}" class="text-white" style="text-decoration: none;">Contato</a></p>
@@ -69,12 +64,23 @@
                     <h5 class="text-uppercase mb-4 fw-bold">Contato</h5>
                     <p><i class="bi bi-geo-alt-fill me-3"></i>Teresina, PI, Brasil</p>
                     <p><i class="bi bi-envelope-fill me-3"></i>contato@onlinetests.com.br</p>
+                    <p><i class="bi bi-headset me-3"></i>suporte@onlinetests.com.br</p>
                     <p><i class="bi bi-telephone-fill me-3"></i>(86) 99950-3815</p>
                 </div>
             </div>
             <hr class="mb-4">
-            <div class="text-center">
-                <p>Copyright © 2025 OnlineTests. Todos os direitos reservados.</p>
+            <div class="row align-items-center">
+                <div class="col-md-7 col-lg-8">
+                    <p class="text-center text-md-start mb-3 mb-md-0">Copyright © 2025 OnlineTests. Todos os direitos reservados.</p>
+                </div>
+                <!-- ### CORREÇÃO APLICADA AQUI ### -->
+                <div class="col-md-5 col-lg-4">
+                    <div class="text-center text-md-end">
+                        <a href="https://www.instagram.com/onlinetests.oficial/" class="text-white" style="text-decoration: none;" target="_blank" rel="noopener noreferrer">
+                            <i class="bi bi-instagram me-2"></i>onlinetests.oficial
+                        </a>
+                    </div>
+                </div>
             </div>
         </div>
     </footer>
