@@ -1,6 +1,10 @@
 {% extends 'public_base.html' %}
 
-{% block title %}Bem-vindo ao OnlineTests{% endblock %}
+{% block title %}Plataforma de Provas Online para Escolas em Teresina | OnlineTests.com.br{% endblock %}
+
+{% block meta_description %}
+<meta name="description" content="Otimize o tempo dos professores e modernize sua escola em Teresina com o OnlineTests. Nosso sistema facilita a criação, aplicação e correção automática de provas. Peça uma demonstração!">
+{% endblock %}
 
 {% block content %}
 <style>
@@ -30,7 +34,7 @@
 
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <div>
-                    <h1 class="display-4 fw-bold">OnlineTests</h1>
+                    <h1 class="display-4 fw-bold">Plataforma de Avaliação Online para sua Escola</h1>
                     <!-- TEXTO ATUALIZADO -->
                     <p class="lead text-muted mb-0">A solução completa para avaliações na sua instituição, agora com App para Android.</p>
                 </div>
@@ -45,7 +49,7 @@
 
             <!-- TEXTO ATUALIZADO -->
             <p class="mt-5" style="text-align: justify; font-size: 1.15rem; line-height: 1.7;">
-                O OnlineTests é uma solução moderna e robusta, composta por uma plataforma web e um <strong>aplicativo para dispositivos móveis Android</strong>, projetada para transformar a maneira como instituições de ensino criam, gerenciam e aplicam avaliações. Com uma arquitetura segura e uma interface intuitiva, a plataforma centraliza todo o ciclo avaliativo, oferecendo ferramentas específicas e poderosas para cada perfil de usuário: Coordenadores, Professores e Alunos.
+                O OnlineTests é uma solução moderna e robusta, desenvolvida para as necessidades das escolas de Teresina. Composta por uma plataforma web e um <strong>aplicativo para dispositivos móveis Android</strong>, ela foi projetada para transformar a maneira como sua instituição de ensino cria, gerencia e aplica avaliações. Com uma interface intuitiva, a plataforma centraliza todo o ciclo avaliativo, oferecendo ferramentas poderosas para cada perfil: Coordenadores, Professores e Alunos.
             </p>
             <p class="mt-4" style="text-align: justify; font-size: 1.15rem; line-height: 1.7;">
                 Para o corpo docente, a plataforma representa uma revolução na rotina diária. Ao automatizar a correção de provas e simulados, ela <strong>agiliza drasticamente o tempo do professor</strong>, permitindo que ele se dedique mais ao planejamento pedagógico e menos às tarefas repetitivas. Além disso, a digitalização <strong>evita que o professor precise carregar grandes volumes de papel</strong>, mantendo todas as avaliações organizadas e acessíveis em um único lugar.
@@ -58,10 +62,10 @@
             <div class="text-center app-highlight p-5 rounded-3 shadow-sm my-5">
                 <div class="row align-items-center">
                     <div class="col-md-3 text-center mb-4 mb-md-0">
-                        <img src="{{ url_for('static', filename='images/telacoordenadortablete10.png') }}" alt="Logo Android" style="width: 120px; height: auto;">
+                        <img src="{{ url_for('static', filename='images/telacoordenadortablete10.png') }}" alt="Demonstração do aplicativo OnlineTests para aplicação de provas em tablets" style="width: 120px; height: auto;">
                     </div>
                     <div class="col-md-9 text-md-start">
-                        <h3 class="fw-bold">Conheça nosso App para Aplicação de Provas e Acesso a Plataforma</h3>
+                        <h2 class="fw-bold">Conheça nosso App para Aplicação de Provas e Acesso a Plataforma</h2>
                         <p class="lead my-3">
                             Leve a segurança e o controle do OnlineTests para dentro da sala de aula com nosso <strong>aplicativo exclusivo para tablets e celulares Android</strong>. Crie um ambiente de provas controlado, seguro e livre de distrações, garantindo a integridade do processo avaliativo diretamente nos dispositivos da escola.
                         </p>
@@ -75,7 +79,7 @@
             <hr class="my-5">
 
             <div class="text-center">
-                <h3 class="fw-bold">Funcionalidades por Perfil de Usuário</h3>
+                <h2 class="fw-bold">Funcionalidades por Perfil de Usuário</h2>
                 <p class="mt-3 text-muted" style="font-size: 1.1rem;">
                     O acesso à plataforma é segmentado por perfis, garantindo que cada usuário tenha um painel de controle (dashboard) personalizado com as ferramentas essenciais para suas tarefas diárias.
                 </p>
@@ -85,7 +89,7 @@
                 <div class="col-lg-4 d-flex align-items-stretch">
                     <div class="card shadow-sm text-center w-100">
                         <div class="profile-card-image-container">
-                             <img src="{{ url_for('static', filename='images/perfilcoordenador.jpg') }}" alt="Painel do Coordenador">
+                             <img src="{{ url_for('static', filename='images/perfilcoordenador.jpg') }}" alt="Visão geral do painel de gestão do coordenador na plataforma OnlineTests">
                         </div>
                         <div class="card-body">
                             <h5 class="card-title">Painel do Coordenador</h5>
@@ -96,7 +100,7 @@
                 <div class="col-lg-4 d-flex align-items-stretch">
                     <div class="card shadow-sm text-center w-100">
                         <div class="profile-card-image-container">
-                            <img src="{{ url_for('static', filename='images/perfildoprofessor.jpg') }}" alt="Painel do Professor">
+                            <img src="{{ url_for('static', filename='images/perfildoprofessor.jpg') }}" alt="Professor criando uma prova no painel de docente do sistema OnlineTests">
                         </div>
                         <div class="card-body">
                             <h5 class="card-title">Painel do Professor</h5>
@@ -107,7 +111,7 @@
                 <div class="col-lg-4 d-flex align-items-stretch">
                      <div class="card shadow-sm text-center w-100">
                         <div class="profile-card-image-container">
-                             <img src="{{ url_for('static', filename='images/perfildoaluno.jpg') }}" alt="Painel do Aluno">
+                             <img src="{{ url_for('static', filename='images/perfildoaluno.jpg') }}" alt="Aluno acessando suas notas e avaliações no painel do estudante OnlineTests">
                         </div>
                         <div class="card-body">
                             <h5 class="card-title">Painel do Aluno</h5>
