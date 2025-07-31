@@ -15,8 +15,6 @@
                 {% if documentos %}
                     <div class="list-group shadow-sm">
                         {% for doc in documentos %}
-                            {# --- CORREÇÃO APLICADA AQUI --- #}
-                            {# Adicionado o caminho 'docs/' para que o link seja gerado corretamente. #}
                             <a href="{{ url_for('static', filename='docs/' ~ doc.caminho_arquivo) }}" class="list-group-item list-group-item-action flex-column align-items-start p-3" download>
                                 <div class="d-flex w-100 justify-content-between">
                                     <h5 class="mb-1 text-primary"><i class="bi bi-file-earmark-arrow-down-fill me-2"></i>{{ doc.titulo }}</h5>
