@@ -7,6 +7,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
+<div id="pdf-metadata" data-escola="{{ escola_nome }}" style="display: none;"></div>
+
 <div class="container-fluid">
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
         <h1 class="h3 mb-0 text-gray-800">Painel de Desempenho</h1>
@@ -48,6 +50,7 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // (O restante do JavaScript para os gráficos continua o mesmo)
     const filtroTurma = document.getElementById('filtro-turma');
     const filtroAluno = document.getElementById('filtro-aluno');
     const chartsContainer = document.getElementById('charts-container');
@@ -70,7 +73,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function criarWrapperGrafico(id, titulo) {
         const wrapper = document.createElement('div');
-        wrapper.className = 'col-lg-6 mb-4'; // Alterado para col-lg-6 para caber 2 por linha
+        wrapper.className = 'col-lg-6 mb-4';
         wrapper.innerHTML = `
             <div class="card shadow h-100">
                 <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary">${titulo}</h6></div>
@@ -97,7 +100,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     filtroTurma.addEventListener('change', async function() {
-        // ... (código para carregar alunos e gráfico da turma, já corrigido) ...
         const turmaId = this.value;
         filtroAluno.innerHTML = '<option value="">-- Todos da Turma --</option>';
         filtroAluno.disabled = true;
@@ -148,7 +150,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     filtroAluno.addEventListener('change', async function() {
-        // ... (código para carregar gráficos do aluno, já corrigido) ...
         const alunoId = this.value;
         
         if (!alunoId) {
@@ -191,73 +192,85 @@ document.addEventListener('DOMContentLoaded', function() {
             exibirMensagem('Ocorreu um erro ao buscar os dados do aluno.', 'error');
         }
     });
-
+    
+    // ===================================================================
+    // FUNÇÃO DE GERAR PDF ATUALIZADA COM CABEÇALHO
+    // ===================================================================
     btnGerarPdf.addEventListener('click', function() {
-        // Verifica se a biblioteca jsPDF está disponível
         if (typeof window.jspdf === 'undefined' || typeof window.html2canvas === 'undefined') {
-            alert('Erro: As bibliotecas para gerar PDF não foram carregadas. Verifique a conexão com a internet e tente recarregar a página.');
+            alert('Erro: As bibliotecas para gerar PDF não foram carregadas.');
             return;
         }
         
         const { jsPDF } = window.jspdf;
         const container = document.getElementById('charts-container');
         
-        // Verifica se há algo para imprimir, ignorando a mensagem inicial
         if (!container.querySelector('canvas')) {
-            alert("Não há gráficos na tela para gerar o PDF. Por favor, selecione uma turma ou aluno primeiro.");
+            alert("Não há gráficos na tela para gerar o PDF.");
             return;
         }
 
-        const nomeTurma = filtroTurma.options[filtroTurma.selectedIndex].text;
-        const nomeAluno = filtroAluno.options[filtroAluno.selectedIndex].text;
-        const nomeArquivo = filtroAluno.value 
-            ? `Desempenho_${nomeAluno}` 
-            : `Desempenho_Turma_${nomeTurma}`;
+        // 1. Coletar dados para o cabeçalho
+        const escolaNome = document.getElementById('pdf-metadata').dataset.escola;
+        const turmaNome = filtroTurma.options[filtroTurma.selectedIndex].text;
+        const alunoSelecionado = filtroAluno.value;
+        const alunoNome = alunoSelecionado ? filtroAluno.options[filtroAluno.selectedIndex].text : "Desempenho Geral da Turma";
+        const dataGeracao = new Date().toLocaleDateString('pt-BR');
+        const nomeArquivo = alunoSelecionado ? `Desempenho_${alunoNome}` : `Desempenho_Turma_${turmaNome}`;
 
-        // Feedback visual para o usuário
         btnGerarPdf.disabled = true;
         btnGerarPdf.querySelector('.text').textContent = 'Gerando...';
 
-        html2canvas(container, { 
-            scale: 2, // Aumenta a escala para melhor qualidade de imagem
-            useCORS: true // Ajuda se houver imagens de outras origens
-        }).then(canvas => {
+        html2canvas(container, { scale: 2, useCORS: true }).then(canvas => {
             const imgData = canvas.toDataURL('image/png');
-            const pdf = new jsPDF({
-                orientation: 'landscape',
-                unit: 'mm',
-                format: 'a4'
-            });
+            const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
 
             const pdfWidth = pdf.internal.pageSize.getWidth();
             const pdfHeight = pdf.internal.pageSize.getHeight();
+            const margin = 15;
+            
+            // 2. Escrever o cabeçalho no PDF
+            pdf.setFont("helvetica", "bold");
+            pdf.setFontSize(16);
+            pdf.text(escolaNome, pdfWidth / 2, margin, { align: 'center' });
+            
+            pdf.setFontSize(12);
+            pdf.setFont("helvetica", "normal");
+            pdf.text("Relatório de Desempenho", pdfWidth / 2, margin + 7, { align: 'center' });
+
+            pdf.setFontSize(10);
+            pdf.text(`Turma: ${turmaNome}`, margin, margin + 20);
+            pdf.text(`Aluno: ${alunoNome}`, margin, margin + 27);
+            pdf.text(`Data: ${dataGeracao}`, pdfWidth - margin, margin + 20, { align: 'right' });
+
+            pdf.line(margin, margin + 32, pdfWidth - margin, margin + 32); // Linha separadora
+
+            // 3. Adicionar a imagem dos gráficos abaixo do cabeçalho
             const canvasWidth = canvas.width;
             const canvasHeight = canvas.height;
             const ratio = canvasWidth / canvasHeight;
             
-            let imgWidth = pdfWidth - 20; // com margens de 10mm de cada lado
+            const imgWidth = pdfWidth - (margin * 2);
             let imgHeight = imgWidth / ratio;
+            const contentHeight = pdfHeight - (margin + 40); // Altura disponível para a imagem
 
-            // Evita que a imagem ultrapasse a altura da página
-            if (imgHeight > pdfHeight - 20) {
-                imgHeight = pdfHeight - 20;
+            if (imgHeight > contentHeight) {
+                imgHeight = contentHeight;
                 imgWidth = imgHeight * ratio;
             }
-            
-            const x = (pdfWidth - imgWidth) / 2;
-            const y = (pdfHeight - imgHeight) / 2;
 
-            pdf.addImage(imgData, 'PNG', x, y, imgWidth, imgHeight);
+            const yPosition = margin + 35; // Posição Y abaixo da linha do cabeçalho
+
+            pdf.addImage(imgData, 'PNG', margin, yPosition, imgWidth, imgHeight);
+            
             pdf.save(`${nomeArquivo.replace(/ /g, '_')}.pdf`);
 
-            // Restaura o botão
             btnGerarPdf.disabled = false;
             btnGerarPdf.querySelector('.text').textContent = 'Gerar PDF';
 
         }).catch(err => {
             console.error("Erro ao gerar o PDF:", err);
-            alert("Ocorreu um erro inesperado ao gerar o PDF. Tente novamente.");
-            // Restaura o botão em caso de erro
+            alert("Ocorreu um erro inesperado ao gerar o PDF.");
             btnGerarPdf.disabled = false;
             btnGerarPdf.querySelector('.text').textContent = 'Gerar PDF';
         });

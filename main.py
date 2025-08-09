@@ -3226,7 +3226,8 @@ def get_matricula_por_ano(user_id, ano_letivo_id):
 @role_required('coordenador', 'professor')
 def desempenho_aluno():
     """Renderiza a página principal do painel de desempenho."""
-    return render_template('app/desempenho_aluno.html')
+    escola_nome = current_user.escola.nome if current_user.escola else "Nome da Escola"
+    return render_template('app/desempenho_aluno.html', escola_nome=escola_nome)
 
 @main_routes.route('/api/desempenho/turmas')
 @login_required
