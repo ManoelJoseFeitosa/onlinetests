@@ -18,6 +18,9 @@
 </div>
 {% endif %}
 
+<!-- =============================================== -->
+<!-- PAINEL DO COORDENADOR -->
+<!-- =============================================== -->
 {% if current_user.role == 'coordenador' and not current_user.is_superadmin %}
 <div class="row">
 
@@ -101,9 +104,23 @@
             </div>
         </div>
     </div>
+    <div class="col-lg-4 col-md-6 mb-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body text-center d-flex flex-column">
+                <div class="display-4 text-success mb-2"><i class="bi bi-graph-up-arrow"></i></div>
+                <h5 class="card-title">Desempenho do Aluno</h5>
+                <p class="card-text text-muted small flex-grow-1">Analise graficamente o desempenho de alunos e turmas.</p>
+                <a href="{{ url_for('main_routes.desempenho_aluno') }}" class="btn btn-success mt-auto">Analisar</a>
+            </div>
+        </div>
+    </div>
+
 </div>
 {% endif %}
 
+<!-- =============================================== -->
+<!-- PAINEL DO PROFESSOR -->
+<!-- =============================================== -->
 {% if current_user.role == 'professor' %}
 <div class="row">
     <div class="col-lg-4 col-md-6 mb-4">
@@ -146,10 +163,23 @@
             </div>
         </div>
     </div>
+    <div class="col-lg-4 col-md-6 mb-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body text-center d-flex flex-column">
+                <div class="display-4 text-success mb-2"><i class="bi bi-graph-up-arrow"></i></div>
+                <h5 class="card-title">Desempenho do Aluno</h5>
+                <p class="card-text text-muted small flex-grow-1">Analise graficamente o desempenho de alunos e turmas.</p>
+                <a href="{{ url_for('main_routes.desempenho_aluno') }}" class="btn btn-success mt-auto">Analisar</a>
+            </div>
+        </div>
+    </div>
+
 </div>
 {% endif %}
 
-
+<!-- =============================================== -->
+<!-- PAINEL DO ALUNO -->
+<!-- =============================================== -->
 {% if current_user.role == 'aluno' %}
 <div class="row">
     <div class="col-lg-4 col-md-6 mb-4">
