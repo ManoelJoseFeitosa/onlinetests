@@ -192,10 +192,7 @@ document.addEventListener('DOMContentLoaded', function() {
             exibirMensagem('Ocorreu um erro ao buscar os dados do aluno.', 'error');
         }
     });
-    
-    // ===================================================================
-    // FUNÇÃO DE GERAR PDF ATUALIZADA COM CABEÇALHO
-    // ===================================================================
+
     btnGerarPdf.addEventListener('click', function() {
         if (typeof window.jspdf === 'undefined' || typeof window.html2canvas === 'undefined') {
             alert('Erro: As bibliotecas para gerar PDF não foram carregadas.');
