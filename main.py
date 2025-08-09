@@ -3221,6 +3221,138 @@ def get_matricula_por_ano(user_id, ano_letivo_id):
         print(f"ERRO em /api/matricula: {e}")
         return jsonify({'error': 'Erro ao buscar matrícula'}), 500
 
+@main_routes.route('/desempenho')
+@login_required
+@role_required('coordenador', 'professor')
+def desempenho_aluno():
+    """Renderiza a página principal do painel de desempenho."""
+    return render_template('app/desempenho_aluno.html')
+
+@main_routes.route('/api/desempenho/turmas')
+@login_required
+@role_required('coordenador', 'professor')
+def api_get_turmas_desempenho():
+    """Retorna as séries (turmas) da escola do usuário logado."""
+    # Coordenador vê todas as séries da escola.
+    if current_user.role == 'coordenador':
+        series = Serie.query.filter_by(escola_id=current_user.escola_id).order_by(Serie.nome).all()
+    # Professor vê apenas as séries que leciona.
+    else: 
+        series = current_user.series_lecionadas
+        series.sort(key=lambda x: x.nome) # Ordena a lista de séries do professor
+
+    series_data = [{'id': s.id, 'nome': s.nome} for s in series]
+    return jsonify(series_data)
+
+@main_routes.route('/api/desempenho/turmas/<int:serie_id>/alunos')
+@login_required
+@role_required('coordenador', 'professor')
+def api_get_alunos_por_turma_desempenho(serie_id):
+    """Retorna os alunos matriculados em uma série específica no ano letivo ativo."""
+    ano_letivo_ativo = AnoLetivo.query.filter_by(escola_id=current_user.escola_id, status='ativo').first()
+    if not ano_letivo_ativo:
+        return jsonify({'error': 'Nenhum ano letivo ativo encontrado'}), 404
+
+    alunos_matriculados = Usuario.query.join(Matricula).filter(
+        Matricula.serie_id == serie_id,
+        Matricula.ano_letivo_id == ano_letivo_ativo.id,
+        Usuario.escola_id == current_user.escola_id,
+        Usuario.role == 'aluno'
+    ).order_by(Usuario.nome).all()
+
+    alunos_data = [{'id': a.id, 'nome': a.nome} for a in alunos_matriculados]
+    return jsonify(alunos_data)
+
+@main_routes.route('/api/desempenho/turmas/<int:serie_id>/dados')
+@login_required
+@role_required('coordenador', 'professor')
+def api_get_desempenho_turma(serie_id):
+    """Retorna o desempenho agregado de uma turma (média de notas por avaliação)."""
+    ano_letivo_ativo = AnoLetivo.query.filter_by(escola_id=current_user.escola_id, status='ativo').first()
+    if not ano_letivo_ativo:
+        return jsonify({'error': 'Nenhum ano letivo ativo encontrado'}), 404
+
+    # Consulta que calcula a média das notas para cada avaliação da série
+    desempenho = db.session.query(
+        Avaliacao.nome,
+        func.avg(Resultado.nota).label('media_nota')
+    ).join(Resultado, Avaliacao.id == Resultado.avaliacao_id)\
+     .join(Usuario, Resultado.aluno_id == Usuario.id)\
+     .join(Matricula, and_(Usuario.id == Matricula.aluno_id, Matricula.ano_letivo_id == ano_letivo_ativo.id))\
+     .filter(
+        Matricula.serie_id == serie_id,
+        Resultado.ano_letivo_id == ano_letivo_ativo.id,
+        Resultado.status == 'Finalizado',
+        Resultado.nota.isnot(None)
+    ).group_by(Avaliacao.id).order_by(Avaliacao.nome).all()
+
+    if not desempenho:
+        return jsonify({
+            'labels': [],
+            'data': []
+        })
+
+    labels = [d[0] for d in desempenho]
+    data = [round(d[1], 2) for d in desempenho]
+
+    return jsonify({'labels': labels, 'data': data})
+
+@main_routes.route('/api/desempenho/alunos/<int:aluno_id>/dados')
+@login_required
+@role_required('coordenador', 'professor')
+def api_get_desempenho_aluno(aluno_id):
+    """Retorna o desempenho detalhado de um aluno."""
+    ano_letivo_ativo = AnoLetivo.query.filter_by(escola_id=current_user.escola_id, status='ativo').first()
+    if not ano_letivo_ativo:
+        return jsonify({'error': 'Nenhum ano letivo ativo encontrado'}), 404
+
+    # Segurança: Verifica se o aluno pertence à mesma escola do usuário logado
+    aluno = Usuario.query.filter_by(id=aluno_id, escola_id=current_user.escola_id).first_or_404()
+
+    # 1. Desempenho geral (notas por avaliação)
+    resultados_gerais = db.session.query(
+        Avaliacao.nome,
+        Resultado.nota
+    ).join(Avaliacao, Resultado.avaliacao_id == Avaliacao.id).filter(
+        Resultado.aluno_id == aluno_id,
+        Resultado.ano_letivo_id == ano_letivo_ativo.id,
+        Resultado.status == 'Finalizado'
+    ).order_by(Resultado.data_realizacao).all()
+
+    # 2. Desempenho por nível de dificuldade
+    desempenho_por_nivel = db.session.query(
+        Questao.nivel,
+        func.count(Resposta.id).label('total_respostas'),
+        func.sum(case((Resposta.resposta_aluno == Questao.gabarito, 1), else_=0)).label('total_acertos')
+    ).join(Questao, Resposta.questao_id == Questao.id)\
+     .join(Resultado, Resposta.resultado_id == Resultado.id)\
+     .filter(
+        Resultado.aluno_id == aluno_id,
+        Resultado.ano_letivo_id == ano_letivo_ativo.id,
+        Questao.gabarito.isnot(None) # Considera apenas questões com gabarito
+    ).group_by(Questao.nivel).all()
+
+    # Formata os dados para os gráficos
+    desempenho_geral_data = {
+        'labels': [r[0] for r in resultados_gerais],
+        'data': [r[1] for r in resultados_gerais]
+    }
+
+    niveis_map = {n.nivel: (n.total_acertos / n.total_respostas * 100) if n.total_respostas > 0 else 0 for n in desempenho_por_nivel}
+    desempenho_nivel_data = {
+        'labels': ['Fácil', 'Média', 'Difícil'],
+        'data': [
+            round(niveis_map.get('facil', 0), 2),
+            round(niveis_map.get('media', 0), 2),
+            round(niveis_map.get('dificil', 0), 2)
+        ]
+    }
+
+    return jsonify({
+        'geral': desempenho_geral_data,
+        'nivel': desempenho_nivel_data
+    })
+
 # ===================================================================
 # SEÇÃO 7: REGISTRO DOS BLUEPRINTS E EXECUÇÃO
 # ===================================================================

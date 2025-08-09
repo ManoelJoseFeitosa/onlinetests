@@ -1,0 +1,251 @@
+{% extends "app/base.html" %}
+
+{% block title %}Painel de Desempenho{% endblock %}
+
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Painel de Desempenho</h1>
+        <button id="gerar-pdf" class="btn btn-danger btn-icon-split btn-sm">
+            <span class="icon text-white-50"><i class="fas fa-file-pdf"></i></span>
+            <span class="text">Gerar PDF</span>
+        </button>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Filtros de Análise</h6>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-5 mb-3">
+                    <label for="filtro-turma" class="form-label">Selecione a Turma:</label>
+                    <select id="filtro-turma" class="form-control">
+                        <option value="">-- Selecione uma turma --</option>
+                    </select>
+                </div>
+                <div class="col-md-5 mb-3">
+                    <label for="filtro-aluno" class="form-label">Selecione o Aluno:</label>
+                    <select id="filtro-aluno" class="form-control" disabled>
+                        <option value="">-- Todos da Turma --</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="charts-container">
+        <div id="mensagem-inicial" class="text-center py-5">
+            <i class="fas fa-chart-line fa-3x text-gray-400 mb-3"></i>
+            <p class="text-gray-600">Selecione uma turma para visualizar o desempenho geral.</p>
+        </div>
+        </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const filtroTurma = document.getElementById('filtro-turma');
+    const filtroAluno = document.getElementById('filtro-aluno');
+    const chartsContainer = document.getElementById('charts-container');
+    const btnGerarPdf = document.getElementById('gerar-pdf');
+    let activeCharts = [];
+
+    // Função para limpar gráficos e mensagens antigas
+    function limparVisualizacao() {
+        activeCharts.forEach(chart => chart.destroy());
+        activeCharts = [];
+        chartsContainer.innerHTML = ''; // Limpa o conteúdo HTML
+    }
+    
+    // Função para mostrar mensagens (carregando, erro, etc.)
+    function exibirMensagem(texto, tipo = 'info') {
+        limparVisualizacao();
+        let iconClass = 'fas fa-info-circle';
+        if (tipo === 'loading') iconClass = 'fas fa-spinner fa-spin';
+        if (tipo === 'error') iconClass = 'fas fa-exclamation-triangle';
+        chartsContainer.innerHTML = `<div class="text-center py-5"><i class="${iconClass} fa-3x text-gray-400 mb-3"></i><p class="text-gray-600">${texto}</p></div>`;
+    }
+
+    // Função para criar um contêiner de gráfico
+    function criarWrapperGrafico(id, titulo) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'col-xl-6 col-lg-12 mb-4'; // Usa colunas do Bootstrap para layout
+        wrapper.innerHTML = `
+            <div class="card shadow h-100">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">${titulo}</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-area" style="height: 320px;">
+                        <canvas id="${id}"></canvas>
+                    </div>
+                </div>
+            </div>`;
+        return wrapper;
+    }
+
+    // Função genérica para renderizar um gráfico
+    function renderizarGrafico(ctx, tipo, data, options) {
+        const chart = new Chart(ctx, { type: tipo, data: data, options: options });
+        activeCharts.push(chart);
+    }
+
+    // Carrega a lista inicial de turmas
+    async function carregarTurmas() {
+        try {
+            const response = await fetch("{{ url_for('main_routes.api_get_turmas_desempenho') }}");
+            if (!response.ok) throw new Error('Falha ao buscar turmas.');
+            const turmas = await response.json();
+            
+            turmas.forEach(turma => {
+                const option = new Option(turma.nome, turma.id);
+                filtroTurma.add(option);
+            });
+        } catch (error) {
+            console.error(error);
+            alert('Não foi possível carregar as turmas. Tente recarregar a página.');
+        }
+    }
+
+    // Evento: Mudança no filtro de turma
+    filtroTurma.addEventListener('change', async function() {
+        const turmaId = this.value;
+        filtroAluno.innerHTML = '<option value="">-- Todos da Turma --</option>';
+        filtroAluno.disabled = true;
+        
+        if (!turmaId) {
+            exibirMensagem('Selecione uma turma para visualizar o desempenho geral.');
+            return;
+        }
+
+        exibirMensagem('Carregando dados da turma...', 'loading');
+        
+        try {
+            // Carrega alunos da turma
+            const alunosResponse = await fetch(`{{ url_for('main_routes.api_get_alunos_por_turma_desempenho', serie_id=0) }}${turmaId}`);
+            if (alunosResponse.ok) {
+                const alunos = await alunosResponse.json();
+                alunos.forEach(aluno => filtroAluno.add(new Option(aluno.nome, aluno.id)));
+                filtroAluno.disabled = false;
+            }
+
+            // Carrega e exibe gráfico da turma
+            const desempenhoResponse = await fetch(`{{ url_for('main_routes.api_get_desempenho_turma', serie_id=0) }}${turmaId}`);
+            const desempenho = await desempenhoResponse.json();
+            
+            limparVisualizacao();
+            if (desempenho.labels.length > 0) {
+                const row = document.createElement('div');
+                row.className = 'row';
+                const wrapper = criarWrapperGrafico('turmaChart', `Média de Notas da Turma: ${filtroTurma.options[filtroTurma.selectedIndex].text}`);
+                row.appendChild(wrapper);
+                chartsContainer.appendChild(row);
+
+                const ctx = document.getElementById('turmaChart').getContext('2d');
+                renderizarGrafico(ctx, 'bar', 
+                    { labels: desempenho.labels, datasets: [{ label: 'Média de Notas', data: desempenho.data, backgroundColor: 'rgba(78, 115, 223, 0.8)' }] },
+                    { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 10 } } }
+                );
+            } else {
+                exibirMensagem('Nenhum resultado finalizado encontrado para esta turma.');
+            }
+        } catch (error) {
+            console.error(error);
+            exibirMensagem('Ocorreu um erro ao buscar os dados da turma.', 'error');
+        }
+    });
+
+    // Evento: Mudança no filtro de aluno
+    filtroAluno.addEventListener('change', async function() {
+        const alunoId = this.value;
+        const turmaId = filtroTurma.value;
+
+        if (!alunoId) {
+            // Se "Todos os Alunos" for selecionado, recarrega o gráfico da turma
+            filtroTurma.dispatchEvent(new Event('change'));
+            return;
+        }
+
+        exibirMensagem('Carregando dados do aluno...', 'loading');
+
+        try {
+            const response = await fetch(`{{ url_for('main_routes.api_get_desempenho_aluno', aluno_id=0) }}${alunoId}`);
+            const dados = await response.json();
+            
+            limparVisualizacao();
+            const row = document.createElement('div');
+            row.className = 'row';
+            chartsContainer.appendChild(row);
+
+            // Gráfico 1: Desempenho Geral
+            const wrapperGeral = criarWrapperGrafico('alunoGeralChart', `Evolução de Notas: ${this.options[this.selectedIndex].text}`);
+            row.appendChild(wrapperGeral);
+            const ctxGeral = document.getElementById('alunoGeralChart').getContext('2d');
+            renderizarGrafico(ctxGeral, 'line',
+                { labels: dados.geral.labels, datasets: [{ label: 'Nota', data: dados.geral.data, borderColor: 'rgba(28, 200, 138, 1)', tension: 0.1 }] },
+                { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 10 } } }
+            );
+
+            // Gráfico 2: Desempenho por Nível
+            const wrapperNivel = criarWrapperGrafico('alunoNivelChart', `Percentual de Acertos por Nível de Dificuldade`);
+            row.appendChild(wrapperNivel);
+            const ctxNivel = document.getElementById('alunoNivelChart').getContext('2d');
+            renderizarGrafico(ctxNivel, 'bar',
+                { labels: dados.nivel.labels, datasets: [{ label: '% de Acertos', data: dados.nivel.data, backgroundColor: ['#1cc88a', '#f6c23e', '#e74a3b'] }] },
+                { responsive: true, maintainAspectRatio: false, indexAxis: 'y', scales: { x: { beginAtZero: true, max: 100 } } }
+            );
+
+        } catch (error) {
+            console.error(error);
+            exibirMensagem('Ocorreu um erro ao buscar os dados do aluno.', 'error');
+        }
+    });
+    
+    // Evento: Clique para Gerar PDF
+    btnGerarPdf.addEventListener('click', function() {
+        const { jsPDF } = window.jspdf;
+        const container = document.getElementById('charts-container');
+        const nomeTurma = filtroTurma.options[filtroTurma.selectedIndex].text;
+        const nomeAluno = filtroAluno.options[filtroAluno.selectedIndex].text;
+
+        if (container.children.length === 0 || document.getElementById('mensagem-inicial')) {
+            alert("Selecione uma turma ou aluno para gerar o relatório.");
+            return;
+        }
+
+        exibirMensagem('Gerando PDF, por favor aguarde...', 'loading');
+
+        html2canvas(container, { scale: 2 }).then(canvas => { // Aumenta a escala para melhor qualidade
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new jsPDF({
+                orientation: 'landscape',
+                unit: 'mm',
+                format: 'a4'
+            });
+
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+            
+            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+            
+            const nomeArquivo = filtroAluno.value ? `Desempenho_${nomeAluno}` : `Desempenho_Turma_${nomeTurma}`;
+            pdf.save(`${nomeArquivo.replace(/ /g, '_')}.pdf`);
+
+            // Restaura a visualização anterior
+            if(filtroAluno.value) {
+                filtroAluno.dispatchEvent(new Event('change'));
+            } else {
+                filtroTurma.dispatchEvent(new Event('change'));
+            }
+        });
+    });
+
+    // Inicia o processo carregando as turmas
+    carregarTurmas();
+});
+</script>
+{% endblock %}

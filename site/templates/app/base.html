@@ -3,17 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Online Tests{% endblock %}</title>
+    <title>{% block title %}OnlineTests{% endblock %}</title>
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style_app.css') }}">
     
-    <!-- Font Awesome para ícones (útil no painel) -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-
     <style>
         .skip-link {
             position: absolute;
@@ -38,99 +34,116 @@
     <header>
         <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4 shadow-sm">
             <div class="container">
-                <!-- CORREÇÃO APLICADA AQUI -->
                 <a class="navbar-brand fw-bold" href="{{ url_for('main_routes.dashboard') if current_user.is_authenticated else url_for('main_routes.pagina_inicial_vendas') }}">
                     <i class="bi bi-pencil-square"></i>
-                    Sistema de Avaliação
+                    OnlineTests
                 </a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>
                 <div class="collapse navbar-collapse" id="navbarNav">
                     <ul class="navbar-nav ms-auto align-items-center">
-    {% if current_user.is_authenticated %}
-        
-        {% if current_user.escola %}
-        <li class="nav-item">
-            <span class="nav-link text-info fw-bold">
-                <i class="bi bi-building me-1"></i>{{ current_user.escola.nome }}
-            </span>
-        </li>
-        {% endif %}
+                        {% if current_user.is_authenticated %}
+    
+                            {% if current_user.escola %}
+                            <li class="nav-item">
+                                <span class="nav-link text-info fw-bold">
+                                    <i class="bi bi-building me-1"></i>{{ current_user.escola.nome }}
+                                </span>
+                            </li>
+                            {% endif %}
 
-        {% if current_user.is_superadmin %}
-            <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle text-warning fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="bi bi-shield-lock-fill me-1"></i>Super Admin
-                </a>
-                <ul class="dropdown-menu dropdown-menu-dark">
-                    <!-- CORREÇÃO APLICADA AQUI -->
-                    <li><a class="dropdown-item" href="{{ url_for('main_routes.superadmin_painel') }}">Painel de Escolas</a></li>
-                    <li><a class="dropdown-item" href="{{ url_for('main_routes.superadmin_gerenciar_documentos') }}">Gerenciar Documentos</a></li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item" href="{{ url_for('main_routes.painel_relatorios') }}">Relatórios Gerenciais</a></li>
-                    <li><a class="dropdown-item" href="{{ url_for('main_routes.painel_auditoria') }}">Auditoria do Sistema</a></li>
-                </ul>
-            </li>
-        {% endif %}
+                            {% if current_user.is_superadmin %}
+                                <li class="nav-item dropdown">
+                                    <a class="nav-link dropdown-toggle text-warning fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                        <i class="bi bi-shield-lock-fill me-1"></i>Super Admin
+                                    </a>
+                                    <ul class="dropdown-menu dropdown-menu-dark">
+                                        <li><a class="dropdown-item" href="{{ url_for('main_routes.superadmin_painel') }}">Painel de Escolas</a></li>
+                                        <li><a class="dropdown-item" href="{{ url_for('main_routes.superadmin_gerenciar_documentos') }}">Gerenciar Documentos</a></li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li><a class="dropdown-item" href="{{ url_for('main_routes.painel_relatorios') }}">Relatórios Gerenciais</a></li>
+                                        <li><a class="dropdown-item" href="{{ url_for('main_routes.painel_auditoria') }}">Auditoria do Sistema</a></li>
+                                    </ul>
+                                </li>
+                            {% endif %}
 
-        <li class="nav-item">
-            <!-- CORREÇÃO APLICADA AQUI -->
-            <a class="nav-link" href="{{ url_for('main_routes.dashboard') }}"><i class="bi bi-grid-fill me-1"></i>Painel</a>
-        </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('main_routes.dashboard') }}"><i class="bi bi-grid-fill me-1"></i>Painel</a>
+                            </li>
 
-        {% if current_user.role == 'coordenador' and not current_user.is_superadmin %}
-        <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                <i class="bi bi-file-earmark-check me-1"></i>Avaliações
-            </a>
-            <ul class="dropdown-menu dropdown-menu-dark">
-                <!-- CORREÇÃO APLICADA AQUI -->
-                <li><a class="dropdown-item" href="{{ url_for('main_routes.listar_modelos_avaliacao') }}">Ver Modelos de Avaliação</a></li>
-                <li><a class="dropdown-item" href="{{ url_for('main_routes.criar_modelo_avaliacao') }}">Criar Novo Modelo</a></li>
-            </ul>
-        </li>
-        <li class="nav-item">
-            <!-- CORREÇÃO APLICADA AQUI -->
-            <a class="nav-link" href="{{ url_for('main_routes.painel_relatorios') }}"><i class="bi bi-graph-up me-1"></i>Relatórios</a>
-        </li>
-        {% elif current_user.role == 'aluno' %}
-        <li class="nav-item">
-            <!-- CORREÇÃO APLICADA AQUI -->
-            <a class="nav-link" href="{{ url_for('main_routes.listar_modelos_avaliacao') }}"><i class="bi bi-card-checklist me-1"></i>Ver Avaliações</a>
-        </li>
-        {% endif %}
-        
-        <li class="nav-item">
-            <!-- CORREÇÃO APLICADA AQUI -->
-            <a class="nav-link" href="{{ url_for('main_routes.listar_documentos_publicos') }}"><i class="bi bi-file-earmark-text me-1"></i>Documentos</a>
-        </li>
-        <li class="nav-item">
-            <!-- CORREÇÃO APLICADA AQUI -->
-            <a class="nav-link" href="{{ url_for('main_routes.logout') }}"><i class="bi bi-box-arrow-right me-1"></i>Sair</a>
-        </li>
-    {% else %}
-        <li class="nav-item">
-            <!-- CORREÇÃO APLICADA AQUI -->
-            <a class="nav-link" href="{{ url_for('main_routes.pagina_inicial_vendas') }}">
-                <i class="bi bi-house-door-fill me-1"></i>Site
-            </a>
-        </li>
-        <li class="nav-item">
-            <!-- CORREÇÃO APLICADA AQUI -->
-            <a class="nav-link active" aria-current="page" href="{{ url_for('main_routes.login') }}">
-                <i class="bi bi-box-arrow-in-right me-1"></i>Login
-            </a>
-        </li>
-    {% endif %}
-</ul>
+                            {% if current_user.role == 'coordenador' and not current_user.is_superadmin %}
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="bi bi-file-earmark-check me-1"></i>Avaliações
+                                </a>
+                                <ul class="dropdown-menu dropdown-menu-dark">
+                                    <li><a class="dropdown-item" href="{{ url_for('main_routes.listar_modelos_avaliacao') }}">Ver Modelos</a></li>
+                                    <li><a class="dropdown-item" href="{{ url_for('main_routes.criar_modelo_avaliacao') }}">Criar Modelo</a></li>
+                                    <li><a class="dropdown-item" href="{{ url_for('main_routes.criar_recuperacao') }}">Criar Recuperação</a></li>
+                                </ul>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('main_routes.desempenho_aluno') }}"><i class="bi bi-graph-up-arrow me-1"></i>Desempenho</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('main_routes.painel_relatorios') }}"><i class="bi bi-clipboard-data me-1"></i>Relatórios</a>
+                            </li>
+                            
+                            {% elif current_user.role == 'professor' %}
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('main_routes.banco_questoes') }}"><i class="bi bi-archive-fill me-1"></i>Banco de Questões</a>
+                            </li>
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="bi bi-file-earmark-check me-1"></i>Avaliações
+                                </a>
+                                <ul class="dropdown-menu dropdown-menu-dark">
+                                    <li><a class="dropdown-item" href="{{ url_for('main_routes.listar_modelos_avaliacao') }}">Ver Modelos</a></li>
+                                    <li><a class="dropdown-item" href="{{ url_for('main_routes.criar_modelo_avaliacao') }}">Criar Modelo</a></li>
+                                    <li><a class="dropdown-item" href="{{ url_for('main_routes.criar_recuperacao') }}">Criar Recuperação</a></li>
+                                </ul>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('main_routes.desempenho_aluno') }}"><i class="bi bi-graph-up-arrow me-1"></i>Desempenho</a>
+                            </li>
+                            
+                            {% elif current_user.role == 'aluno' %}
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('main_routes.listar_modelos_avaliacao') }}"><i class="bi bi-card-checklist me-1"></i>Minhas Avaliações</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('main_routes.meus_resultados') }}"><i class="bi bi-trophy-fill me-1"></i>Meus Resultados</a>
+                            </li>
+                            {% endif %}
+                            
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('main_routes.listar_documentos_publicos') }}"><i class="bi bi-file-earmark-text me-1"></i>Documentos</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('main_routes.logout') }}"><i class="bi bi-box-arrow-right me-1"></i>Sair</a>
+                            </li>
+
+                        {% else %}
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('main_routes.pagina_inicial_vendas') }}">
+                                    <i class="bi bi-house-door-fill me-1"></i>Site
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link active" aria-current="page" href="{{ url_for('main_routes.login') }}">
+                                    <i class="bi bi-box-arrow-in-right me-1"></i>Login
+                                </a>
+                            </li>
+                        {% endif %}
+                    </ul>
                 </div>
             </div>
         </nav>
     </header>
     {% endif %}
 
-    <main id="main-content" class="container content-container">
+    <main id="main-content" class="container content-container mb-5">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
