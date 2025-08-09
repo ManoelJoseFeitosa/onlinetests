@@ -3329,13 +3329,13 @@ def api_get_desempenho_aluno(aluno_id):
      .filter(
         Resultado.aluno_id == aluno_id,
         Resultado.ano_letivo_id == ano_letivo_ativo.id,
-        Questao.gabarito.isnot(None) # Considera apenas questões com gabarito
+        Questao.gabarito.isnot(None)
     ).group_by(Questao.nivel).all()
 
     # Formata os dados para os gráficos
     desempenho_geral_data = {
-        'labels': [r[0] for r in resultados_gerais],
-        'data': [r[1] for r in resultados_gerais]
+        'labels': [r.nome.split(' - ')[0].strip() for r in resultados_gerais],
+        'data': [r.nota for r in resultados_gerais]
     }
 
     niveis_map = {n.nivel: (n.total_acertos / n.total_respostas * 100) if n.total_respostas > 0 else 0 for n in desempenho_por_nivel}
