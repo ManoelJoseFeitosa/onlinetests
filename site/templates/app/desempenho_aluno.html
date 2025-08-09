@@ -70,7 +70,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function criarWrapperGrafico(id, titulo) {
         const wrapper = document.createElement('div');
-        wrapper.className = 'col-xl-6 col-lg-12 mb-4';
+        wrapper.className = 'col-lg-6 mb-4'; // Alterado para col-lg-6 para caber 2 por linha
         wrapper.innerHTML = `
             <div class="card shadow h-100">
                 <div class="card-header py-3"><h6 class="m-0 font-weight-bold text-primary">${titulo}</h6></div>
@@ -96,8 +96,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Evento: Mudança no filtro de turma
     filtroTurma.addEventListener('change', async function() {
+        // ... (código para carregar alunos e gráfico da turma, já corrigido) ...
         const turmaId = this.value;
         filtroAluno.innerHTML = '<option value="">-- Todos da Turma --</option>';
         filtroAluno.disabled = true;
@@ -110,13 +110,9 @@ document.addEventListener('DOMContentLoaded', function() {
         exibirMensagem('Carregando dados da turma...', 'loading');
         
         try {
-            // ===========================================================================
-            // CORREÇÃO APLICADA AQUI: Forma correta de construir as URLs dinâmicas
-            // ===========================================================================
             const alunosUrl = "{{ url_for('main_routes.api_get_alunos_por_turma_desempenho', serie_id=123) }}".replace('123', turmaId);
             const desempenhoUrl = "{{ url_for('main_routes.api_get_desempenho_turma', serie_id=123) }}".replace('123', turmaId);
 
-            // Carrega alunos da turma
             const alunosResponse = await fetch(alunosUrl);
             if (!alunosResponse.ok) throw new Error(`Falha ao buscar alunos: ${alunosResponse.statusText}`);
             
@@ -124,7 +120,6 @@ document.addEventListener('DOMContentLoaded', function() {
             alunos.forEach(aluno => filtroAluno.add(new Option(aluno.nome, aluno.id)));
             filtroAluno.disabled = false;
             
-            // Carrega e exibe gráfico da turma
             const desempenhoResponse = await fetch(desempenhoUrl);
             if (!desempenhoResponse.ok) throw new Error(`Falha ao buscar desempenho: ${desempenhoResponse.statusText}`);
 
@@ -133,7 +128,7 @@ document.addEventListener('DOMContentLoaded', function() {
             limparVisualizacao();
             if (desempenho.labels.length > 0) {
                 const row = document.createElement('div');
-                row.className = 'row';
+                row.className = 'row justify-content-center';
                 const wrapper = criarWrapperGrafico('turmaChart', `Média de Notas da Turma: ${filtroTurma.options[filtroTurma.selectedIndex].text}`);
                 row.appendChild(wrapper);
                 chartsContainer.appendChild(row);
@@ -152,8 +147,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Evento: Mudança no filtro de aluno
     filtroAluno.addEventListener('change', async function() {
+        // ... (código para carregar gráficos do aluno, já corrigido) ...
         const alunoId = this.value;
         
         if (!alunoId) {
@@ -164,9 +159,6 @@ document.addEventListener('DOMContentLoaded', function() {
         exibirMensagem('Carregando dados do aluno...', 'loading');
 
         try {
-            // ===========================================================================
-            // CORREÇÃO APLICADA AQUI: Forma correta de construir a URL dinâmica
-            // ===========================================================================
             const alunoUrl = "{{ url_for('main_routes.api_get_desempenho_aluno', aluno_id=123) }}".replace('123', alunoId);
             const response = await fetch(alunoUrl);
             if (!response.ok) throw new Error(`Falha ao buscar dados do aluno: ${response.statusText}`);
@@ -199,12 +191,76 @@ document.addEventListener('DOMContentLoaded', function() {
             exibirMensagem('Ocorreu um erro ao buscar os dados do aluno.', 'error');
         }
     });
-    
-    // Evento: Clique para Gerar PDF
+
     btnGerarPdf.addEventListener('click', function() {
+        // Verifica se a biblioteca jsPDF está disponível
+        if (typeof window.jspdf === 'undefined' || typeof window.html2canvas === 'undefined') {
+            alert('Erro: As bibliotecas para gerar PDF não foram carregadas. Verifique a conexão com a internet e tente recarregar a página.');
+            return;
+        }
+        
         const { jsPDF } = window.jspdf;
         const container = document.getElementById('charts-container');
-        // ... (código do PDF continua o mesmo) ...
+        
+        // Verifica se há algo para imprimir, ignorando a mensagem inicial
+        if (!container.querySelector('canvas')) {
+            alert("Não há gráficos na tela para gerar o PDF. Por favor, selecione uma turma ou aluno primeiro.");
+            return;
+        }
+
+        const nomeTurma = filtroTurma.options[filtroTurma.selectedIndex].text;
+        const nomeAluno = filtroAluno.options[filtroAluno.selectedIndex].text;
+        const nomeArquivo = filtroAluno.value 
+            ? `Desempenho_${nomeAluno}` 
+            : `Desempenho_Turma_${nomeTurma}`;
+
+        // Feedback visual para o usuário
+        btnGerarPdf.disabled = true;
+        btnGerarPdf.querySelector('.text').textContent = 'Gerando...';
+
+        html2canvas(container, { 
+            scale: 2, // Aumenta a escala para melhor qualidade de imagem
+            useCORS: true // Ajuda se houver imagens de outras origens
+        }).then(canvas => {
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new jsPDF({
+                orientation: 'landscape',
+                unit: 'mm',
+                format: 'a4'
+            });
+
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = pdf.internal.pageSize.getHeight();
+            const canvasWidth = canvas.width;
+            const canvasHeight = canvas.height;
+            const ratio = canvasWidth / canvasHeight;
+            
+            let imgWidth = pdfWidth - 20; // com margens de 10mm de cada lado
+            let imgHeight = imgWidth / ratio;
+
+            // Evita que a imagem ultrapasse a altura da página
+            if (imgHeight > pdfHeight - 20) {
+                imgHeight = pdfHeight - 20;
+                imgWidth = imgHeight * ratio;
+            }
+            
+            const x = (pdfWidth - imgWidth) / 2;
+            const y = (pdfHeight - imgHeight) / 2;
+
+            pdf.addImage(imgData, 'PNG', x, y, imgWidth, imgHeight);
+            pdf.save(`${nomeArquivo.replace(/ /g, '_')}.pdf`);
+
+            // Restaura o botão
+            btnGerarPdf.disabled = false;
+            btnGerarPdf.querySelector('.text').textContent = 'Gerar PDF';
+
+        }).catch(err => {
+            console.error("Erro ao gerar o PDF:", err);
+            alert("Ocorreu um erro inesperado ao gerar o PDF. Tente novamente.");
+            // Restaura o botão em caso de erro
+            btnGerarPdf.disabled = false;
+            btnGerarPdf.querySelector('.text').textContent = 'Gerar PDF';
+        });
     });
 
     carregarTurmas();
