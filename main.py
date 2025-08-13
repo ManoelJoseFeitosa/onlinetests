@@ -1495,25 +1495,36 @@ def editar_questao(questao_id):
     
     questao = query.first_or_404()
 
-    # --- LÓGICA DO POST (SALVAR AS ALTERAÇÕES) ---
     if request.method == 'POST':
         try:
-            # Atualiza os dados da questão com as informações do formulário
+            # Coleta os dados do formulário
             questao.disciplina_id = request.form.get('disciplina_id', type=int)
             questao.serie_id = request.form.get('serie_id', type=int)
             questao.assunto = request.form.get('assunto')
             questao.texto = request.form.get('texto_questao')
             questao.nivel = request.form.get('nivel')
-            questao.tipo = request.form.get('tipo')
+            questao.tipo = request.form.get('tipo') # Este campo agora virá corretamente do HTML
             questao.gabarito = request.form.get('gabarito')
             questao.justificativa_gabarito = request.form.get('justificativa_gabarito')
             questao.imagem_alt = request.form.get('imagem_alt')
 
+            # Validação crucial para evitar o erro
+            if not questao.tipo:
+                flash('O campo "Tipo de Questão" é obrigatório. A edição não foi salva.', 'danger')
+                return redirect(url_for('main_routes.editar_questao', questao_id=questao_id))
+
+            # Lógica para limpar ou preencher as opções de múltipla escolha
             if questao.tipo == 'multipla_escolha':
                 questao.opcao_a = request.form.get('opcao_a')
                 questao.opcao_b = request.form.get('opcao_b')
                 questao.opcao_c = request.form.get('opcao_c')
                 questao.opcao_d = request.form.get('opcao_d')
+            else:
+                # Se não for múltipla escolha, limpa os campos de opção para evitar dados órfãos
+                questao.opcao_a = None
+                questao.opcao_b = None
+                questao.opcao_c = None
+                questao.opcao_d = None
 
             # Lógica para salvar a nova imagem, se uma for enviada
             if 'imagem_questao' in request.files:
@@ -1522,6 +1533,9 @@ def editar_questao(questao_id):
                     filename = secure_filename(file.filename)
                     unique_filename = f"{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{filename}"
                     file.save(os.path.join(app.config['UPLOAD_FOLDER'], unique_filename))
+                    # Opcional: remover a imagem antiga do servidor
+                    if questao.imagem_nome and os.path.exists(os.path.join(app.config['UPLOAD_FOLDER'], questao.imagem_nome)):
+                        os.remove(os.path.join(app.config['UPLOAD_FOLDER'], questao.imagem_nome))
                     questao.imagem_nome = unique_filename
             
             db.session.commit()
@@ -1533,8 +1547,7 @@ def editar_questao(questao_id):
             db.session.rollback()
             flash(f'Ocorreu um erro ao atualizar a questão: {e}', 'danger')
 
-    # --- LÓGICA DO GET (EXIBIR O FORMULÁRIO DE EDIÇÃO) ---
-    # Busca as listas de disciplinas e séries para popular os menus de seleção.
+    # Lógica do GET (exibir o formulário de edição)
     if current_user.role == 'professor':
         disciplinas = current_user.disciplinas_lecionadas
         series = current_user.series_lecionadas
@@ -1542,7 +1555,6 @@ def editar_questao(questao_id):
         disciplinas = Disciplina.query.filter_by(escola_id=current_user.escola_id).order_by(Disciplina.nome).all()
         series = Serie.query.filter_by(escola_id=current_user.escola_id).order_by(Serie.nome).all()
 
-    # Renderiza o template de EDIÇÃO, passando a questão e as listas.
     return render_template('app/editar_questao.html', questao=questao, disciplinas=disciplinas, series=series)
 
 # --- Rotas de Avaliação ---
