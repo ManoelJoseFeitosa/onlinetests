@@ -1272,10 +1272,17 @@ def gerenciar_academico():
 
         return redirect(url_for('main_routes.gerenciar_academico'))
 
-    # Lógica GET (carregar dados para exibir na página)
+    # --- LÓGICA GET (CORRIGIDA) ---
+    # Carrega os dados para exibir na página
     series = Serie.query.filter_by(escola_id=escola_id).options(joinedload(Serie.disciplinas)).order_by(Serie.nome).all()
     disciplinas = Disciplina.query.filter_by(escola_id=escola_id).order_by(Disciplina.nome).all()
-    return render_template('app/gerenciar_academico.html', series=series, disciplinas=disciplinas)
+
+    # CORREÇÃO: Cria uma lista de dicionários simples (JSON serializável) para o JavaScript.
+    # Isso utiliza o método to_dict() que já existe no seu modelo Disciplina.
+    disciplinas_json = [d.to_dict() for d in disciplinas]
+
+    # Passa tanto a lista de objetos (para o Jinja) quanto a lista JSON (para o script) para o template.
+    return render_template('app/gerenciar_academico.html', series=series, disciplinas=disciplinas, disciplinas_json=disciplinas_json)
 
 # ===================================================================
 # ROTAS PARA EDIÇÃO E EXCLUSÃO DE SÉRIES E DISCIPLINAS
