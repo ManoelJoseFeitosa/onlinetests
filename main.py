@@ -686,8 +686,80 @@ def editar_escola(escola_id):
 @superadmin_required
 def superadmin_nova_escola():
     if request.method == 'POST':
-        # ... Lógica de criação de escola ...
-        return redirect(url_for('main_routes.superadmin_painel'))
+        try:
+            # 1. Coleta todos os dados do formulário
+            nome_escola = request.form.get('nome_escola')
+            cnpj_escola = request.form.get('cnpj_escola')
+            plano_escola = request.form.get('plano_escola')
+            media_recuperacao_str = request.form.get('media_recuperacao')
+            
+            nome_coordenador = request.form.get('nome_coordenador')
+            email_coordenador = request.form.get('email_coordenador')
+            senha_provisoria = request.form.get('senha_provisoria')
+
+            # 2. Validação de campos obrigatórios
+            if not all([nome_escola, plano_escola, media_recuperacao_str, nome_coordenador, email_coordenador, senha_provisoria]):
+                flash('Todos os campos, exceto CNPJ, são obrigatórios.', 'danger')
+                return redirect(url_for('main_routes.superadmin_nova_escola'))
+            
+            # Converte a média para float, tratando possíveis erros
+            try:
+                media_recuperacao = float(media_recuperacao_str.replace(',', '.'))
+            except ValueError:
+                flash('O valor da Média para Recuperação é inválido.', 'danger')
+                return redirect(url_for('main_routes.superadmin_nova_escola'))
+
+            # 3. Validação de dados únicos (evita duplicatas)
+            if Escola.query.filter(func.lower(Escola.nome) == func.lower(nome_escola)).first():
+                flash(f'Uma escola com o nome "{nome_escola}" já existe.', 'danger')
+                return redirect(url_for('main_routes.superadmin_nova_escola'))
+            if cnpj_escola and Escola.query.filter_by(cnpj=cnpj_escola).first():
+                flash(f'Uma escola com o CNPJ "{cnpj_escola}" já existe.', 'danger')
+                return redirect(url_for('main_routes.superadmin_nova_escola'))
+            if Usuario.query.filter(func.lower(Usuario.email) == func.lower(email_coordenador)).first():
+                flash(f'Um usuário com o e-mail "{email_coordenador}" já existe.', 'danger')
+                return redirect(url_for('main_routes.superadmin_nova_escola'))
+
+            # 4. Cria a nova escola e a adiciona à sessão do banco de dados
+            nova_escola = Escola(
+                nome=nome_escola,
+                cnpj=cnpj_escola,
+                plano=plano_escola,
+                media_recuperacao=media_recuperacao,
+                status='ativo'
+            )
+            db.session.add(nova_escola)
+            
+            # O db.session.flush() atribui um ID para a 'nova_escola' antes de salvar permanentemente,
+            # permitindo que a gente use esse ID para criar o coordenador.
+            db.session.flush()
+
+            # 5. Cria o usuário coordenador, associando-o à escola recém-criada
+            novo_coordenador = Usuario(
+                nome=nome_coordenador,
+                email=email_coordenador,
+                password=generate_password_hash(senha_provisoria, method='pbkdf2:sha256'),
+                role='coordenador',
+                escola_id=nova_escola.id, # Associa o coordenador à nova escola
+                precisa_trocar_senha=True
+            )
+            db.session.add(novo_coordenador)
+
+            # 6. Salva (commita) ambas as criações (escola e coordenador) no banco de dados
+            db.session.commit()
+            
+            log_audit('SCHOOL_AND_COORD_CREATED', target_obj=nova_escola, details={'creator': current_user.email})
+            flash(f'Escola "{nome_escola}" e seu coordenador foram cadastrados com sucesso!', 'success')
+            return redirect(url_for('main_routes.superadmin_painel'))
+
+        except Exception as e:
+            # Em caso de qualquer erro, desfaz a transação para não salvar dados parciais
+            db.session.rollback()
+            flash(f'Ocorreu um erro inesperado ao salvar a escola: {e}', 'danger')
+            print(f"ERRO AO CRIAR ESCOLA: {e}") # Loga o erro no terminal para depuração
+            return redirect(url_for('main_routes.superadmin_nova_escola'))
+
+    # A lógica para o método GET (exibir o formulário) permanece a mesma
     return render_template('app/nova_escola.html', plans=PLANS)
 
 @main_routes.route('/superadmin/escola/<int:escola_id>/toggle-status', methods=['POST'])
