@@ -1277,6 +1277,105 @@ def gerenciar_academico():
     disciplinas = Disciplina.query.filter_by(escola_id=escola_id).order_by(Disciplina.nome).all()
     return render_template('app/gerenciar_academico.html', series=series, disciplinas=disciplinas)
 
+# ===================================================================
+# ROTAS PARA EDIÇÃO E EXCLUSÃO DE SÉRIES E DISCIPLINAS
+# ===================================================================
+
+@main_routes.route('/admin/serie/editar/<int:serie_id>', methods=['POST'])
+@login_required
+@role_required('coordenador')
+def editar_serie(serie_id):
+    """Atualiza o nome de uma série existente."""
+    serie = Serie.query.filter_by(id=serie_id, escola_id=current_user.escola_id).first_or_404()
+    novo_nome = request.form.get('nome_serie')
+
+    if not novo_nome:
+        flash('O nome da série não pode ser vazio.', 'danger')
+        return redirect(url_for('main_routes.gerenciar_academico'))
+
+    # Verifica se o novo nome já existe na mesma escola
+    existente = Serie.query.filter(
+        func.lower(Serie.nome) == func.lower(novo_nome),
+        Serie.escola_id == current_user.escola_id,
+        Serie.id != serie_id
+    ).first()
+
+    if existente:
+        flash(f'A série "{novo_nome}" já existe.', 'danger')
+    else:
+        serie.nome = novo_nome
+        db.session.commit()
+        log_audit('SERIES_UPDATED', target_obj=serie, details={'new_name': novo_nome})
+        flash(f'Série atualizada para "{novo_nome}" com sucesso!', 'success')
+        
+    return redirect(url_for('main_routes.gerenciar_academico'))
+
+@main_routes.route('/admin/serie/excluir/<int:serie_id>', methods=['POST'])
+@login_required
+@role_required('coordenador')
+def excluir_serie(serie_id):
+    """Exclui uma série, se não houver dependências."""
+    serie = Serie.query.filter_by(id=serie_id, escola_id=current_user.escola_id).first_or_404()
+    
+    # VERIFICAÇÃO DE DEPENDÊNCIAS: Não permite excluir se houver alunos matriculados.
+    if Matricula.query.filter_by(serie_id=serie.id).first():
+        flash(f'Não é possível excluir a série "{serie.nome}", pois existem alunos matriculados nela.', 'danger')
+        return redirect(url_for('main_routes.gerenciar_academico'))
+
+    nome_serie = serie.nome
+    db.session.delete(serie)
+    db.session.commit()
+    log_audit('SERIES_DELETED', details={'deleted_name': nome_serie})
+    flash(f'Série "{nome_serie}" excluída com sucesso!', 'success')
+    return redirect(url_for('main_routes.gerenciar_academico'))
+
+@main_routes.route('/admin/disciplina/editar/<int:disciplina_id>', methods=['POST'])
+@login_required
+@role_required('coordenador')
+def editar_disciplina(disciplina_id):
+    """Atualiza o nome de uma disciplina existente."""
+    disciplina = Disciplina.query.filter_by(id=disciplina_id, escola_id=current_user.escola_id).first_or_404()
+    novo_nome = request.form.get('nome_disciplina')
+
+    if not novo_nome:
+        flash('O nome da disciplina não pode ser vazio.', 'danger')
+        return redirect(url_for('main_routes.gerenciar_academico'))
+
+    existente = Disciplina.query.filter(
+        func.lower(Disciplina.nome) == func.lower(novo_nome),
+        Disciplina.escola_id == current_user.escola_id,
+        Disciplina.id != disciplina_id
+    ).first()
+
+    if existente:
+        flash(f'A disciplina "{novo_nome}" já existe.', 'danger')
+    else:
+        disciplina.nome = novo_nome
+        db.session.commit()
+        log_audit('DISCIPLINE_UPDATED', target_obj=disciplina, details={'new_name': novo_nome})
+        flash(f'Disciplina atualizada para "{novo_nome}" com sucesso!', 'success')
+        
+    return redirect(url_for('main_routes.gerenciar_academico'))
+
+@main_routes.route('/admin/disciplina/excluir/<int:disciplina_id>', methods=['POST'])
+@login_required
+@role_required('coordenador')
+def excluir_disciplina(disciplina_id):
+    """Exclui uma disciplina, se não houver dependências."""
+    disciplina = Disciplina.query.filter_by(id=disciplina_id, escola_id=current_user.escola_id).first_or_404()
+
+    # VERIFICAÇÃO DE DEPENDÊNCIAS: Não permite excluir se houver questões cadastradas.
+    if Questao.query.filter_by(disciplina_id=disciplina.id).first():
+        flash(f'Não é possível excluir a disciplina "{disciplina.nome}", pois existem questões associadas a ela.', 'danger')
+        return redirect(url_for('main_routes.gerenciar_academico'))
+
+    nome_disciplina = disciplina.nome
+    db.session.delete(disciplina)
+    db.session.commit()
+    log_audit('DISCIPLINE_DELETED', details={'deleted_name': nome_disciplina})
+    flash(f'Disciplina "{nome_disciplina}" excluída com sucesso!', 'success')
+    return redirect(url_for('main_routes.gerenciar_academico'))
+
 # --- Rotas do Banco de Questões ---
 @main_routes.route('/professor/criar_questao', methods=['GET', 'POST'])
 @login_required

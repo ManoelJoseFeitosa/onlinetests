@@ -3,122 +3,303 @@
 {% block title %}Gerenciamento Acadêmico{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="h2">Gerenciamento Acadêmico</h1>
-        <a href="{{ url_for('main_routes.dashboard') }}" class="btn btn-outline-secondary">&larr; Voltar ao Painel</a>
-    </div>
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">Gerenciamento Acadêmico</h1>
+    <a href="{{ url_for('main_routes.dashboard') }}" class="btn btn-sm btn-secondary">
+        <i class="fas fa-arrow-left fa-sm text-white-50"></i> Voltar ao Painel
+    </a>
+</div>
 
-    <div class="row">
-        <div class="col-md-4 mb-4">
-            <div class="card shadow-sm mb-4">
-                <div class="card-header">
-                    <h5>1. Cadastrar Nova Série</h5>
-                </div>
-                <div class="card-body">
-                    <form method="POST" action="{{ url_for('main_routes.gerenciar_academico') }}">
-                        <div class="form-group">
-                            <label for="nome_serie" class="form-label">Nome da Série</label>
-                            <input type="text" class="form-control" name="nome_serie" id="nome_serie" placeholder="Ex: 1º Ano - Ensino Médio" required>
-                        </div>
-                        <button type="submit" name="action" value="salvar_serie" class="btn btn-primary w-100 mt-3">Salvar Série</button>
-                    </form>
-                </div>
+<div class="row">
+    <!-- Coluna da Esquerda: Cadastro e Listagem de Séries e Disciplinas -->
+    <div class="col-lg-5">
+        <!-- Card para Séries -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">1. Gerenciar Séries</h6>
             </div>
-
-            <div class="card shadow-sm">
-                <div class="card-header">
-                    <h5>2. Cadastrar Nova Disciplina</h5>
-                </div>
-                <div class="card-body">
-                    <form method="POST" action="{{ url_for('main_routes.gerenciar_academico') }}">
-                        <div class="form-group">
-                            <label for="nome_disciplina" class="form-label">Nome da Disciplina</label>
-                            <input type="text" class="form-control" name="nome_disciplina" id="nome_disciplina" placeholder="Ex: Matemática, Biologia" required>
+            <div class="card-body">
+                <form action="{{ url_for('main_routes.gerenciar_academico') }}" method="POST">
+                    <input type="hidden" name="action" value="salvar_serie">
+                    <div class="mb-3">
+                        <label for="nome_serie" class="form-label">Nome da Nova Série</label>
+                        <input type="text" class="form-control" id="nome_serie" name="nome_serie" placeholder="Ex: 1° Ano - Ensino Médio" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Salvar Nova Série</button>
+                </form>
+                <hr>
+                <h6 class="text-dark">Séries Cadastradas:</h6>
+                <ul class="list-group">
+                    {% for serie in series %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        {{ serie.nome }}
+                        <div>
+                            <button class="btn btn-sm btn-outline-warning me-1" data-bs-toggle="modal" data-bs-target="#editSerieModal" data-id="{{ serie.id }}" data-nome="{{ serie.nome }}">
+                                <i class="fas fa-pencil-alt"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteSerieModal" data-id="{{ serie.id }}" data-nome="{{ serie.nome }}">
+                                <i class="fas fa-trash"></i>
+                            </button>
                         </div>
-                        <button type="submit" name="action" value="salvar_disciplina" class="btn btn-primary w-100 mt-3">Salvar Disciplina</button>
-                    </form>
-                </div>
+                    </li>
+                    {% else %}
+                    <li class="list-group-item text-muted">Nenhuma série cadastrada.</li>
+                    {% endfor %}
+                </ul>
             </div>
         </div>
 
-        <div class="col-md-8 mb-4">
-            <div class="card shadow-sm h-100">
-                <div class="card-header">
-                    <h5>3. Associar Disciplinas às Séries</h5>
-                </div>
-                <div class="card-body">
-                    <p class="text-muted">Selecione uma série para definir quais disciplinas são oferecidas nela.</p>
-                    <form method="POST" action="{{ url_for('main_routes.gerenciar_academico') }}" id="form-associacao">
-                        
-                        <div class="form-group mb-4">
-                            <label for="serie_id_associacao" class="form-label fw-bold">Selecione a Série:</label>
-                            <select name="serie_id_associacao" id="serie_id_associacao" class="form-select">
-                                <option value="">-- Escolha uma série para gerenciar --</option>
-                                {% for serie in series %}
-                                    <option value="{{ serie.id }}">{{ serie.nome }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        
-                        <div id="disciplinas-checkboxes" style="display: none;">
-                            <label class="form-label fw-bold">Disciplinas oferecidas nesta série:</label>
-                            <div class="p-3 border rounded" style="max-height: 250px; overflow-y: auto;">
-                                {% for disciplina in disciplinas %}
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" name="disciplinas_selecionadas" value="{{ disciplina.id }}" id="disciplina-check-{{ disciplina.id }}">
-                                    <label class="form-check-label" for="disciplina-check-{{ disciplina.id }}">
-                                        {{ disciplina.nome }}
-                                    </label>
-                                </div>
-                                {% endfor %}
-                            </div>
-                        </div>
-                        <button type="submit" name="action" value="salvar_associacao" class="btn btn-success w-100 mt-3" id="btn-salvar-associacao" style="display: none;">Salvar Associação</button>
-                    </form>
-                </div>
+        <!-- Card para Disciplinas -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">2. Gerenciar Disciplinas</h6>
             </div>
+            <div class="card-body">
+                <form action="{{ url_for('main_routes.gerenciar_academico') }}" method="POST">
+                    <input type="hidden" name="action" value="salvar_disciplina">
+                    <div class="mb-3">
+                        <label for="nome_disciplina" class="form-label">Nome da Nova Disciplina</label>
+                        <input type="text" class="form-control" id="nome_disciplina" name="nome_disciplina" placeholder="Ex: Matemática, Biologia" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Salvar Nova Disciplina</button>
+                </form>
+                <hr>
+                <h6 class="text-dark">Disciplinas Cadastradas:</h6>
+                <ul class="list-group">
+                    {% for disciplina in disciplinas %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        {{ disciplina.nome }}
+                        <div>
+                            <button class="btn btn-sm btn-outline-warning me-1" data-bs-toggle="modal" data-bs-target="#editDisciplinaModal" data-id="{{ disciplina.id }}" data-nome="{{ disciplina.nome }}">
+                                <i class="fas fa-pencil-alt"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteDisciplinaModal" data-id="{{ disciplina.id }}" data-nome="{{ disciplina.nome }}">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </li>
+                    {% else %}
+                    <li class="list-group-item text-muted">Nenhuma disciplina cadastrada.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Coluna da Direita: Associação -->
+    <div class="col-lg-7">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-success">3. Associar Disciplinas às Séries</h6>
+            </div>
+            <div class="card-body">
+                <form action="{{ url_for('main_routes.gerenciar_academico') }}" method="POST">
+                    <input type="hidden" name="action" value="salvar_associacao">
+                    <div class="mb-3">
+                        <label for="serie_id_associacao" class="form-label">Selecione a Série:</label>
+                        <select class="form-select" id="serie_id_associacao" name="serie_id_associacao" required>
+                            <option value="" disabled selected>Escolha uma série para definir as disciplinas</option>
+                            {% for serie in series %}
+                                <option value="{{ serie.id }}" data-disciplinas='[{{ serie.disciplinas|map(attribute="id")|join(',') }}]'>
+                                    {{ serie.nome }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div id="disciplinas-checkboxes" class="mb-3">
+                        <p class="text-muted">Selecione uma série acima para ver as disciplinas.</p>
+                    </div>
+                    <button type="submit" class="btn btn-success w-100">Salvar Associação</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================== -->
+<!-- MODAIS PARA SÉRIES -->
+<!-- ========================================================== -->
+
+<!-- Modal de Edição de Série -->
+<div class="modal fade" id="editSerieModal" tabindex="-1" aria-labelledby="editSerieModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editSerieModalLabel">Editar Série</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="editSerieForm" method="POST">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="edit_nome_serie" class="form-label">Nome da Série</label>
+                        <input type="text" class="form-control" id="edit_nome_serie" name="nome_serie" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Exclusão de Série -->
+<div class="modal fade" id="deleteSerieModal" tabindex="-1" aria-labelledby="deleteSerieModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteSerieModalLabel">Confirmar Exclusão</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="deleteSerieForm" method="POST">
+                <div class="modal-body">
+                    <p>Você tem certeza que deseja excluir a série <strong id="deleteSerieName"></strong>?</p>
+                    <p class="text-danger small">Atenção: Esta ação não pode ser desfeita.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-danger">Excluir</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================== -->
+<!-- MODAIS PARA DISCIPLINAS -->
+<!-- ========================================================== -->
+
+<!-- Modal de Edição de Disciplina -->
+<div class="modal fade" id="editDisciplinaModal" tabindex="-1" aria-labelledby="editDisciplinaModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editDisciplinaModalLabel">Editar Disciplina</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="editDisciplinaForm" method="POST">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="edit_nome_disciplina" class="form-label">Nome da Disciplina</label>
+                        <input type="text" class="form-control" id="edit_nome_disciplina" name="nome_disciplina" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Exclusão de Disciplina -->
+<div class="modal fade" id="deleteDisciplinaModal" tabindex="-1" aria-labelledby="deleteDisciplinaModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteDisciplinaModalLabel">Confirmar Exclusão</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="deleteDisciplinaForm" method="POST">
+                <div class="modal-body">
+                    <p>Você tem certeza que deseja excluir a disciplina <strong id="deleteDisciplinaName"></strong>?</p>
+                    <p class="text-danger small">Atenção: Esta ação não pode ser desfeita.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-danger">Excluir</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
-{{ super() }}
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    // CORREÇÃO AQUI: O id do select foi atualizado
+    // --- Lógica para Associação de Disciplinas ---
     const serieSelect = document.getElementById('serie_id_associacao');
-    const disciplinasContainer = document.getElementById('disciplinas-checkboxes');
-    const btnSalvar = document.getElementById('btn-salvar-associacao');
+    const checkboxesContainer = document.getElementById('disciplinas-checkboxes');
+    const todasDisciplinas = JSON.parse('{{ disciplinas|tojson|safe }}');
 
-    // Mapeia as disciplinas associadas a cada série
-    const seriesComDisciplinas = {
-        {% for serie in series %}
-            "{{ serie.id }}": [ {% for disc in serie.disciplinas %}{{ disc.id }},{% endfor %} ],
-        {% endfor %}
-    };
-
-    serieSelect.addEventListener('change', function() {
-        // Esconde o container e o botão se nenhuma série for selecionada
+    serieSelect.addEventListener('change', function () {
+        const selectedOption = this.options[this.selectedIndex];
+        const disciplinasAssociadas = JSON.parse(selectedOption.dataset.disciplinas || '[]');
+        
+        checkboxesContainer.innerHTML = ''; // Limpa o container
         if (!this.value) {
-            disciplinasContainer.style.display = 'none';
-            btnSalvar.style.display = 'none';
+            checkboxesContainer.innerHTML = '<p class="text-muted">Selecione uma série acima para ver as disciplinas.</p>';
             return;
         }
 
-        // Mostra o container e o botão
-        disciplinasContainer.style.display = 'block';
-        btnSalvar.style.display = 'block';
-
-        const serieId = this.value;
-        const disciplinasDaSerie = seriesComDisciplinas[serieId] || [];
-        
-        // CORREÇÃO AQUI: O seletor de query foi atualizado para o novo 'name'
-        const todosCheckboxes = document.querySelectorAll('input[name="disciplinas_selecionadas"]');
-        todosCheckboxes.forEach(checkbox => {
-            checkbox.checked = disciplinasDaSerie.includes(parseInt(checkbox.value));
+        todasDisciplinas.forEach(disciplina => {
+            const isChecked = disciplinasAssociadas.includes(disciplina.id);
+            const checkboxHTML = `
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="${disciplina.id}" id="disc_${disciplina.id}" name="disciplinas_selecionadas" ${isChecked ? 'checked' : ''}>
+                    <label class="form-check-label" for="disc_${disciplina.id}">
+                        ${disciplina.nome}
+                    </label>
+                </div>`;
+            checkboxesContainer.innerHTML += checkboxHTML;
         });
+    });
+
+    // --- Lógica para Modais de Edição ---
+    const editSerieModal = document.getElementById('editSerieModal');
+    editSerieModal.addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget;
+        const serieId = button.dataset.id;
+        const serieNome = button.dataset.nome;
+        
+        const modalForm = editSerieModal.querySelector('#editSerieForm');
+        const modalInput = editSerieModal.querySelector('#edit_nome_serie');
+        
+        modalForm.action = `/admin/serie/editar/${serieId}`;
+        modalInput.value = serieNome;
+    });
+
+    const editDisciplinaModal = document.getElementById('editDisciplinaModal');
+    editDisciplinaModal.addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget;
+        const disciplinaId = button.dataset.id;
+        const disciplinaNome = button.dataset.nome;
+        
+        const modalForm = editDisciplinaModal.querySelector('#editDisciplinaForm');
+        const modalInput = editDisciplinaModal.querySelector('#edit_nome_disciplina');
+        
+        modalForm.action = `/admin/disciplina/editar/${disciplinaId}`;
+        modalInput.value = disciplinaNome;
+    });
+
+    // --- Lógica para Modais de Exclusão ---
+    const deleteSerieModal = document.getElementById('deleteSerieModal');
+    deleteSerieModal.addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget;
+        const serieId = button.dataset.id;
+        const serieNome = button.dataset.nome;
+        
+        const modalForm = deleteSerieModal.querySelector('#deleteSerieForm');
+        const modalText = deleteSerieModal.querySelector('#deleteSerieName');
+        
+        modalForm.action = `/admin/serie/excluir/${serieId}`;
+        modalText.textContent = serieNome;
+    });
+
+    const deleteDisciplinaModal = document.getElementById('deleteDisciplinaModal');
+    deleteDisciplinaModal.addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget;
+        const disciplinaId = button.dataset.id;
+        const disciplinaNome = button.dataset.nome;
+        
+        const modalForm = deleteDisciplinaModal.querySelector('#deleteDisciplinaForm');
+        const modalText = deleteDisciplinaModal.querySelector('#deleteDisciplinaName');
+        
+        modalForm.action = `/admin/disciplina/excluir/${disciplinaId}`;
+        modalText.textContent = disciplinaNome;
     });
 });
 </script>
