@@ -100,7 +100,8 @@
                         <select class="form-select" id="serie_id_associacao" name="serie_id_associacao" required>
                             <option value="" disabled selected>Escolha uma série para definir as disciplinas</option>
                             {% for serie in series %}
-                                <option value="{{ serie.id }}" data-disciplinas='[{{ serie.disciplinas|map(attribute="id")|join(',') }}]'>
+                                <!-- CORREÇÃO: Simplificando a passagem de dados para o JS -->
+                                <option value="{{ serie.id }}" data-disciplinas-ids="{{ serie.disciplinas|map(attribute='id')|join(',') }}">
                                     {{ serie.nome }}
                                 </option>
                             {% endfor %}
@@ -227,7 +228,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     serieSelect.addEventListener('change', function () {
         const selectedOption = this.options[this.selectedIndex];
-        const disciplinasAssociadas = JSON.parse(selectedOption.dataset.disciplinas || '[]');
+        // CORREÇÃO: Lendo o novo atributo de dados e tratando caso esteja vazio
+        const disciplinasIdsStr = selectedOption.getAttribute('data-disciplinas-ids') || '';
+        const disciplinasAssociadas = disciplinasIdsStr.split(',').filter(id => id).map(Number);
         
         checkboxesContainer.innerHTML = ''; // Limpa o container
         if (!this.value) {
